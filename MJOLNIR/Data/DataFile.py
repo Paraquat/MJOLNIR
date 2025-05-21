@@ -769,7 +769,7 @@ class DataFile(object):
                     value = ':'.join(value)
                 parameters[param] = value[0]
             else:
-                if line.find('DATA_:') >-1:
+                if line.find('### Scan data') >-1:
                     dataline = I
                     break
 
