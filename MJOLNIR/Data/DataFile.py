@@ -56,6 +56,8 @@ HDFTranslation = {'sample':'/entry/sample',
                   'startTime':'entry/start_time',
                   'hdfMonitor':'entry/control/data',
                   'monitor':'entry/monitor_2/data',
+                  'monitor_1':'entry/control/data',
+                  's2tRaw':'entry/CAMEA/analyzer/polar_angle_raw',
                   'time':'entry/control/time',
                   'endTime':'entry/end_time',
                   'experimentalIdentifier':'entry/experiment_identifier',
@@ -258,6 +260,8 @@ class DataFile(object):
                     self.proposalId = np.array(getHDFEntry(f,'proposal',fromNICOS=self.fromNICOS))[0]
                     self.proposalTitle = np.array(getHDFEntry(f,'proposalTitle',fromNICOS=self.fromNICOS))[0]
 
+                    self.monitor_1 = np.array(getHDFEntry(f,'monitor_1',fromNICOS=self.fromNICOS))
+                    self.s2tRaw = np.array(getHDFEntry(f,'s2tRaw',fromNICOS=self.fromNICOS))
                     localContact = getHDFEntry(f,'localContact',fromNICOS=self.fromNICOS)
                     if not localContact is None:
                         self.localContactName = np.array(localContact)[0]
