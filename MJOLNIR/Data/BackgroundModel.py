@@ -205,8 +205,7 @@ class BackgroundObject(object):
     @property
     def int(self):
         if not hasattr(self,'_int'):
-            warnings.warn('No background was found. Generating using standard parameters...')
-            self.generatePowderBackground()
+            raise AttributeError('No Background found!')
         return self._int
     
     
@@ -214,29 +213,25 @@ class BackgroundObject(object):
     @property
     def intensity(self):
         if not hasattr(self,'_intensity'):
-            warnings.warn('No background was found. Generating using standard parameters...')
-            self.generatePowderBackground()
+            raise AttributeError('No Background found!')
         return self._intensity
     
     @property
     def monitor(self):
         if not hasattr(self,'_monitor'):
-            warnings.warn('No background was found. Generating using standard parameters...')
-            self.generatePowderBackground()
+            raise AttributeError('No Background found!')
         return self._monitor
     
     @property
     def norm(self):
         if not hasattr(self,'_norm'):
-            warnings.warn('No background was found. Generating using standard parameters...')
-            self.generatePowderBackground()
+            raise AttributeError('No Background found!')
         return self._norm
     
     @property
     def counts(self):
         if not hasattr(self,'_counts'):
-            warnings.warn('No background was found. Generating using standard parameters...')
-            self.generatePowderBackground()
+            raise AttributeError('No Background found!')
         return self._counts
     
     
@@ -377,9 +372,12 @@ class AMBERBackground(BackgroundObject):
 
     def applyAMBER(self):
         self._int = self.AMBER.b.T
+        self._counts = np.ones_like(self._int)
+        self._norm = np.ones_like(self._int)
+        self._monitor = np.ones_like(self._int)
+        
         self.generateFullBackground()
         
-        self.originalDataSet.backgroundModel = self
 
     def cross_validation(self, q=0.75, beta=None, l=None, mu=None, n_epochs=15, verbose=True):
         """
