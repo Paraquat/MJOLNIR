@@ -24,6 +24,19 @@ import copy
 import platform
 from collections import defaultdict
 
+
+def debug_trace():
+    '''Set a tracepoint in the Python debugger that works with Qt'''
+    from PyQt5.QtCore import pyqtRemoveInputHook
+
+    # Or for Qt5
+    #from PyQt5.QtCore import pyqtRemoveInputHook
+
+    from pdb import set_trace
+    pyqtRemoveInputHook()
+    set_trace()
+
+
 multiFLEXXDetectors = 31*5
 reFloat = r'-?\d*\.\d*'
 reInt   = r'-?\d'
@@ -199,7 +212,7 @@ class DataFile(object):
             self._mask = False
             self.absolutNormalized = False
 
-            if self.type in ['hdf','nxs']:
+            if self.type in ['hdf','nxs']: # loadCameaData
                 with hdf.File(fileLocation,mode='r') as f:
                     # Find out if file is a NICOS file
                     # NICOS has data saved in /entry/data/data while six has /entry/data/counts
@@ -486,8 +499,10 @@ class DataFile(object):
 
 
         if self.instrument == 'CAMEA':
-            self.EPrDetector = 8 
-        elif self.type in ['MultiFLEXX','FlatCone','Bambus']:
+            self.EPrDetector = 8
+        elif self.instrument == 'Bambus':
+            self.EPrDetector = 5
+        elif self.type in ['MultiFLEXX','FlatCone']:
             self.EPrDetector = 1
         else:
             pass
@@ -1051,13 +1066,13 @@ class DataFile(object):
 
 
         # Load data
-        titles = dataString[dataline+1].strip().split('\t')
-        units =  dataString[dataline+2].strip().split('\t')
+        titles = dataString[dataline+1].strip().split()
+        units =  dataString[dataline+2].strip().split()
 
 
         # remove the '# ' part of the first title and unit
-        titles[0] = titles[0].replace('#','').strip()
-        units[0] = units[0].replace('#','').strip()
+        titles.pop(0)
+        units.pop(0)
 
 
         # Find splitter in data set ';'
@@ -1066,8 +1081,8 @@ class DataFile(object):
         
 
         # Shape becomes [scan points, timer + mon1 + mon2 + chsum + 100 detectors + events]
-        data = [[float(x) for x in line.split('\t')[splitter+1:]] for line in dataString[dataline+3:-1]]
-        scanData = [[float(x) for x in line.split('\t')[:splitter]] for line in dataString[dataline+3:-1]]
+        data = [[float(x) for x in line.split()[splitter+1:]] for line in dataString[dataline+3:-1]]
+        scanData = [[float(x) for x in line.split()[:splitter]] for line in dataString[dataline+3:-1]]
         
         if len(data[-1]) == 0: # empty last line
             data = np.array(data[:-1])
@@ -1096,7 +1111,6 @@ class DataFile(object):
         self.scanParameters = self.scanParameters[[-1,*range(len(self.scanParameters)-1)]]
         self.scanUnits = self.scanUnits[[-1,*range(len(self.scanParameters)-1)]]
         self.scanValues = self.scanValues[[-1,*range(len(self.scanParameters)-1)]]
-
 
         self.__dict__.update(parameters)
 
@@ -1168,16 +1182,14 @@ class DataFile(object):
         monoQ = np.array(float(self.mono_value.split(' ')[0]))
         self.Ei = np.array(float(self.Ei_value.split(' ')[0]))
         self.A4 = np.array([float(self.stt_value.split(' ')[0])])
+        self.A3 = self.sth
 
-        if isinstance(self.sth_value,str):
-            self._A3 = np.array(float(self.sth_value.split(' ')[0]))
-        else:
-            self._A3 = self.sth_value
+        debug_trace()
 
         self.A4Off = 0.0
         self.A3Off = None
 
-        self.countingTime = np.array([self.etime[0],*np.diff(self.etime)])
+        # self.countingTime = np.array([self.etime[0],*np.diff(self.etime)])
         
 
         nameSwaps = [['filename','name'],
@@ -1205,7 +1217,6 @@ class DataFile(object):
                     ['localContact','localContactName'],
                     #['date','startTime']
                     ]
-
 
         if not hasattr(self,'electricField'):
             self.electricField = None
