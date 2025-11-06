@@ -25,18 +25,6 @@ import platform
 from collections import defaultdict
 
 
-def debug_trace():
-    '''Set a tracepoint in the Python debugger that works with Qt'''
-    from PyQt5.QtCore import pyqtRemoveInputHook
-
-    # Or for Qt5
-    #from PyQt5.QtCore import pyqtRemoveInputHook
-
-    from pdb import set_trace
-    pyqtRemoveInputHook()
-    set_trace()
-
-
 multiFLEXXDetectors = 31*5
 reFloat = r'-?\d*\.\d*'
 reInt   = r'-?\d'
@@ -501,7 +489,7 @@ class DataFile(object):
         if self.instrument == 'CAMEA':
             self.EPrDetector = 8
         elif self.instrument == 'Bambus':
-            self.EPrDetector = 5
+            self.EPrDetector = 1
         elif self.type in ['MultiFLEXX','FlatCone']:
             self.EPrDetector = 1
         else:
@@ -1183,8 +1171,6 @@ class DataFile(object):
         self.Ei = np.array(float(self.Ei_value.split(' ')[0]))
         self.A4 = np.array([float(self.stt_value.split(' ')[0])])
         self.A3 = self.sth
-
-        debug_trace()
 
         self.A4Off = 0.0
         self.A3Off = None
