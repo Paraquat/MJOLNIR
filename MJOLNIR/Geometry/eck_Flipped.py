@@ -238,6 +238,11 @@ def calc_eck(param):
     E = param["E"]
     Q = param["Q"]
 
+    if not 'flipped' in param:
+        param['flipped'] = True
+    
+    flipped = param['flipped']
+
 
     # --------------------------------------------------------------------
     # mono/ana focus
@@ -336,25 +341,38 @@ def calc_eck(param):
     # alpha_3 <-> alpha_3^v
     # alpha_4 <-> alpha_4^v
     #
-    pos_y2 = - param["pos_x"]*np.sin(twotheta) + param["pos_y"]*np.cos(twotheta)
+    if flipped:
+        pos_y2 = - param["pos_x"]*np.sin(twotheta) + param["pos_y"]*np.cos(twotheta)
 
-    [E, F, G, H, dReflA] = get_mono_vals(
-        param["det_h"], param["det_w"],
-        param["ana_h"], param["ana_w"],
-        param["dist_ana_det"], param["dist_sample_ana"],
-        kf, -thetaa,
-        param["coll_v_post_ana"], param["coll_v_post_sample"],
-        param["coll_h_post_ana"], param["coll_h_post_sample"],
-        param["ana_mosaic_v"], param["ana_mosaic"],
-        inv_ana_curvv, inv_ana_curvh,
-        param["pos_x"], param["pos_z"], -pos_y2,
-        dana_effic)
-    #--------------------------------------------------------------------------
+        [E, F, G, H, dReflA] = get_mono_vals(
+            param["det_h"], param["det_w"],
+            param["ana_h"], param["ana_w"],
+            param["dist_ana_det"], param["dist_sample_ana"],
+            kf, -thetaa,
+            param["coll_v_post_ana"], param["coll_v_post_sample"],
+            param["coll_h_post_ana"], param["coll_h_post_sample"],
+            param["ana_mosaic_v"], param["ana_mosaic"],
+            inv_ana_curvv, inv_ana_curvh,
+            param["pos_x"], param["pos_z"], -pos_y2,
+            dana_effic)
+        #--------------------------------------------------------------------------
 
-    flipper = np.array([[1, 0, 0],[0, 0, -1],[0, 1, 0]])
-    
-    E = np.dot(flipper,np.dot(E,np.transpose(flipper)))
-    F = np.dot(flipper,np.dot(F,np.transpose(flipper)))
+        flipper = np.array([[1, 0, 0],[0, 0, -1],[0, 1, 0]])
+        
+        E = np.dot(flipper,np.dot(E,np.transpose(flipper)))
+        F = np.dot(flipper,np.dot(F,np.transpose(flipper)))
+    else:
+        [E, F, G, H, dReflA] = get_mono_vals(
+            param["det_w"], param["det_h"], 
+            param["ana_w"], param["ana_h"],
+            param["dist_ana_det"], param["dist_sample_ana"],
+            kf, -thetaa,
+            param["coll_v_post_ana"], param["coll_v_post_sample"],
+            param["coll_h_post_ana"], param["coll_h_post_sample"],
+            param["ana_mosaic_v"], param["ana_mosaic"],
+            inv_ana_curvv, inv_ana_curvh,
+            param["pos_x"], param["pos_y"], param["pos_z"],
+            dana_effic)
 
     # equ 4 & equ 53 in [eck14]
     dE = (ki**2. - kf**2.) / (2.*Q**2.)
