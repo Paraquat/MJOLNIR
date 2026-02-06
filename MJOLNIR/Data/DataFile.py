@@ -1105,7 +1105,7 @@ class DataFile(object):
             
 
         #reshape into [scan points, 20 wedges, 5 energies]
-        self.I = np.array([d[detectorMap] for d in data[:,4:-1]]).reshape(-1,20*5,1)
+        self.I = np.array(data[:,4:-1]).reshape(-1,20*5,1)
 
 
         self.timer = data[:,0].astype(float)
@@ -1369,6 +1369,8 @@ class DataFile(object):
                 np.rad2deg(A4Mean)],Ei,EfMean)
             H,K,L = np.swapaxes(np.swapaxes(HKL,1,2),0,3)
             self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)
+        # from MJOLNIR._tools import debug_trace
+        # debug_trace()
 
         DeltaE = Ei-EfMean
         if DeltaE.shape[0]==1:
