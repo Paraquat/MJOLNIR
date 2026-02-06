@@ -22,12 +22,12 @@ def arctan2d(y,x):
 factorsqrtEK = 0.694692
 
 def uFromAngles(om,sgu,sgl):
-    return np.array([cosd(om)*cosd(sgl),-sind(om)*cosd(sgu)+cosd(om)*sind(sgl)*sind(sgu),
-                      sind(om)*sind(sgu)+cosd(om)*sind(sgl)*cosd(sgu)]).T
+    return np.array([cosd(om)*cosd(sgl),-sind(om)*cosd(sgu)+cosd(om)*-sind(sgl)*sind(sgu),
+                      -sind(om)*sind(sgu)+cosd(om)*sind(sgl)*cosd(sgu)]).T
     
     
 def calcUBFromAngles(B, om, sgu, sgl):
-    N = np.array([[1.0,0,0],[0,cosd(sgu),-sind(sgu)],[0,sind(sgu),cosd(sgu)]])
+    N = np.array([[1.0,0,0],[0,cosd(sgu),sind(sgu)],[0,-sind(sgu),cosd(sgu)]])
     M = np.array([[cosd(sgl),0,sind(sgl)],[0,1,0],[-sind(sgl),0,cosd(sgl)]])    
     OM= np.array([[cosd(om),-sind(om),0],[sind(om),cosd(om),0],[0,0,1]])
     
@@ -55,9 +55,9 @@ def matFromTwoVectors(v1,v2):
 
 
 def calcTheta(ki,kf,stt):
-    return arctan2d(np.abs(ki) - np.abs(kf) * cosd(stt), #rtan
-              np.abs(kf) * sind(stt));
-    
+    return arctan2d(-np.abs(kf) * sind(stt), np.abs(ki) - np.abs(kf) * cosd(stt))
+
+
 def calcTasUVectorFromAngles(r):
     A3 = r[3]
     A4 = r[4]
