@@ -23,7 +23,7 @@ factorsqrtEK = 0.694692
 
 def uFromAngles(om,sgu,sgl):
     return np.array([cosd(om)*cosd(sgl),-sind(om)*cosd(sgu)+cosd(om)*-sind(sgl)*sind(sgu),
-                      -sind(om)*sind(sgu)+cosd(om)*sind(sgl)*cosd(sgu)]).T
+                      +sind(om)*sind(sgu)-cosd(om)*sind(sgl)*cosd(sgu)]).T
     
     
 def calcUBFromAngles(B, om, sgu, sgl):
