@@ -22,10 +22,10 @@ def arctan2d(y,x):
 factorsqrtEK = 0.694692
 
 def uFromAngles(om,sgu,sgl):
-    return np.array([cosd(om)*cosd(sgl),-sind(om)*cosd(sgu)+cosd(om)*-sind(sgl)*sind(sgu),
-                      +sind(om)*sind(sgu)-cosd(om)*sind(sgl)*cosd(sgu)]).T
-    
-    
+    return np.array([-sind(om)*cosd(sgu) - cosd(om)*sind(sgu)*sind(sgl),
+                     cosd(om)*cosd(sgu) - sind(om)*sind(sgu)*sind(sgl),
+                     cosd(om)*sind(sgu) + sind(om)*cosd(sgu)*sind(sgl)]).T
+
 def calcUBFromAngles(B, om, sgu, sgl):
     N = np.array([[1.0,0,0],[0,cosd(sgu),sind(sgu)],[0,-sind(sgu),cosd(sgu)]])
     M = np.array([[cosd(sgl),0,sind(sgl)],[0,1,0],[-sind(sgl),0,cosd(sgl)]])    
