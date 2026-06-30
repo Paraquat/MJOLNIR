@@ -223,6 +223,8 @@ class DataFile(object):
                     else:
                         self.fromNICOS = checkNICOS(f)
                     instr = getInstrument(f)
+                    from _tools import debug_trace
+                    debug_trace()
                     if self.fromNICOS is None:
                         raise AttributeError('Data File {} has no data in {}/detector/counts. The file might be empty.'.format(self.name,instr.name))
                     self.sample = MJOLNIR.Data.Sample.Sample(sample=getHDFEntry(f,'sample'),recalculateUB=self.fromNICOS)
