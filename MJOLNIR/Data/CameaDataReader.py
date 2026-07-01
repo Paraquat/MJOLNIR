@@ -11,6 +11,7 @@ class CameaDataReader(NexusDataReader):
     analyser_lim = 7
     detector_lim = 103
     instrument = "CAMEA"
+    entry = 'entry'
 
     # CAMEA-specific hdf5 keys
     nexus_keys = {
