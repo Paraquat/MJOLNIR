@@ -5,7 +5,3 @@ class Metadata(dict{str, Any}):
 
     def __repr__(self) -> str:
         return f"Metadata({super().__repr__()})"
-
-    def __init__(self):
-        pass
-
