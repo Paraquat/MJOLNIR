@@ -1,11 +1,12 @@
 import pytest
-import numpy as np
 
+import numpy as np
 from pathlib import Path
+from pdb import set_trace
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 
-data_path = Path('/Users/zamaan/projects/bambus')
+data_path = Path('/home/zamaan/Projects/bambus')
 files = data_path.glob("camea2024*.hdf")
 
 def test_camea_data_reader():
@@ -30,3 +31,6 @@ def test_camea_data_reader():
     assert instrument_calibration.bound[2, 0] == 152
     assert instrument_calibration.bound[2, 1] == 182
     assert instrument_calibration.Ef[862] == pytest.approx(4.98141, abs=1e-5)
+    metadata = camea_file._metadata
+    assert metadata['proposal'] == '20240261'
+    assert metadata['sampleName'] == 'TbFeO3'

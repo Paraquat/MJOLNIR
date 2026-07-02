@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from MJOLNIR import _tools
+from MJOLNIR.Data.Metadata import Metadata
 
 @dataclass
 class InstrumentCalibration:
@@ -32,4 +33,5 @@ class DataReader(ABC):
         if not filepath.exists():
             raise AttributeError(f'File path "{filepath}" does not exist')
         self._file = filepath
+        self._metadata = Metadata()
 

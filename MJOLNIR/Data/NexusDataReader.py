@@ -32,21 +32,21 @@ class NexusDataReader(DataReader):
 
     # These keys are for metadata fields
     nexus_meta_keys = {
-        'title':'{entry}/title',
-        'startTime':'{entry}/start_time',
-        'endTime':'{entry}/end_time',
-        'comment':'{entry}/comment',
-        'proposal':'{entry}/proposal_id',
-        'proposalTitle':'{entry}/proposal_title',
-        'experimentalIdentifier':'{entry}/experiment_identifier',
-        'sampleName':'{entry}/sample/name',
-        'localContact':'{entry}/local_contact/name',
-        'proposalUser':'{entry}/proposal_user/name',
-        'proposalEmail':'{entry}/proposal_user/email',
-        'user':'{entry}/user/name',
+        'title': '{entry}/title',
+        'startTime': '{entry}/start_time',
+        'endTime': '{entry}/end_time',
+        'comment': '{entry}/comment',
+        'proposal': '{entry}/proposal_id',
+        'proposalTitle': '{entry}/proposal_title',
+        'experimentalIdentifier': '{entry}/experiment_identifier',
+        'sampleName': '{entry}/sample/name',
+        'localContact': '{entry}/local_contact/name',
+        'proposalUser': '{entry}/proposal_user/name',
+        'proposalEmail': '{entry}/proposal_user/email',
+        'user': '{entry}/user/name',
         'email':'{entry}/user/email',
         'address':'{entry}/user/address',
-        'affiliation':'{entry/user/affiliation',
+        'affiliation':'{entry}/user/affiliation',
         'mode':'{entry}/control/mode',
     }
 
@@ -60,6 +60,7 @@ class NexusDataReader(DataReader):
         self.A4Offset = np.array(self.getValue('A4Offset'))
         self.twotheta = self.A4 - self.A4Offset
         self.sample = Sample(sample=self.getValue('sample'))
+        self.get_metadata()
 
     def __init_subclass__(cls):
         context = {}
@@ -71,8 +72,19 @@ class NexusDataReader(DataReader):
             for key, value in cls.nexus_keys.items()
         }
 
+        cls.nexus_meta_keys = {
+            key: value.format_map(context)
+            for key, value in cls.nexus_meta_keys.items()
+        }
+
     def getValue(self, key: str):
         return self._file.get(self.nexus_keys[key])
 
     def get(self, key: str):
         return self._file.get(key)
+
+    def get_metadata(self):
+        for key in self.nexus_meta_keys:
+            value = self._file.get(self.nexus_meta_keys[key])
+            if value is not None:
+                self._metadata[key] = value[0].decode()
