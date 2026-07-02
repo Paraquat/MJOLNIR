@@ -25,6 +25,8 @@ def test_camea_data_reader():
     assert camea_file.monitor2[0] == 62500
     assert camea_file.sample.a == pytest.approx(5.34993, abs=1e-5)
     assert camea_file.sample.plane_vector1[9] == pytest.approx(4.99012, abs=1e-5)
+    assert camea_file.sample.A3Off.shape == (1,)
+    assert camea_file.sample.A3Off[0] == pytest.approx(0, abs=1e-8)
     instrument_calibration = camea_file.get_instrument_calibration(3)
     assert instrument_calibration.Ef.shape == (2496,)
     assert instrument_calibration.bound.shape == (2496, 2)

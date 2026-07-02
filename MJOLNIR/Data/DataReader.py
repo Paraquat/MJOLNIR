@@ -5,6 +5,7 @@ import numpy as np
 
 from MJOLNIR import _tools
 from MJOLNIR.Data.Metadata import Metadata
+from MJOLNIR.Data.Sample import Sample
 
 @dataclass
 class InstrumentCalibration:
@@ -20,14 +21,18 @@ class DataReader(ABC):
     """Abstract base class for all data readers (objects that parse data files)"""
 
     EPrDetector = 1
-    analyser_lim = 1
-    detector_lim = 1
+    n_analysers = 1
+    n_detectors = 1
 
-    A3 = np.array([], dtype=float)
-    A4 = np.array([], dtype=float)
-    A4Offset = np.array([], dtype=float)
-    Ei = np.array([], dtype=float)
-    twotheta = np.array([], dtype=float)
+    counts: np.NDArray[np.float64]
+    A3: np.NDArray[np.float64]
+    A3Offset: np.NDArray[np.float64]
+    A4: np.NDArray[np.float64]
+    A4Offset: np.NDArray[np.float64]
+    Ei: np.NDArray[np.float64]
+    twotheta: np.NDArray[np.float64]
+    calibration: InstrumentCalibration
+    sample: Sample
 
     def __init__(self, filepath: Path):
         if not filepath.exists():
@@ -35,3 +40,6 @@ class DataReader(ABC):
         self._file = filepath
         self._metadata = Metadata()
 
+
+    def transform(self):
+        pass

@@ -8,8 +8,8 @@ from MJOLNIR.Data.NexusDataReader import NexusDataReader
 class CameaDataReader(NexusDataReader):
     """Parse a CAMEA Nexus file"""
 
-    analyser_lim = 7
-    detector_lim = 103
+    n_analyser = 8
+    n_detector = 104
     instrument = "CAMEA"
     entry = 'entry'
 

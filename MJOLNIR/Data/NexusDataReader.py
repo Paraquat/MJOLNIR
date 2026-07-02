@@ -53,13 +53,14 @@ class NexusDataReader(DataReader):
     def __init__(self, filepath: Path):
         super().__init__(filepath)
         self._file = h5py.File(filepath, mode = 'r')
+        self.sample = Sample(sample=self.getValue('sample'))
         self.counts = np.array(self.getValue('counts'))
         self.Ei = np.array(self.getValue('Ei'))
         self.A3 = np.array(self.getValue('A3'))
+        self.A3Off = self.sample.A3Off
         self.A4 = np.array(self.getValue('A4'))
         self.A4Offset = np.array(self.getValue('A4Offset'))
         self.twotheta = self.A4 - self.A4Offset
-        self.sample = Sample(sample=self.getValue('sample'))
         self.get_metadata()
 
     def __init_subclass__(cls):

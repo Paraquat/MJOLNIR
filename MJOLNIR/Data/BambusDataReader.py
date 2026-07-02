@@ -5,8 +5,8 @@ from MJOLNIR.Data import NICOSDataReader
 class BAMBUSDataReader(NICOSDataReader):
     """Parser a BAMBUS ASCII file"""
 
-    analyser_lim = 4
-    detector_lim = 19
+    n_analyser = 5
+    n_detector = 20
 
 
     def __init__(self, filepath: Path):
