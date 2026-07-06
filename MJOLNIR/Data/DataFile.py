@@ -223,8 +223,6 @@ class DataFile(object):
                     else:
                         self.fromNICOS = checkNICOS(f)
                     instr = getInstrument(f)
-                    from _tools import debug_trace
-                    debug_trace()
                     if self.fromNICOS is None:
                         raise AttributeError('Data File {} has no data in {}/detector/counts. The file might be empty.'.format(self.name,instr.name))
                     self.sample = MJOLNIR.Data.Sample.Sample(sample=getHDFEntry(f,'sample'),recalculateUB=self.fromNICOS)
@@ -1371,8 +1369,6 @@ class DataFile(object):
                 np.rad2deg(A4Mean)],Ei,EfMean)
             H,K,L = np.swapaxes(np.swapaxes(HKL,1,2),0,3)
             self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)
-        # from MJOLNIR._tools import debug_trace
-        # debug_trace()
 
         DeltaE = Ei-EfMean
         if DeltaE.shape[0]==1:

@@ -21,10 +21,15 @@ def arctan2d(y,x):
 
 factorsqrtEK = 0.694692
 
-def uFromAngles(om,sgu,sgl):
-    return np.array([-sind(om)*cosd(sgu) - cosd(om)*sind(sgu)*sind(sgl),
-                     cosd(om)*cosd(sgu) - sind(om)*sind(sgu)*sind(sgl),
-                     cosd(om)*sind(sgu) + sind(om)*cosd(sgu)*sind(sgl)]).T
+def uFromAngles(om,sgu,sgl,alt=False):
+    if alt:
+        return np.array([-sind(om)*cosd(sgu) - cosd(om)*sind(sgu)*sind(sgl),
+                        cosd(om)*cosd(sgu) - sind(om)*sind(sgu)*sind(sgl),
+                        cosd(om)*sind(sgu) + sind(om)*cosd(sgu)*sind(sgl)]).T
+    else:
+        return np.array([cosd(om)*cosd(sgl),
+                         -sind(om)*cosd(sgu)+cosd(om)*sind(sgl)*sind(sgu),
+                        sind(om)*sind(sgu)+cosd(om)*sind(sgl)*cosd(sgu)]).T
 
 def calcUBFromAngles(B, om, sgu, sgl):
     N = np.array([[1.0,0,0],[0,cosd(sgu),sind(sgu)],[0,-sind(sgu),cosd(sgu)]])
@@ -54,11 +59,14 @@ def matFromTwoVectors(v1,v2):
     return np.array([a1,a2,a3]).T
 
 
-def calcTheta(ki,kf,stt):
-    return arctan2d(-np.abs(kf) * sind(stt), np.abs(ki) - np.abs(kf) * cosd(stt))
+def calcTheta(ki,kf,stt,alt=False):
+    if alt:
+        return arctan2d(-np.abs(kf) * sind(stt), np.abs(ki) - np.abs(kf) * cosd(stt))
+    else:
+        return arctan2d(np.abs(ki) - np.abs(kf) * cosd(stt), np.abs(kf) * sind(stt));
 
 
-def calcTasUVectorFromAngles(r):
+def calcTasUVectorFromAngles(r, alt=False):
     A3 = r[3]
     A4 = r[4]
     ss = np.sign(A4) # Scattering sense
@@ -70,12 +78,12 @@ def calcTasUVectorFromAngles(r):
     sgu = r[5]
     sgl = r[6]
     
-    theta = calcTheta(ki, kf, stt)
+    theta = calcTheta(ki, kf, stt, alt)
     try:
         om = A3-ss*theta
     except:
         om = A3.reshape(-1,1,1)-ss*theta
-    return uFromAngles(om,sgu,sgl)
+    return uFromAngles(om, sgu, sgl, alt)
   
 def calcTasUBFromTwoReflections(cell, r1, r2):
     B = calculateBMatrix(cell)
@@ -149,7 +157,7 @@ def calcTasMisalignment(UB,planeNormal,qe):
     return om
 
 
-def calcTasQH(UBINV,angles,Ei,Ef,A3Off=0):
+def calcTasQH(UBINV,angles,Ei,Ef,A3Off=0,alt=False):
 
   A3,A4 = angles
   r = [0,0,0,A3+A3Off,A4,0.0,0.0,Ei,Ef]
@@ -157,7 +165,7 @@ def calcTasQH(UBINV,angles,Ei,Ef,A3Off=0):
   ki = np.sqrt(Ei)*factorsqrtEK
   kf = np.sqrt(Ef)*factorsqrtEK
   
-  QV = calcTasUVectorFromAngles(r);
+  QV = calcTasUVectorFromAngles(r,alt);
   
   q = np.sqrt(ki**2 +kf**2-
            2. *ki *kf * cosd(A4));
