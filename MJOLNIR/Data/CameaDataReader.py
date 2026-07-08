@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 
 from MJOLNIR.Data.DataReader import InstrumentCalibration
-from MJOLNIR.Data.NexusDataReader import NexusDataReader 
+from MJOLNIR.Data.NexusDataReader import NexusDataReader
 
 class CameaDataReader(NexusDataReader):
     """Parse a CAMEA Nexus file"""
