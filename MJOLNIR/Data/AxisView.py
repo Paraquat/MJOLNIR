@@ -17,16 +17,28 @@ class AxisView(Sequence[FloatArray]):
 
         self._offsets: list[int] = []
         self._length = 0
+        self._remaining_shape = (
+            self._arrays[0].shape[:self._axis] + self._arrays[0].shape[self._axis + 1:])
+    
 
         for array in arrays:
             normalized_axis = np._core.numeric.normalize_axis_index(axis, array.ndim)
-            if normalized_axis != self._axis:
-                raise ValueError("Inconsistent array dimensions")
+            remaining_shape = (
+                array.shape[:normalized_axis] + array.shape[normalized_axis + 1:])
+            if (remaining_shape != self._remaining_shape):
+                raise ValueError("All arrays must have the same shape along the"
+                                 "non-view axis")
+            # if normalized_axis != self._axis:
+            #     raise ValueError("Inconsistent array dimensions")
             self._offsets.append(self._length)
             self._length += array.shape[self._axis]
 
     def __len__(self) -> int:
         return self._length
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return (len(self), *self._remaining_shape)
 
     def __iter__(self) -> Iterator[FloatArray]:
         for array in self._arrays:

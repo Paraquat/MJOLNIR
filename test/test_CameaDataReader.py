@@ -2,7 +2,6 @@ import pytest
 
 import numpy as np
 from pathlib import Path
-from pdb import set_trace
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 
@@ -30,7 +29,7 @@ def test_read(datareader):
 #    assert camea_file.sample.plane_vector1[9] == pytest.approx(4.99012, abs=1e-5)
     assert camea_file.sample.A3Off.shape == (1,)
     assert camea_file.sample.A3Off[0] == pytest.approx(0, abs=1e-8)
-    instrument_calibration = camea_file.set_instrument_calibration(3)
+    camea_file.set_instrument_calibration(3)
     assert camea_file.calibration.Ef.shape == (2496,)
     assert camea_file.calibration.bound.shape == (2496, 2)
     assert camea_file.calibration.bound[2, 0] == 152

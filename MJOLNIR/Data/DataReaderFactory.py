@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from MJOLNIR.Data.DataReader import DataReader
+import MJOLNIR.Data.DataReader as DataReader
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.InstrumentName import InstrumentName
 

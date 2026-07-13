@@ -43,6 +43,7 @@ class DataReader(ABC):
     h: np.NDArray[np.float64]
     k: np.NDArray[np.float64]
     l: np.NDArray[np.float64]
+    energy: np.NDArray[np.float64]
 
     def __init__(self, filepath: Path):
         if not filepath.exists():
@@ -56,6 +57,7 @@ class DataReader(ABC):
         self.h = None
         self.k = None
         self.l = None
+        self.energy = None
 
     @abstractmethod
     def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):
@@ -91,4 +93,5 @@ class DataReader(ABC):
         HKL, self.Qx, self.Qy = TasUBlib.calcTasQH(
             UBINV,[np.rad2deg(A3), np.rad2deg(A4Mean)], Ei, EfMean)
         self.h, self.k, self.l = np.swapaxes(np.swapaxes(HKL, 1, 2), 0, 3)
+        self.energy = Ei - EfMean
         self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)
