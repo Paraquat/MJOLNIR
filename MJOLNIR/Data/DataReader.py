@@ -1,5 +1,5 @@
 from pathlib import Path
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
 import numpy as np
 
@@ -25,6 +25,12 @@ class DataReader(ABC):
     n_detectors: int
     n_steps: int
     binning: int
+    instrument: str
+
+    # Calibration: readers with one bin per analyser read it from a CSV table
+    possible_binnings: list[int] = [1]
+    calibration_file: str | None = None
+    calibration_A4_sign: int = 1
 
     # Input data
     counts: np.NDArray[np.float64]
@@ -48,10 +54,12 @@ class DataReader(ABC):
     l: np.NDArray[np.float64]
     energy: np.NDArray[np.float64]
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
             raise AttributeError(f'File path "{filepath}" does not exist')
         self.file = filepath
+        if calibration_file is not None:
+            self.calibration_file = calibration_file
         self._metadata = Metadata()
         self.calibration = None
 
@@ -65,9 +73,68 @@ class DataReader(ABC):
         self.l = None
         self.energy = None
 
-    @abstractmethod
+    def get_instrument_calibration(self, binning: int) -> InstrumentCalibration:
+        """Read the calibration table (CSV) of instruments with one bin per analyser"""
+        if binning not in self.possible_binnings:
+            raise AttributeError(
+                f'Binning {binning} not in possible binnings {self.possible_binnings}')
+        if self.calibration_file is None:
+            raise AttributeError(f'No calibration file given for {self.instrument}')
+        # Columns: detector, energy, pixel, amplitude, center, width, background,
+        # lowerBin, upperBin, A4Offset
+        table = np.genfromtxt(self.calibration_file, skip_header=1, delimiter=',')
+        Ef = table[:, 4]
+        width = table[:, 5]
+        bg = table[:, 6]
+        amp = table[:, 3]
+        A4 = self.calibration_A4_sign * table[:, 9]
+        bound = table[:, 7:9].astype(int)
+        self.binning = binning
+        return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
+
+    def set_instrument_calibration(self, binning: int | None = None):
+        """Load the calibration for a binning (default: the largest possible)"""
+        if binning is None:
+            binning = max(self.possible_binnings)
+        self.calibration = self.get_instrument_calibration(binning)
+
     def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):
-        pass
+        """Sum the detector pixels between the calibration bounds of each energy bin"""
+        intensity = np.zeros(shape, dtype=np.result_type(self.counts.dtype, int))
+        for i in range(self.n_detectors):
+            for j in range(self.n_analysers):
+                for k in range(binning):
+                    intensity[:, i, j*binning+k] = \
+                        np.sum(self.counts[:, i, bounds[i, j, k, 0]:bounds[i, j, k, 1]],
+                               axis=1)
+        return intensity
+
+    @staticmethod
+    def sample_from_reflections(cell, q1, q2, A3Offset: float = 0.0,
+                                name: str = 'Unknown') -> Sample:
+        """Build a sample whose UB matrix is defined by two reflections in the scattering
+        plane, for files which only store the lattice and two orientation vectors"""
+        Ei = 10.0 # TODO: Dummy incoming energy needed to calculate UB (from DataFile)
+        k = np.sqrt(Ei) * TasUBlib.factorsqrtEK
+        B = TasUBlib.calculateBMatrix(TasUBlib.calcCell(cell))
+
+        A41 = TasUBlib.calTwoTheta(B, [*q1, Ei, Ei], -1)
+        A31 = TasUBlib.calcTheta(k, k, A41) + A3Offset
+        A42 = TasUBlib.calTwoTheta(B, [*q2, Ei, Ei], -1)
+        A32 = TasUBlib.calcTheta(k, k, A42)
+
+        # h, k, l, A3, A4, sgu, sgl, Ei, Ef
+        plane_vector1 = np.array([*q1, A31, A41, 0.0, 0.0, Ei, Ei])
+        plane_vector2 = np.array([*q2, A32, A42, 0.0, 0.0, Ei, Ei])
+        plane_vector2[3] += TasUBlib.tasAngleBetweenReflections(
+            B, plane_vector1, plane_vector2)
+
+        a, b, c, alpha, beta, gamma = cell
+        sample = Sample(a=a, b=b, c=c, alpha=alpha, beta=beta, gamma=gamma,
+                        projectionVector1=plane_vector1, projectionVector2=plane_vector2,
+                        name=name)
+        sample.A3Off = np.array([0.0])
+        return sample
 
 
     def transform(self):

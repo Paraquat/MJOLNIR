@@ -34,7 +34,6 @@ class CameaDataReader(NexusDataReader):
     def __init__(self, filepath: Path):
         super().__init__(filepath)
         self.counts = self.counts.swapaxes(1,2)
-        self.n_steps = self.counts.shape[0]
         self.monitor1 = np.array(self.getValue('monitor1'))
         self.monitor2 = np.array(self.getValue('monitor2'))
         self.get_possible_binnings()
@@ -56,16 +55,3 @@ class CameaDataReader(NexusDataReader):
         bound = np.array(self.get(hdf_key + 'boundaries'))
         self.binning = binning
         return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
-
-    def set_instrument_calibration(self, binning: int):
-        self.calibration = self.get_instrument_calibration(binning)
-
-    def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):
-        intensity = np.zeros(shape, dtype=int)
-        for i in range(self.n_detectors):
-            for j in range(self.n_analysers):
-                for k in range(binning):
-                    intensity[:, i, j*binning+k] = \
-                        np.sum(self.counts[:, i, bounds[i, j, k, 0]:bounds[i, j, k, 1]],
-                               axis=1)
-        return intensity

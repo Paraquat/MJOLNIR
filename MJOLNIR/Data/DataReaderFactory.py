@@ -4,6 +4,8 @@ import MJOLNIR.Data.DataReader as DataReader
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.BambusDataReader import BAMBUSDataReader
 from MJOLNIR.Data.MultiFlexxDataReader import MultiFLEXXDataReader
+from MJOLNIR.Data.FlatconeDataReader import FlatconeDataReader
+from MJOLNIR.Data.MarmotDataReader import MarmotDataReader
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
 class DataReaderFactory:
@@ -26,3 +28,5 @@ class DataReaderFactory:
         self.register(InstrumentName.CAMEA, CameaDataReader)
         self.register(InstrumentName.BAMBUS, BAMBUSDataReader)
         self.register(InstrumentName.MULTIFLEXX, MultiFLEXXDataReader)
+        self.register(InstrumentName.FLATCONE, FlatconeDataReader)
+        self.register(InstrumentName.MARMOT, MarmotDataReader)

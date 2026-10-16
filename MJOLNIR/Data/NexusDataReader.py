@@ -50,16 +50,18 @@ class NexusDataReader(DataReader):
         'mode': '{entry}/control/mode',
     }
 
-    def __init__(self, filepath: Path):
-        super().__init__(filepath)
+    def __init__(self, filepath: Path, calibration_file: str | None = None):
+        super().__init__(filepath, calibration_file)
         self._file = h5py.File(filepath, mode = 'r')
-        self.sample = Sample(sample=self.getValue('sample'), recalculateUB=True)
-        self.counts = np.array(self.getValue('counts'))
+        self.sample = self.get_sample()
+        self.counts = self.get_counts()
+        self.n_steps = self.counts.shape[0]
         self.Ei = np.array(self.getValue('Ei'))
         self.A3 = np.array(self.getValue('A3'))
         self.A3Offset = self.sample.A3Off
         self.A4 = np.array(self.getValue('A4'))
-        self.A4Offset = np.array(self.getValue('A4Offset'))
+        A4Offset = self.getValue('A4Offset')
+        self.A4Offset = np.array([0.0]) if A4Offset is None else np.array(A4Offset)
         self.twotheta = self.A4 - self.A4Offset
         self.get_metadata()
 
@@ -79,7 +81,16 @@ class NexusDataReader(DataReader):
         }
 
     def getValue(self, key: str):
+        """Dataset for a key, or None if the key is not defined for this instrument"""
+        if key not in self.nexus_keys:
+            return None
         return self._file.get(self.nexus_keys[key])
+
+    def get_sample(self) -> Sample:
+        return Sample(sample=self.getValue('sample'), recalculateUB=True)
+
+    def get_counts(self) -> np.NDArray[np.float64]:
+        return np.array(self.getValue('counts'))
 
     def get(self, key: str):
         return self._file.get(key)
@@ -88,4 +99,22 @@ class NexusDataReader(DataReader):
         for key in self.nexus_meta_keys:
             value = self._file.get(self.nexus_meta_keys[key])
             if value is not None:
-                self._metadata[key] = value[0].decode()
+                value = value[0]
+                self._metadata[key] = value.decode() if isinstance(value, bytes) else value
+
+    @staticmethod
+    def parse_scan_command(command: str):
+        """Scan parameters and their values from an ILL (MAD) scan command, e.g.
+        'bs a3p 37.5 da3p 2.5 np 6' (start, step) or 'sc a3 45 da3 .5 np 361 ti 15'
+        (centre, step)"""
+        tokens = command.split()
+        scan_type = tokens[0]
+        n_points = int(tokens[tokens.index('np') + 1])
+        params = np.array(tokens[1:tokens.index('np')]).reshape(-1, 4)
+        steps = np.arange(n_points)
+        if scan_type == 'sc':
+            steps = steps - (n_points - 1) / 2
+        elif scan_type != 'bs':
+            raise AttributeError(f'Scan type not recognised: "{scan_type}"')
+        scan_values = np.array([float(p[1]) + steps * float(p[3]) for p in params])
+        return params[:, 0], scan_values
