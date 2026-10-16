@@ -38,6 +38,9 @@ class DataReader(ABC):
     sample: Sample
 
     # Derived data
+    intensity: np.NDArray[np.int64]
+    normalization: np.NDArray[np.float64]
+    energy: np.NDArray[np.float64]
     Qx: np.NDArray[np.float64]
     Qx: np.NDArray[np.float64]
     h: np.NDArray[np.float64]
@@ -52,6 +55,9 @@ class DataReader(ABC):
         self._metadata = Metadata()
         self.calibration = None
 
+        self.intensity = None
+        self.normalization = None
+        self.energy = None
         self.Qx = None
         self.Qy = None
         self.h = None
@@ -69,26 +75,24 @@ class DataReader(ABC):
         A4 = A4.reshape(self.n_detectors, self.binning * self.n_analysers, order='C')
         pixelEdge = self.calibration.bound.reshape(
             self.n_detectors, self.n_analysers, self.binning, 2)
-        A3Offset_rad = np.deg2rad(self.A4Offset)
         A4File = self.A4.reshape((-1,1,1))
         A4Mean = (
             A4.reshape((1, self.n_detectors, self.binning*self.n_analysers)) +
             np.deg2rad(A4File-self.A4Offset))
         shape = (
             self.counts.shape[0], self.counts.shape[1], self.n_analysers*self.binning)
-        intensity = self.rebin(self.binning, shape, pixelEdge)
+        self.intensity = self.rebin(self.binning, shape, pixelEdge)
 
         EfMean = self.calibration.Ef.reshape(
             1, A4.shape[0], self.n_analysers*self.binning)
-        EfNormalization = self.calibration.amp
-        EfNormalization.shape = (1, A4.shape[0], self.n_analysers*self.binning)
-        A3 = np.deg2rad(self.A3)+self.A3Offset
+        self.normalization = self.calibration.amp.reshape(
+            1, A4.shape[0], self.n_analysers*self.binning)
+        A3 = np.deg2rad(self.A3) + np.deg2rad(self.A3Offset)
         if A3.shape[0]==1:
             A3 = A3*np.ones((self.n_steps))
-        A3.resize((self.n_steps, 1, 1))
+        A3 = A3.reshape((self.n_steps, 1, 1))
         Ei = self.Ei.copy().reshape(-1, 1, 1)
-        A4Mean = (A4.reshape((1, self.n_detectors, self.binning*self.n_analysers)) + \
-                  np.deg2rad(A4File - self.A4Offset))
+        self.energy = (Ei - EfMean) * np.ones((self.n_steps, 1, 1))
         UBINV = np.linalg.inv(self.sample.orientationMatrix)
         HKL, self.Qx, self.Qy = TasUBlib.calcTasQH(
             UBINV,[np.rad2deg(A3), np.rad2deg(A4Mean)], Ei, EfMean)

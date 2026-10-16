@@ -49,3 +49,5 @@ def test_transform(datareader):
     assert camea_file.h[58, 103, 13] == pytest.approx(-0.991790, abs=1e-6)
     assert camea_file.k[58, 103, 13] == pytest.approx(0.980587, abs=1e-6)
     assert camea_file.l[58, 103, 13] == pytest.approx(0.0, abs=1e-6)
+    assert camea_file.energy.shape == (135, 104, 24)
+    assert camea_file.energy[58, 103, 13] == pytest.approx(-0.028955, abs=1e-6)
