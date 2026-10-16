@@ -5,3 +5,4 @@ class InstrumentName(Enum):
     BAMBUS = "BAMBUS"
     FLATCONE = "FlatCone"
     MARMOT = "Marmot"
+    MULTIFLEXX = "MultiFLEXX"

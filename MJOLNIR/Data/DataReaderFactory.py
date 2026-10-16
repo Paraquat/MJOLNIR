@@ -2,6 +2,8 @@ from pathlib import Path
 
 import MJOLNIR.Data.DataReader as DataReader
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
+from MJOLNIR.Data.BambusDataReader import BAMBUSDataReader
+from MJOLNIR.Data.MultiFlexxDataReader import MultiFLEXXDataReader
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
 class DataReaderFactory:
@@ -22,3 +24,5 @@ class DataReaderFactory:
 
     def __init__(self):
         self.register(InstrumentName.CAMEA, CameaDataReader)
+        self.register(InstrumentName.BAMBUS, BAMBUSDataReader)
+        self.register(InstrumentName.MULTIFLEXX, MultiFLEXXDataReader)

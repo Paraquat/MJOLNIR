@@ -1,17 +1,24 @@
+import re
 from pathlib import Path
-import numpy as np
 
-from MJOLNIR.Data import NICOSDataReader
+import MJOLNIR
+from MJOLNIR.Data.NicosDataReader import NICOSDataReader
 
 class BAMBUSDataReader(NICOSDataReader):
-    """Parser a BAMBUS ASCII file"""
+    """Parse a BAMBUS ASCII file"""
 
     n_analysers = 5
     n_detectors = 20
     instrument = "BAMBUS"
+    calibration_file = MJOLNIR.__bambusNormalization__
 
-    def __init__(self, filepath: Path):
-        super().__init__(filepath)
+    def __init__(self, filepath: Path, calibration_file: str | None = None):
+        super().__init__(filepath, calibration_file)
 
-    def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):
-        pass
+    def scan_columns(self, titles: list[str]) -> list[int]:
+        # Scan parameters precede the ';' separator, which starts with the timer
+        return list(range(titles.index('timer')))
+
+    def channel_columns(self, titles: list[str]) -> list[int]:
+        # Channels are named by wedge and energy: 1A, 1B, ..., 20E
+        return [i for i, title in enumerate(titles) if re.fullmatch(r'\d+[A-E]', title)]
