@@ -4,11 +4,13 @@ are given) and returns the axes; none of them computes a cut.
 Not ported yet from the old DataSet plots: printing the data at a clicked point, and the
 interactive modes of _interactiveSettings (cutting from a plot).
 """
+from types import SimpleNamespace
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 import MJOLNIR
+from MJOLNIR.Data import RLUAxes
 from MJOLNIR.Data.CutResult import CutResult, COLUMNS
 
 def _to_hkl(sample, qxqy) -> np.ndarray:
@@ -160,5 +162,90 @@ def plot_cut_qe(result: CutResult, sample=None, rlu: bool = True, ax=None, count
             f.write(f'# CSV generated from MJOLNIR {MJOLNIR.__version__}. '
                     f'Shape of data is {(len(ax.X), len(ax.Y))}\n')
         ax.Data.fillna(-1).to_csv(file_name, mode='a')
+    ax.to_csv = to_csv
+    return ax
+
+def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log: bool = False,
+                 vmin=None, vmax=None, cmap=None, colorbar: bool = False, zorder: int = 10):
+    """Plot constant-energy planes (from Cuts.cut_q_plane) as colour maps in Qx, Qy, on axes
+    with a reciprocal lattice grid (the old DataSet.plotQPlane).
+
+    Args:
+
+        - result (CutResult): The planes
+
+    Kwargs:
+
+        - sample (Sample): Sample of the data set's frame, for the RLU grid (default None)
+
+        - rlu (bool): Draw on reciprocal lattice axes; the result must then be made from points
+          aligned to the lattice (DataSet.gather_q(align_to_lattice=True)) (default True)
+
+        - ax (Axes): Axes to draw on (default None: new axes from RLUAxes.createQAxis)
+
+        - log (bool): Plot log10 of the intensity (default False)
+
+        - vmin, vmax: Colour scale (default: smallest and largest value)
+
+        - cmap: Colour map (default None)
+
+        - colorbar (bool): Add a colour bar (default False)
+
+        - zorder (int): Drawing order of the maps (default 10)
+
+    The returned axes have set_clim, get_clim and to_csv.
+    """
+    if ax is None:
+        if rlu and sample is None:
+            raise AttributeError('A sample is needed for reciprocal lattice axes (rlu=True)')
+        # createQAxis reads the sample(s) of a data set: the first one sets the frame
+        ax = RLUAxes.createQAxis(SimpleNamespace(sample=[sample]), rlu=rlu, withoutOnClick=True)
+
+    data = result.data
+    ax.Qx, ax.Qy, ax.Int = [], [], []
+    start = 0
+    for x_edges, y_edges in zip(result.bins['qx'], result.bins['qy']):
+        shape = (len(x_edges) - 1, len(y_edges) - 1)
+        values = np.asarray(data[COLUMNS['int']].values[start:start + np.prod(shape)], dtype=float)
+        start += np.prod(shape)
+        ax.Qx.append(np.outer(x_edges, np.ones_like(y_edges)))
+        ax.Qy.append(np.outer(np.ones_like(x_edges), y_edges))
+        ax.Int.append(values.reshape(shape))
+    if log:
+        ax.Int = [np.log10(1e-20 + values) for values in ax.Int]
+    if vmax is None:
+        vmax = np.max([np.nanmax(values) for values in ax.Int])
+    if vmin is None:
+        vmin = np.min([np.nanmin(values) for values in ax.Int])
+
+    pmeshs = []
+    for Qx, Qy, values in zip(ax.Qx, ax.Qy, ax.Int):
+        ax.grid(False)
+        pmeshs.append(ax.pcolormesh(Qx, Qy, values, zorder=zorder, cmap=cmap))
+    ax.set_aspect('equal')
+    ax.grid(True, zorder=0)
+    ax.pmeshs = list(getattr(ax, 'pmeshs', [])) + pmeshs
+    ax.set_clim = lambda vmin, vmax: [mesh.set_clim(vmin, vmax) for mesh in ax.pmeshs]
+    ax.get_clim = lambda: ax.pmeshs[0].get_clim()
+    if colorbar:
+        ax.colorbar = ax.get_figure().colorbar(ax.pmeshs[0], pad=0.1)
+        ax.colorbar.set_label(log*'log(' + '$I$' + log*')' + '[arb.u.]', rotation=270)
+    ax.set_clim(vmin, vmax)
+    if ax.Qx:
+        ax.set_xlim(np.min([Qx.min() for Qx in ax.Qx]), np.max([Qx.max() for Qx in ax.Qx]))
+        ax.set_ylim(np.min([Qy.min() for Qy in ax.Qy]), np.max([Qy.max() for Qy in ax.Qy]))
+
+    ax.result = result
+    ax.Data = data
+    ax.type = 'QPlane'
+    energy_bins = result.bins['energy']
+    ax.EMin, ax.EMax = energy_bins[0], energy_bins[-1]
+
+    def to_csv(file_name):
+        x_bins = len(result.bins['qx'][0]) - 1 if result.bins['qx'] else 0
+        with open(file_name, 'w') as f:
+            f.write(f'# CSV generated from MJOLNIR {MJOLNIR.__version__}. Shape of data is '
+                    f'{(x_bins, len(data)//max(x_bins, 1))}\n')
+        data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
     return ax

@@ -355,3 +355,19 @@ def test_gather_q():
     assert np.allclose(rotated_qx.arrays[1], expected[0])
     assert np.allclose(rotated_qy.arrays[1], expected[1])
     assert np.allclose(rotated_qx.arrays[0], qx.arrays[0]) # The first file defines the frame
+
+def test_gather_q_aligned_to_lattice():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    qx, qy = dataset.gather(ArrayType.QX), dataset.gather(ArrayType.QY)
+    aligned_x, aligned_y = dataset.gather_q(align_to_lattice=True)
+    # Each file rotated by its own sample's RotMat
+    for sample, x, y, ax_, ay_ in zip(dataset.samples, qx.arrays, qy.arrays,
+                                      aligned_x.arrays, aligned_y.arrays):
+        expected = sample.RotMat @ np.array([x, y])
+        assert np.allclose(ax_, expected[0]) and np.allclose(ay_, expected[1])
+    # The matching sample gives the same H, K, L as the unaligned points with the original
+    from MJOLNIR.Data.Coordinates import align_to_lattice, convert_to_hkl
+    points = np.array([np.asarray(qx)[:5], np.asarray(qy)[:5]]).T
+    aligned = np.array([np.asarray(aligned_x)[:5], np.asarray(aligned_y)[:5]]).T
+    assert np.allclose(convert_to_hkl(dataset.sample, points),
+                       convert_to_hkl(align_to_lattice(dataset.sample), aligned))

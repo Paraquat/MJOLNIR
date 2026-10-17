@@ -1,5 +1,6 @@
 """Conversion between reciprocal lattice units (H, K, L) and the instrument frame (Qx, Qy)
 with the UB matrix of a sample"""
+import copy
 import numpy as np
 
 def convert_to_qxqy(sample, hkl) -> np.ndarray:
@@ -18,3 +19,14 @@ def convert_to_hkl(sample, qxqy) -> np.ndarray:
     qxqyqz = np.concatenate([qxqy, np.zeros((*qxqy.shape[:-1], 1))], axis=-1)
     h, k, l = np.einsum('ij,...j->i...', sample.orientationMatrixINV, qxqyqz)
     return np.array([h, k, l]).T
+
+def align_to_lattice(sample):
+    """Copy of sample in the frame rotated by its RotMat, in which Qx, Qy follow the reciprocal
+    lattice (the frame of RLUAxes.createQAxis, and of DataSet.gather_q(align_to_lattice=True))"""
+    aligned = copy.deepcopy(sample)
+    aligned.convert = np.einsum('ij,j...->i...', aligned.RotMat, aligned.convert)
+    aligned.convertinv = np.linalg.inv(aligned.convert)
+    aligned.orientationMatrix = np.dot(aligned.RotMat3D, aligned.orientationMatrix)
+    aligned.orientationMatrixINV = np.linalg.inv(aligned.orientationMatrix)
+    aligned.theta = 0.0
+    return aligned

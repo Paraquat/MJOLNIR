@@ -84,3 +84,41 @@ def test_tick_labels(dataset, result):
     ax.get_figure().canvas.draw()
     first = ax.get_xticklabels()[0].get_text().split('\n')
     assert len(first) == 3 # H, K and L of the tick
+
+# Constant-energy planes
+
+@pytest.fixture(scope="module")
+def plane(dataset):
+    from MJOLNIR.Data.Coordinates import align_to_lattice
+    qx, qy = dataset.gather_q(align_to_lattice=True)
+    gather = lambda arr_type: np.asarray(dataset.gather(arr_type))
+    return Cuts.cut_q_plane(np.asarray(qx), np.asarray(qy), gather(ArrayType.ENERGY),
+                            gather(ArrayType.INTENSITY), gather(ArrayType.NORMALIZATION),
+                            gather(ArrayType.MONITOR), energy_min=-0.2, energy_max=0.2,
+                            x_bin_tolerance=0.05, y_bin_tolerance=0.05,
+                            sample=align_to_lattice(dataset.sample))
+
+def test_plot_q_plane(dataset, plane, tmp_path):
+    ax = Plotting.plot_q_plane(plane, sample=dataset.sample, colorbar=True)
+    assert len(ax.pmeshs) == 1
+    values = np.asarray(ax.pmeshs[0].get_array())
+    assert np.array_equal(values.flatten(), np.asarray(plane.data['Int']), equal_nan=True)
+    assert ax.Qx[0].shape == (50, 44) # Bin edges
+    assert ax.get_clim() == (np.nanmin(values), np.nanmax(values)) # Default colour scale
+    ax.set_clim(0, 0.025)
+    assert ax.get_clim() == (0, 0.025)
+    assert ax.get_xlabel().endswith('[RLU]') and ax.get_ylabel().endswith('[RLU]')
+    assert ax.get_xlim() == (plane.bins['qx'][0][0], plane.bins['qx'][0][-1])
+    ax.to_csv(tmp_path / 'plane.csv')
+    lines = (tmp_path / 'plane.csv').read_text().splitlines()
+    assert lines[0].endswith('Shape of data is (49, 43)')
+    assert len(lines) == 2 + len(plane)
+
+def test_plot_q_plane_options(dataset, plane):
+    log = Plotting.plot_q_plane(plane, sample=dataset.sample, log=True)
+    assert np.allclose(np.asarray(log.pmeshs[0].get_array()).flatten(),
+                       np.log10(1e-20 + np.asarray(plane.data['Int'])), equal_nan=True)
+    in_q = Plotting.plot_q_plane(plane, rlu=False) # Plain Qx, Qy axes need no sample
+    assert in_q.get_xlabel() == 'Qx [1/AA]'
+    with pytest.raises(AttributeError): # Reciprocal lattice axes need the sample
+        Plotting.plot_q_plane(plane)

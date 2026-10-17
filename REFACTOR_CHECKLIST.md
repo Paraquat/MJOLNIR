@@ -38,7 +38,8 @@ plots match the reference images next to it. Several items repeat ones further d
       plots): all columns identical for the milestone cut
 - [x] `plotCutQE` (Q-E axes, colour limits): `Plotting.plot_cut_qe`; the milestone plot is
       pixel-identical to the old code's
-- [ ] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits)
+- [x] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits): `Cuts.cut_q_plane` and
+      `Plotting.plot_q_plane`; the milestone plot is pixel-identical to the old code's
 - [ ] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references
 
 ## Readers and conversion
@@ -170,7 +171,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `plotCutQELine`
 - [ ] `plotCutELine`
 - [ ] `plotCutPowder`
-- [ ] `plotQPlane`
+- [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
+      polar binning, `enlargen`, 3D axes, background subtraction, `scaleFunction`)
 - [ ] `plotRaw1D`
 - [ ] `plotA3A4` (with `boundaryQ`, `convexHullPoints`)
 - [ ] `View3D`

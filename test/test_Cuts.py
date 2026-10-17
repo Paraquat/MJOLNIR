@@ -93,3 +93,41 @@ def test_cut_qe_energy_bins(points, q1q2):
     pd.testing.assert_frame_equal(by_step.data, by_bins.data)
     with pytest.raises(AttributeError): # Neither bins nor min, max and step
         Cuts.cut_qe(**common, energy_min=-1.0, energy_max=0.8)
+
+# Constant-energy planes (reference values checked against the old plotQPlane: identical)
+
+@pytest.fixture(scope="module")
+def aligned_points(dataset):
+    qx, qy = dataset.gather_q(align_to_lattice=True)
+    gather = lambda arr_type: np.asarray(dataset.gather(arr_type))
+    return dict(qx=np.asarray(qx), qy=np.asarray(qy), energy=gather(ArrayType.ENERGY),
+                intensity=gather(ArrayType.INTENSITY),
+                normalization=gather(ArrayType.NORMALIZATION),
+                monitor=gather(ArrayType.MONITOR))
+
+def test_cut_q_plane(dataset, aligned_points):
+    from MJOLNIR.Data.Coordinates import align_to_lattice
+    result = Cuts.cut_q_plane(**aligned_points, energy_min=-0.2, energy_max=0.2,
+                              x_bin_tolerance=0.05, y_bin_tolerance=0.05,
+                              sample=align_to_lattice(dataset.sample))
+    data = result.data
+    assert [len(edges) for edges in result.bins['qx']] == [50]
+    assert [len(edges) for edges in result.bins['qy']] == [44]
+    assert len(result) == 49 * 43
+    assert data['intensity'].sum() == 3401023
+    assert data['BinCount'].sum() == 366390
+    assert np.nansum(data['Int']) == pytest.approx(2235.266187, rel=1e-9)
+    assert data['intensity'].dtype == aligned_points['intensity'].dtype
+    assert np.allclose(data['Energy'], 0.0) # Middle of the range
+    assert np.diff(result.bins['qx'][0]) == pytest.approx(0.05)
+
+def test_cut_q_plane_energy_bins(aligned_points):
+    result = Cuts.cut_q_plane(**aligned_points, energy_bins=[-0.6, -0.2, 0.2],
+                              x_bin_tolerance=0.05, y_bin_tolerance=0.05)
+    assert len(result.bins['qx']) == 2 # Each energy range binned on its own
+    assert sorted(set(result.data['Energy'])) == pytest.approx([-0.4, 0.0])
+    assert result.data['H'].isna().all() # No sample: no H, K, L
+    with pytest.raises(AttributeError):
+        Cuts.cut_q_plane(**aligned_points, energy_min=0.2, energy_max=-0.2)
+    with pytest.raises(AttributeError):
+        Cuts.cut_q_plane(**aligned_points)

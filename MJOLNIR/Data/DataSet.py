@@ -174,12 +174,18 @@ class DataSet:
         first = self.sample.RotMat
         return [np.dot(first.T, sample.RotMat) for sample in self.samples]
 
-    def gather_q(self) -> tuple[AxisView, AxisView]:
+    def gather_q(self, align_to_lattice: bool = False) -> tuple[AxisView, AxisView]:
         """Qx and Qy of the unmasked points (as gather), with each data file rotated into the
-        frame of the first, so that the same HKL has the same Qx, Qy in every file"""
+        frame of the first, so that the same HKL has the same Qx, Qy in every file.
+
+        With align_to_lattice, each file is instead rotated by its own sample's RotMat, into
+        the frame in which Qx, Qy follow the reciprocal lattice (as the old plotQPlane did;
+        see Coordinates.align_to_lattice for the matching sample)"""
         qx, qy = self.gather(ArrayType.QX), self.gather(ArrayType.QY)
+        rotations = ([sample.RotMat for sample in self.samples] if align_to_lattice
+                     else self.rotations())
         rotated = [np.einsum('ij,j...->i...', rotation, np.array([x, y]))
-                   for rotation, x, y in zip(self.rotations(), qx.arrays, qy.arrays)]
+                   for rotation, x, y in zip(rotations, qx.arrays, qy.arrays)]
         return (AxisView([r[0] for r in rotated], axis = 0),
                 AxisView([r[1] for r in rotated], axis = 0))
 

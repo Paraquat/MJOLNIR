@@ -195,3 +195,72 @@ def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
         }))
     return CutResult(pd.concat(frames), dict(distance=distance_edges, energy=energy_bins,
                                              orthogonal_extent=orthogonal_extent), parameters)
+
+def cut_q_plane(qx, qy, energy, intensity, normalization, monitor, energy_bins=None,
+                energy_min=None, energy_max=None, x_bin_tolerance: float = 0.05,
+                y_bin_tolerance: float = 0.05, sample=None) -> CutResult:
+    """Constant-energy planes: the points with energy_min < E <= energy_max (or within each
+    pair of energy_bins), binned in Qx and Qy (the binning of the old DataSet.plotQPlane).
+
+    Each energy range is binned on its own, from the smallest to the largest Qx (Qy) of its
+    points in steps of x_bin_tolerance (y_bin_tolerance). Rows are ordered by energy range,
+    then Qx bin, then Qy bin; Energy is the middle of the range.
+
+    bins: 'energy' (the energy edges), 'qx' and 'qy' (a list with the Qx, Qy edges of each
+    energy range; ranges without points are left out).
+    """
+    if energy_bins is None:
+        if energy_min is None or energy_max is None:
+            raise AttributeError('Either energy_min and energy_max, or energy_bins, are to be '
+                                 'given.')
+        if energy_min >= energy_max:
+            raise AttributeError(f'Provided limits are either wrong or the same. Received '
+                                 f'energy_min={energy_min} and energy_max={energy_max}, '
+                                 'expects energy_min < energy_max.')
+        energy_bins = [energy_min, energy_max]
+    energy_bins = np.asarray(energy_bins, dtype=float)
+    if len(energy_bins) < 2:
+        raise AttributeError(f'At least 2 energy bin edges are needed. Received {energy_bins}')
+    parameters = dict(energy_bins=energy_bins, x_bin_tolerance=x_bin_tolerance,
+                      y_bin_tolerance=y_bin_tolerance)
+
+    frames, qx_edges, qy_edges = [], [], []
+    for lower, upper in zip(energy_bins[:-1], energy_bins[1:]):
+        inside = np.logical_and(energy > lower, energy <= upper)
+        if not inside.any():
+            continue
+        x, y = qx[inside], qy[inside]
+        x_edges = np.arange(np.min(x), np.max(x) + 0.999*x_bin_tolerance, x_bin_tolerance)
+        y_edges = np.arange(np.min(y), np.max(y) + 0.999*y_bin_tolerance, y_bin_tolerance)
+        histogram = lambda weights: np.histogram2d(x, y, bins=(x_edges, y_edges),
+                                                   weights=weights)[0]
+        counts = histogram(intensity[inside]).astype(intensity.dtype)
+        monitor_sum = histogram(monitor[inside]).astype(monitor.dtype)
+        normalization_sum = histogram(normalization[inside]).astype(normalization.dtype)
+        bin_count = histogram(np.ones_like(intensity[inside])).astype(intensity.dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore') # Empty bins divide by zero
+            normalised = np.divide(counts*bin_count, monitor_sum*normalization_sum)
+            normalised_error = np.divide(np.sqrt(counts)*bin_count,
+                                         normalization_sum*monitor_sum)
+
+        x_mesh = np.outer(x_edges, np.ones_like(y_edges))
+        y_mesh = np.outer(np.ones_like(x_edges), y_edges)
+        corners = lambda mesh: 0.25*(mesh[:-1, :-1] + mesh[:-1, 1:] + mesh[1:, 1:] + mesh[1:, :-1])
+        x_centres, y_centres = corners(x_mesh).flatten(), corners(y_mesh).flatten()
+        hkl = _to_hkl(sample, np.array([x_centres, y_centres]).T)
+        frames.append(pd.DataFrame({
+            COLUMNS['qx']: x_centres, COLUMNS['qy']: y_centres,
+            COLUMNS['h']: hkl[:, 0], COLUMNS['k']: hkl[:, 1], COLUMNS['l']: hkl[:, 2],
+            COLUMNS['e']: np.full(len(x_centres), 0.5*(lower + upper)),
+            COLUMNS['intensity']: counts.flatten(),
+            COLUMNS['mon']: monitor_sum.flatten(),
+            COLUMNS['norm']: normalization_sum.flatten(),
+            COLUMNS['binCount']: bin_count.flatten(),
+            COLUMNS['int']: normalised.flatten(),
+            COLUMNS['intError']: normalised_error.flatten(),
+        }))
+        qx_edges.append(x_edges)
+        qy_edges.append(y_edges)
+    data = pd.concat(frames) if frames else pd.DataFrame()
+    return CutResult(data, dict(energy=energy_bins, qx=qx_edges, qy=qy_edges), parameters)
