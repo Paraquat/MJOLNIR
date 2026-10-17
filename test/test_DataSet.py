@@ -284,3 +284,36 @@ def test_mask_follows_binning(masked_dataset):
     with pytest.warns(UserWarning, match='removed'):
         masked_dataset.set_binning(8)
     assert not any(m.any() for m in masked_dataset.mask)
+
+
+# Gathering the unmasked points across files
+
+def test_gather():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2]) # Binning 8: 28080 points masked per file
+    qx = dataset.gather(ArrayType.QX)
+    unmasked = 135 * 104 * 64 - 135 * 104 * 2
+    assert len(qx) == 2 * unmasked
+    assert qx.offsets == [0, unmasked] # Boundary between the files
+    for reader, per_file in zip(dataset, qx.arrays):
+        assert np.array_equal(per_file, reader.qx[~reader.mask])
+    joined = np.asarray(qx)
+    assert joined.shape == (2 * unmasked,)
+    assert np.asarray(dataset.gather('intensity')).dtype == dataset[0].intensity.dtype
+    assert np.max(dataset.gather(ArrayType.ENERGY)) == max(r.energy[~r.mask].max() for r in dataset)
+
+def test_gather_follows_masks():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:1])
+    total = dataset[0].intensity.size
+    assert len(dataset.gather(ArrayType.QX)) == total - 135 * 104 * 2 # Default mask
+    dataset.mask = Mask.lineMask(start=0.0, end=0.5, coordinates='energy')
+    assert len(dataset.gather(ArrayType.QX)) == total - dataset.mask[0].sum()
+    dataset.use_default_mask = False
+    dataset.remove_masking()
+    assert len(dataset.gather(ArrayType.QX)) == total
+
+def test_gather_errors():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:1])
+    with pytest.raises(ValueError, match='use get_view'): # One value per scan step
+        dataset.gather(ArrayType.A3)
+    with pytest.raises(ValueError):
+        DataSet(InstrumentName.CAMEA).gather(ArrayType.QX)

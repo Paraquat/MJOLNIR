@@ -21,8 +21,9 @@ plots match the reference images next to it. Several items repeat ones further d
       `normalization`; identical to the old conversion for all 5 instruments)
 - [x] CAMEA masks: first 2 pixels at binning 8, broken tubes (default masks, kept apart
       from the user's mask)
-- [ ] Combined data across files without masked points (the old `extractData()`), e.g. for
-      the largest energy transfer
+- [x] Combined data across files without masked points (the old `extractData()`), e.g. for
+      the largest energy transfer: `ds.gather(ArrayType.X)`, identical to the old arrays and
+      `maskIndices` on the 12 milestone files
 - [x] `magneticField` (used in the plot title): `reader.environment.magnetic_field`,
       `ds.get_view(ArrayType.MAGNETIC_FIELD)`
 - [ ] Subtraction of two data sets (by measured monitor)
@@ -118,7 +119,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `updateCalibration`, `updateSampleParameters` for the whole set
 
 ### Combined data
-- [ ] Drop masked points when extracting data (old `extractData()`), `maskIndices`
+- [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`
+      (`gather`; boundaries are `view.offsets[1:]`)
 - [ ] `I_err`
 - [ ] Rotate files into the first file's frame when samples differ slightly (`rlu`)
 

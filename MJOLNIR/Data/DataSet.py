@@ -250,6 +250,25 @@ class DataSet:
             raise AttributeError(f'{arr_type.value} is not available in every data file')
         return AxisView([np.atleast_1d(array) for array in arrays], axis = self._axis)
 
+    def gather(self, arr_type: ArrayType | str) -> AxisView:
+        """The unmasked points of one quantity of all data files: per file, the points where
+        its mask is False, flattened. view.arrays gives them per file, np.asarray(view) joined,
+        and view.offsets[1:] the boundaries between files"""
+        arr_type = ArrayType(arr_type)
+        if len(self) == 0:
+            raise ValueError('DataSet contains no data files')
+        get = attrgetter(arr_type.value)
+        arrays = []
+        for reader in self._readers:
+            array = get(reader)
+            if array is None:
+                raise AttributeError(f'{arr_type.value} is not available in every data file')
+            if np.shape(array) != reader.mask.shape:
+                raise ValueError(f'{arr_type.value} does not have the shape of the data '
+                                 f'{reader.mask.shape}, so it cannot be masked; use get_view')
+            arrays.append(np.asarray(array)[~reader.mask])
+        return AxisView(arrays, axis = 0)
+
     # Sorting
 
     @staticmethod

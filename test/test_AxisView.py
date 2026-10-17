@@ -167,3 +167,22 @@ def test_mismatched_shapes():
         AxisView([np.zeros((2, 3)), np.zeros((2, 4))], axis = 0)
     # Only the view axis may differ
     assert AxisView([np.zeros((2, 3)), np.zeros((2, 4))], axis = 1).shape == (7, 2)
+
+def test_arrays_and_offsets(uneven):
+    view, first, second = uneven
+    assert len(view.arrays) == 2
+    assert view.arrays[0] is first and view.arrays[1] is second
+    assert view.offsets == [0, 2]
+    view.offsets.append(99) # Copies: the view is not changed
+    assert view.offsets == [0, 2]
+
+def test_as_numpy_array(uneven):
+    view, first, second = uneven
+    joined = np.asarray(view)
+    assert np.array_equal(joined, np.concatenate([first, second]))
+    assert joined.dtype == np.uint32 # The stored type, unlike indexing
+    assert np.asarray(view, dtype=float).dtype == np.float64
+    assert np.max(view) == 14 # numpy functions work on the joined array
+    # Along another axis
+    columns = AxisView([np.zeros((2, 3)), np.ones((2, 1))], axis = 1)
+    assert np.asarray(columns).shape == (2, 4)

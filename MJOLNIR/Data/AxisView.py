@@ -52,6 +52,23 @@ class AxisView(Sequence[FloatArray]):
     def shape(self) -> tuple[int, ...]:
         return (len(self), *self._remaining_shape)
 
+    @property
+    def arrays(self) -> list[FloatArray]:
+        """The arrays the view joins, e.g. one per data file"""
+        return list(self._arrays)
+
+    @property
+    def offsets(self) -> list[int]:
+        """Index in the view of the first entry of each array; offsets[1:] are the boundaries
+        between arrays"""
+        return list(self._offsets)
+
+    def __array__(self, dtype=None, copy=None) -> np.ndarray:
+        """The arrays joined into one numpy array (np.asarray(view)), in their stored type
+        unless dtype is given. Joining always copies"""
+        joined = np.concatenate(self._arrays, axis=self._axis)
+        return joined if dtype is None else joined.astype(dtype, copy=False)
+
     def __iter__(self) -> Iterator[FloatArray]:
         for array in self._arrays:
             for entry in np.moveaxis(array, self._axis, 0):
