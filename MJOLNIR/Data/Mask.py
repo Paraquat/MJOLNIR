@@ -65,7 +65,7 @@ class MaskingObject(ABC):
         otherkwargs = other.generateInputKwargs()
         if not np.all([selfkeys in otherkwargs.keys() for selfkeys in kwargs.keys()]):
             return False
-        
+
         for key,value in kwargs.items():
             try:
                 truth = np.all(value == otherkwargs[key])
@@ -95,8 +95,8 @@ class MaskingObject(ABC):
     @abstractmethod
     def call(self,*args,**kwargs):
         """Compute the mask"""
-    
-    
+
+
     def __call__(self,X=None,*args,**kwargs):
         if X is None:
             return self.call()
@@ -113,23 +113,23 @@ class MaskingObject(ABC):
             #if not len(temp.shape) == len(X.I.shape):
             #    temp = np.outer(temp,np.ones_like(X.I[0],dtype=bool)).reshape(*X.I.shape)
             return temp#self.call(X,*args,**kwargs)
-    
+
     def __add__(self,other):
         return MultiMask(masks=[self,other],operation=np.logical_or)
-    
+
     def __mul__(self,other):
         return MultiMask(masks=[self,other],operation=np.logical_and)
-    
+
     def __neg__(self):
         return self.negate()
 
     def __pos__(self):
         return self.clone()
-    
+
     def __sub__(self,other):
         return self+(-other)
-    
-    
+
+
     def generateInputKwargs(self):
         """Generate dictionary with initial args/kwargs used for init"""
         kwargs = {}
@@ -139,13 +139,13 @@ class MaskingObject(ABC):
         for X in initCode.co_varnames[1:args]:
             kwargs[X] = self.__dict__[X]
         return kwargs
-        
+
     def clone(self):
         """Return clone of self"""
         return self.__class__(**self.generateInputKwargs())
-        
+
     def negate(self):
-        
+
         newMask = self.clone()
         newMask.maskInside = not newMask.maskInside
         newMask.negated = True
@@ -158,12 +158,12 @@ class MaskingObject(ABC):
             correct = False
         elif not file.split('.')[-1].strip() == 'mask':
             correct = False
-        
+
         if not correct:
             file = file+'.mask'
         with open(file,'wb') as f:
             f.write(mp)
-        
+
 class MultiMask(MaskingObject):
     def __init__(self,masks,operation=np.logical_and,negated=False):
         if not hasattr(masks,'__len__'):
@@ -228,46 +228,46 @@ class MultiMask(MaskingObject):
         for mask in masks:
             if not mask in uniqueMasks:
                 uniqueMasks.append(mask)
-       
+
         return uniqueMasks
-        
-    
+
+
     def call(self,*args,**kwargs):
         masks = []
         for m in self.masks:
             masks.append(m(*args,**kwargs))
-        
+
         results = self.operation(*masks)
         if self.negated:
             results = np.logical_not(results)
         return results
-    
+
     def negate(self):
         newMask = self.clone()
         newMask.negated = not newMask.negated
         return newMask
-        
-        
+
+
     def plot(self,ax,transformation=None,*args,**kwargs):# pragma: no cover
         for m in self.masks:
             m.plot(ax,transformation,*args,**kwargs)
-    
+
     def __add__(self,other):
         return MultiMask(masks=[self,other],operation=np.logical_or)
-    
+
     def __mul__(self,other):
         return MultiMask(masks=[self,other],operation=np.logical_and)
-    
+
     def __neg__(self):
         return self.negate()
 
     def __pos__(self):
         return self.clone()
-    
+
     def __sub__(self,other):
         return self+(-other)
 
-    
+
     def generateInputKwargs(self):
         """Generate dictionary with initial args/kwargs used for init"""
         kwargs = {}
@@ -277,7 +277,7 @@ class MultiMask(MaskingObject):
         for X in initCode.co_varnames[1:args]:
             kwargs[X] = self.__dict__[X]
         return kwargs
-        
+
     def clone(self):
         """Return clone of self"""
         return self.__class__(**self.generateInputKwargs())
@@ -307,54 +307,54 @@ def RotationMatrix3D(theta,n=None,deg=True):
         M[0,0] = cost+n[0]**2*(1-cost)
         M[0,1] = n[0]*n[1]*(1-cost)-n[2]*sint
         M[0,2] = n[0]*n[2]*(1-cost)+n[1]*sint
-        
+
         M[1,0] = n[0]*n[1]*(1-cost)+n[2]*sint
         M[1,1] = cost+n[1]**2*(1-cost)
         M[1,2] = n[1]*n[2]*(1-cost)-n[0]*sint
-        
+
         M[2,0] = n[0]*n[2]*(1-cost)-n[1]*sint
         M[2,1] = n[1]*n[2]*(1-cost)+n[0]*sint
         M[2,2] = cost+n[2]**2*(1-cost)
-        
+
     return M
 
 class lineMask(MaskingObject):
     dimensionality = '1D'
     def __init__(self,start,end,maskInside=True,coordinates=None,name=None):
         """Generate a rectangle mask with side corner1 to corner 2 and use corner 3 to define height.
-        
+
         args:
             start (1D point): Starting position
-            
+
             end (1D point): Ending corner
-            
+
         kwargs:
-            
+
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
-            
+
             coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
-            
+
         Example:
-            
+
             >>> P = np.array([[0.5,2.6])
             >>> b = lineMask(*P)
             >>> mask = b(points.T)
             >>> inside = points[mask].T
-            
+
         """
         super(lineMask,self).__init__(coordinates=coordinates,maskInside=maskInside,name=name)
-        
+
         self.start = start
         self.end = end
-        
-    
-        
-    
-        
-        
+
+
+
+
+
+
     def plot(self,ax,transformation=None,*args,**kwargs):# pragma: no cover
         warnings.warn('It is not possible to plot a 1D masks.')#raise NotImplementedError('It is not possible to plot a 1D masks.')
-    
+
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
             points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
@@ -365,13 +365,13 @@ class lineMask(MaskingObject):
                 points = [x]
             else:
                 raise AttributeError('Dimensionality of input is to be (1,N), received both an x and y')
-        
+
         mask = np.sum([np.logical_and(p>self.start,p<=self.end) for p in points],axis=0)>0
-        
+
         if isinstance(x,DataReader):
             if len(mask) == len(x.intensity) and len(mask.shape)==1: # A mask per scan step, e.g. of A3
                 mask = np.outer(mask,np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
-        
+
         if self.maskInside == False:
             mask = np.logical_not(mask)
         return mask
@@ -380,19 +380,19 @@ class rectangleMask(MaskingObject):
     dimensionality = '2D'
     def __init__(self,corner1,corner2,corner3=None,maskInside=True,coordinates=None,name=None):
         """Generate a rectangle mask with side corner1 to corner 2 and use corner 3 to define height.
-        
+
         args:
             corner1 (2D point): First corner
-            
+
             corner2 (2D point): Second corner
-            
+
         kwargs:
             corner3 (2D point): Third corner used to define height of box. If corner3 is not set corner1 and corner2 are assumed to be opposite corners.
-            
+
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
-            
+
             coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
-            
+
         Example:
             >>> fig,ax = plt.subplots()
             >>> points = np.random.rand(3000,2)
@@ -407,13 +407,13 @@ class rectangleMask(MaskingObject):
             >>> inside = points[mask].T
             >>> plt.scatter(inside[0],inside[1],color='b')
             >>> plt.scatter(*np.array([b.corners]).T,color='g')
-            
+
         """
         super(rectangleMask,self).__init__(coordinates=coordinates,maskInside=maskInside,name=name)
-        
+
         self.corner1 = np.array(corner1,dtype=float)
         self.corner2 = np.array(corner2,dtype=float)
-        
+
         if isinstance(corner3, np.ndarray):
             if corner3.shape == ():
                 self.corner3 = None
@@ -424,49 +424,49 @@ class rectangleMask(MaskingObject):
                 self.corner3 = None
             else:
                 self.corner3 = np.array(corner3,dtype=float)
-        
+
         #self.corners = [corner1,corner2]
 
-        
+
         corner3,corner4 =self.calculateCorners(self.corner1,self.corner2,self.corner3)
 
-        
+
         self.rotation = np.arctan2(self.edge[1],self.edge[0])
-            
+
         self.rotationMatrix = RotationMatrix(-self.rotation,deg = False)
-        
-        # Calculate center position 
+
+        # Calculate center position
         self.center = np.mean(self.corners,axis=0).reshape(2,1)
-    
-    
-        
+
+
+
     def calculateCorners(self,c1,c2,c3):
         if c3 is None:
             c3 = c2
             diff = c3-c1
             c2 = c1+np.array([0,diff[1]])
-            
+
         self.edge = c2 - c1 # Defined as line between first and second corner
         self.height = np.linalg.norm(self.edge) # Find side length of rectangle
         self.edge*=1.0/self.height
         self.cross = np.array([-self.edge[1],self.edge[0]]) # Vector orthogonal to edge
-        
+
         self.length = np.dot(self.cross,c3-c1)
         self.lengthSign = np.sign(self.length)
         self.length = np.abs(self.length)
-        
+
         c3 = c2+self.lengthSign*self.cross*self.length/np.linalg.norm(self.cross)
         c4 = c3-c2+c1
         self.corners = [c1,c2,c3,c4]
         return c3,c4
-        
-        
+
+
     def plot(self,ax,transformation=None,*args,**kwargs):# pragma: no cover
         points = np.array([self.corners[0],self.corners[1],self.corners[2],self.corners[3],self.corners[0]]).T
         if not transformation is None:
             points = transformation(*points)
         ax.plot(*points,**kwargs)
-    
+
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
             points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
@@ -481,45 +481,45 @@ class rectangleMask(MaskingObject):
         # This makes the logical checks easy
         pointShape = points.shape[1:]
         points.shape = (2,-1)
-        
+
         rotatedPoints = np.einsum('ij,jk->ik',self.rotationMatrix,np.array(points)-self.center)
         rotatedPoints.shape = np.concatenate([[2],pointShape])
         logic = np.array([np.logical_and(x>-0.5*edge,x<0.5*edge) for x,edge in zip(rotatedPoints,[self.height,self.length])])
-        
+
         mask = np.all(logic,axis=0)
         if self.maskInside == False:
             mask = np.logical_not(mask)
         return mask
-    
+
 
 class boxMask(MaskingObject):
     dimensionality = '3D'
     def __init__(self,corner1,corner2,corner3,corner4=None,maskInside=True,coordinates=None,name=None):
         """Generate a box mask with side corner1, corner 2, corner 3 and use corner 4 to define height.
-        
+
         args:
             corner1 (3D point): First corner
-            
+
             corner2 (3D point): Second corner
-            
+
             corner2 (3D point): Third corner
-            
+
         kwargs:
             corner4 (3D point): Fourth corner used to define height of box. If corner4 is not set corner1, corner2, corner3 are assumed to be maximal positions.
-            
+
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
-            
+
             coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
-            
-        
+
+
         """
         super(boxMask,self).__init__(coordinates=coordinates,maskInside=maskInside,name=name)
         self.corner1 = np.array(corner1,dtype=float)
         self.corner2 = np.array(corner2,dtype=float)
         self.corner3 = np.array(corner3,dtype=float)
         self.corner4 = None if corner4 is None else np.array(corner4,dtype=float)
-        
-        
+
+
 
         if corner4 is None: # use provided corners and find bounding box
             X,Y,Z = [[np.min(x),np.max(x)] for x in np.array([corner1,corner2,corner3]).T]
@@ -531,62 +531,62 @@ class boxMask(MaskingObject):
             c6 = np.array([X[1],Y[0],Z[1]])
             c7 = np.array([X[0],Y[1],Z[1]])
             c8 = np.array([X[1],Y[1],Z[1]])
-            
+
             self.length = X[1]-X[0]
             self.width = Y[1]-Y[0]
             self.height = Z[1]-Z[0]
-            
+
             self.planeNormal = np.array([0,0,1])#np.cross(edge1,edge2)
             #planeNormal *= 1.0/np.linalg.norm(planeNormal)
-            
+
             #self.rotationMatrix = RotationMatrix3D(0.0,n=None,deg=False)
-            
+
         else:
             c1 = np.array(corner1,dtype=float)
             c2 = np.array(corner2,dtype=float)
-            
+
             # Start by finding common plane for c1, c2, and  c3
             edge1 = c2 - c1 # Defined as line between first and second corner
             edge2 = corner3 - c1 # Defined as line between first and second corner
-            
+
             self.length = np.linalg.norm(edge1)
-            
+
             edge1 *= 1.0/self.length
             edge2 *= 1.0/np.linalg.norm(edge2)
-            
+
             planeNormal = np.cross(edge1,edge2)
             self.planeNormal = planeNormal/np.linalg.norm(planeNormal)
-            
+
             cross = np.cross(edge1,self.planeNormal)
-            
-            
+
+
             width = np.dot(cross,corner3 - c1) # distance from c3 orthogonally on edge1
             widthSign = np.sign(width)
             self.width = np.abs(width)
-            
-            
+
+
             # calculate corner point for c3 and c4
             c4 = c2+widthSign*cross*self.width
-            
+
             c3 = c4-c2+c1 # Find corresponding c4
-            
+
             # find cube
             height = np.dot(self.planeNormal,corner4-c1)
             heightSign = np.sign(height)
             self.height = np.abs(height)
-            
+
             c5 = c1+heightSign*self.planeNormal*self.height
-            c6 = c5+c2-c1 
-            c7 = c5+c3-c1 
-            c8 = c5+c4-c1 
-            
+            c6 = c5+c2-c1
+            c7 = c5+c3-c1
+            c8 = c5+c4-c1
+
         self.corners = np.array([c1,c2,c3,c4,c5,c6,c7,c8])
         self.center = np.array([np.mean(X) for X in self.corners.T]).reshape(1,-1)
-        
+
         # Create rotation matrix.
 
         # rotate planeNormal to lie along x,z plane (https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d)
-        
+
         v = np.cross(self.planeNormal,np.array([0.0,1.0,0.0]))
         Vs = np.zeros((3,3))
         Vs[0,1] = -v[2]
@@ -595,25 +595,25 @@ class boxMask(MaskingObject):
         Vs[1,0] = -Vs[0,1]
         Vs[0,2] = -Vs[0,2]
         Vs[2,1] = -Vs[1,2]
-        
+
         c = np.dot(self.planeNormal,np.array([0.0,1.0,0.0]))
-        
+
         rot1 = np.eye(3)+Vs+np.dot(Vs,Vs)*1.0/(1+c)
-        
-        
+
+
         c1r1,c2r1,c3r1,c4r1,c5r1,c6r1,c7r1,c8r1 = [np.dot(rot1,(x-self.center).T) for x in [c1,c2,c3,c4,c5,c6,c7,c8]]
-        
+
         # rotate around y into plane using edge 1 (c2-c1)
         edge = c2r1-c1r1
         theta = np.arctan2(edge[2],edge[0])
-        
+
         rot2 = RotationMatrix3D(theta,n=[0,1,0],deg=False)
         self.rotationMatrix = np.einsum('ij,jk->ik',rot2,rot1)
 
-        
-        
+
+
     def plot(self,ax,transformation = None, *args,**kwargs):# pragma: no cover
-        
+
         # Draw square for Z = 0
         points = np.array([self.corners[0],self.corners[1],self.corners[3],self.corners[2],self.corners[0]]).T
         if not transformation is None:
@@ -622,13 +622,13 @@ class boxMask(MaskingObject):
         if not 'color' in kwargs:
             color = p[0].get_color()
             kwargs['color'] = color
-        
+
         # Draw square for Z = 1
         points = np.array([self.corners[4],self.corners[5],self.corners[7],self.corners[6],self.corners[4]]).T
         if not transformation is None:
             points = transformation(*points)
         ax.plot3D(*points,**kwargs)
-        
+
         # Draw square for X = 0
         points = np.array([self.corners[0],self.corners[2],self.corners[6],self.corners[4],self.corners[0]]).T
         if not transformation is None:
@@ -639,8 +639,8 @@ class boxMask(MaskingObject):
         if not transformation is None:
             points = transformation(*points)
         ax.plot3D(*points,**kwargs)
-    
-    
+
+
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
             points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
@@ -656,13 +656,13 @@ class boxMask(MaskingObject):
         # calculate mask by rotating all points so rectangle is along coordinate axes
         # This makes the logical checks easy
         pointShape = points.shape[1:]
-        
+
         points.shape = (3,-1)
-        
+
         rotatedPoints = np.einsum('ij,jk->ik',self.rotationMatrix,np.array(points)-self.center.T)
         rotatedPoints.shape = np.concatenate([[3],pointShape]).astype(int)
         logic = np.array([np.logical_and(x>=-0.5*edge,x<=0.5*edge) for x,edge in zip(rotatedPoints,[self.length,self.height,self.width])])
-        
+
         mask = np.all(logic,axis=0)
         if self.maskInside == False:
             mask = np.logical_not(mask)
@@ -670,24 +670,24 @@ class boxMask(MaskingObject):
 
 
 class circleMask(MaskingObject):
-    
+
     dimensionality = '2D'
-    
+
     def __init__(self,center,radiusPoint=None,radius=None,maskInside=True,coordinates=None,name=None):
         """Generate a circular mask with center at center and edge at radiusPoint.
-        
+
         args:
             center (2d point): center
-            
+
         kwargs:
             radiusPoint (2d point): Circumference goes through this point (default None)
 
             radius (float): radius if  circle/sphere. If set, it overrides radiusPoint (default none)
 
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
-            
+
             coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
-            
+
         Example:
             >>> fig,ax = plt.subplots()
             >>> points = np.random.rand(3000,2)
@@ -702,10 +702,10 @@ class circleMask(MaskingObject):
             >>> inside = points[mask].T
             >>> plt.scatter(inside[0],inside[1],color='b')
             >>> plt.scatter(*np.array([b.corners]).T,color='g')
-            
+
         """
         super(circleMask,self).__init__(coordinates=coordinates,maskInside=maskInside,name=name)
-        
+
         self.center = np.array(center,dtype=float).reshape(-1,1)
         if self.center.shape[0] == 3: # 3D sphere
             self.dimensionality = '3D'
@@ -721,19 +721,19 @@ class circleMask(MaskingObject):
         self.radius = np.linalg.norm(radiusPoint-self.center)
         self.radiusPoint = radiusPoint
 
-        
-        
-        
+
+
+
     def plot(self,ax,transformation=None,**kwargs):# pragma: no cover
         if self.dimensionality == '2D':
             theta = np.linspace(0,np.pi*2,200)
-            
+
             points = np.array([np.cos(theta),np.sin(theta)])*self.radius+self.center
             if not transformation is None:
                 points = transformation(*points)
             ax.plot(points[0],points[1],**kwargs)
         elif self.dimensionality == '3D':
-            
+
             u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
             x = np.cos(u)*np.sin(v)*self.radius+self.center[0]
             y = np.sin(u)*np.sin(v)*self.radius+self.center[1]
@@ -742,7 +742,7 @@ class circleMask(MaskingObject):
             if not transformation is None:
                 points = transformation(*points)
             ax.plot_wireframe(*points, **kwargs)
-    
+
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
             points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
@@ -761,68 +761,68 @@ class circleMask(MaskingObject):
                     points = x
                 else:
                     points = np.array([x,y,z])
-        
+
         pointShape = points.shape[1:]
         points.shape = (points.shape[0],-1)
-        
+
         mask = np.linalg.norm(points-self.center,axis=0)<=self.radius
         mask.shape = pointShape
-        
+
         if self.maskInside == False:
             mask = np.logical_not(mask)
         return mask
-    
+
 class indexMask(MaskingObject):
     dimensionality = '1D'
-    
+
     def __init__(self,start,end,axis=0,maskInside=True,name=None):
         """Mask indices along a given axis.
-        
+
         args:
             start (int): starting point included in mask
-        
+
             end (int): end point not included in mask
-            
+
         kwargs:
             axis (int): Axis along which masking is to be performed (default 0)
-            
+
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
-        
+
         """
         super(indexMask,self).__init__(coordinates=None,maskInside=maskInside,name=name)
         self.axis = axis
         self.start = start
         self.end = end
-        
+
     def plot(self,ax,transformation=None,*args,**kwargs):# pragma: no cover
         raise NotImplementedError('It is not possible to plot a 1D masks.')
-    
+
     def call(self,x,*args):
         points = x#np.concatenate([[x],args])
-        
+
         if not len(points.shape)>self.axis:
             raise AttributeError('Masking axis is {}, but shape of x is {}.'.format(self.axis,points))
-        
+
         arange = np.arange(points.shape[self.axis]).flatten()
-       
+
         transpose = np.arange(len(points.shape))
         transpose[self.axis] = 0
         transpose[0] = self.axis
-        
+
         otherAxes = int(points.size/points.shape[self.axis])
         inside = np.array([np.logical_and(arange>=self.start,arange<self.end)]).flatten()
-                
+
         # create mask with masking axis along 0
         newShape = np.array(points.shape)[transpose]
         mask = np.repeat(inside,otherAxes).reshape(newShape).transpose(transpose)
-        
-        
+
+
         if self.maskInside == False:
             mask = np.logical_not(mask)
         return mask
 
 
-        
+
 def calculateCurratAxeMask(reader,braggPeaks,dqx=None,dqy=None,dH=None,dK=None,dL=None,spurionType='both',maskInside=True):
     """Mask the Currat-Axe spurions of a data file: points within an ellipse (in qx, qy) or
     ellipsoid (in h, k, l) around where a Bragg peak scatters neutrons of the wrong energy.
@@ -893,14 +893,14 @@ def calculateCurratAxeMask(reader,braggPeaks,dqx=None,dqy=None,dH=None,dK=None,d
 
 class CurratAxeMask(MaskingObject):
     dimensionality = '3D'
-    
+
     def __init__(self,braggPeaks,dqx=None,dqy=None,dH=None,dK=None,dL=None,spurionType='both',maskInside=True,name=None):
         """Mask Currat-Axe spurions from provided Bragg peaks within wanted area.
-        
+
         Args:
-        
+
             - BraggPeaks (list): List of Bragg peaks to be used for mask. Shape is given by [[H1,K1,L1], [H2,K2,L2], ... [HN,KN,LN]]
-            
+
         Kwargs:
 
             - dqx (float): Radius used for masking along qx (default None)
@@ -914,9 +914,9 @@ class CurratAxeMask(MaskingObject):
             - dL (float): Radius used for masking along L (default None)
 
             - spurionType (str): Either monochromator, analyser or both (default 'both')
-            
+
             - maskInside (bool): If true, points inside is masked otherwise outside (default True)
-        
+
         """
         super(CurratAxeMask,self).__init__(coordinates=None,maskInside=maskInside,name=name)
         self.braggPeaks = braggPeaks
@@ -926,10 +926,10 @@ class CurratAxeMask(MaskingObject):
         self.dK = dK
         self.dL = dL
         self.spurionType = spurionType
-        
+
     def plot(self,ax,transformation=None,*args,**kwargs):# pragma: no cover
         raise NotImplementedError('It is not possible to plot a Currat-Axe masks currently.')
-    
+
     def call(self,x,*args):
         if not isinstance(x,DataReader):
             raise AttributeError('Expected mask to be called with '+str(DataReader)+' object as argument. Received '+str(type(x)))
@@ -952,14 +952,14 @@ def extractSubMasks(m):
             op = '+'
         else:
             op = '*'
-        
-        
+
+
         signs = ['-'*mask.negated for mask in m.masks]
         m.masks = [mask.bar() if mask.negated else mask for mask in m.masks]
         result = [extractSubMasks(mask) for mask in m.masks]
         eq = [res[0] for res in result]
         masks = flatten([res[1] for res in result])
-    
+
         s = '('+op.join([s+str(e) for s,e in zip(signs,eq)])+')'
 
         maskSet = set()
@@ -975,7 +975,7 @@ def extract(mask):
     for mask in masks:
         if not mask in uniqueMasks:
             uniqueMasks.append(mask)
-    
+
     return str(sympy.expand(eq)),uniqueMasks
 
 
