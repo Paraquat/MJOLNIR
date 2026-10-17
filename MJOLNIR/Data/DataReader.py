@@ -1,7 +1,7 @@
 import warnings
 from pathlib import Path
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 
@@ -19,6 +19,19 @@ class InstrumentCalibration:
     amp: npt.NDArray[np.float64]
     A4: npt.NDArray[np.float64]
     bound: npt.NDArray[np.int32]
+
+@dataclass
+class SampleEnvironment:
+    """Sample conditions during a scan, measured and set: one value per scan step, or None if
+    the file does not record them. Units are those stored in the file (see units)"""
+    temperature: npt.NDArray[np.float64] | None = None
+    temperature_setpoint: npt.NDArray[np.float64] | None = None
+    magnetic_field: npt.NDArray[np.float64] | None = None
+    magnetic_field_setpoint: npt.NDArray[np.float64] | None = None
+    electric_field: npt.NDArray[np.float64] | None = None
+    electric_field_setpoint: npt.NDArray[np.float64] | None = None
+    other: dict[str, npt.NDArray[np.float64]] = field(default_factory=dict) # Other quantities
+    units: dict[str, str] = field(default_factory=dict) # Quantity name -> unit
 
 class DataReader(ABC):
     """Abstract base class for all data readers (objects that parse data files)"""
@@ -45,6 +58,7 @@ class DataReader(ABC):
     twotheta: npt.NDArray[np.float64]
     calibration: InstrumentCalibration
     sample: Sample
+    environment: SampleEnvironment
 
     # Derived data
     intensity: npt.NDArray[np.int64]
@@ -85,6 +99,7 @@ class DataReader(ABC):
         self.user_mask = None
         self._default_mask = None
         self.masked_detectors = [] # Detectors excluded by the default mask
+        self.environment = SampleEnvironment()
 
     @classmethod
     def can_read(cls, filepath: Path) -> bool:
@@ -210,6 +225,21 @@ class DataReader(ABC):
     def mask(self, mask):
         # Sets the user's mask; the default mask always comes from default_mask()
         self.user_mask = np.asarray(mask, dtype=bool)
+
+    def per_step(self, values, name: str) -> npt.NDArray[np.float64] | None:
+        """Values of a quantity as one per scan step: a single value is repeated. Values that
+        do not fit the scan are left out (None), with a warning"""
+        try:
+            values = np.asarray(values, dtype=float).ravel()
+        except (TypeError, ValueError):
+            return None
+        if values.size == 1:
+            return np.full(self.n_steps, values[0])
+        if values.size == self.n_steps:
+            return values
+        warnings.warn(f'"{self.file.name}" has {values.size} values of {name} for '
+                      f'{self.n_steps} scan steps; {name} is left out')
+        return None
 
     def scan_monitor(self) -> npt.NDArray[np.float64]:
         """Monitor counts per scan step, used to normalise the data"""

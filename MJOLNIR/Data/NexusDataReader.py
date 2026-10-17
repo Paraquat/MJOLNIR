@@ -3,7 +3,7 @@ import numpy as np
 import numpy.typing as npt
 from pathlib import Path
 
-from MJOLNIR.Data.DataReader import DataReader
+from MJOLNIR.Data.DataReader import DataReader, SampleEnvironment
 from MJOLNIR.Data.Sample import Sample
 
 class NexusDataReader(DataReader):
@@ -51,6 +51,17 @@ class NexusDataReader(DataReader):
         'mode': '{entry}/control/mode',
     }
 
+    # Sample environment: candidate paths per SampleEnvironment field, the first that exists
+    # is used
+    environment_keys = {
+        'temperature': ['{entry}/sample/temperature'],
+        'temperature_setpoint': ['{entry}/sample/setpoint_temperature'],
+        'magnetic_field': ['{entry}/sample/magnetic_field'],
+        'magnetic_field_setpoint': ['{entry}/sample/setpoint_magnetic_field'],
+        'electric_field': ['{entry}/sample/electric_field'],
+        'electric_field_setpoint': ['{entry}/sample/setpoint_electric_field'],
+    }
+
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)
         self._file = h5py.File(filepath, mode = 'r')
@@ -64,6 +75,7 @@ class NexusDataReader(DataReader):
         A4Offset = self.getValue('A4Offset')
         self.A4Offset = np.array([0.0]) if A4Offset is None else np.array(A4Offset)
         self.twotheta = self.A4 - self.A4Offset
+        self.environment = self.get_environment()
         self.get_metadata()
 
     def __init_subclass__(cls):
@@ -79,6 +91,11 @@ class NexusDataReader(DataReader):
         cls.nexus_meta_keys = {
             key: value.format_map(context)
             for key, value in cls.nexus_meta_keys.items()
+        }
+
+        cls.environment_keys = {
+            key: [path.format_map(context) for path in paths]
+            for key, paths in cls.environment_keys.items()
         }
 
     @classmethod
@@ -103,6 +120,24 @@ class NexusDataReader(DataReader):
         if key not in self.nexus_keys:
             return None
         return self._file.get(self.nexus_keys[key])
+
+    def get_environment(self) -> SampleEnvironment:
+        """Sample conditions from the first existing path of each quantity in environment_keys"""
+        environment = SampleEnvironment()
+        for quantity, paths in self.environment_keys.items():
+            for path in paths:
+                dataset = self._file.get(path)
+                if not isinstance(dataset, h5py.Dataset): # Missing, or a group
+                    continue
+                values = self.per_step(dataset[()], quantity)
+                if values is None:
+                    continue
+                setattr(environment, quantity, values)
+                unit = dataset.attrs.get('units')
+                if unit is not None:
+                    environment.units[quantity] = unit.decode() if isinstance(unit, bytes) else str(unit)
+                break
+        return environment
 
     def get_sample(self) -> Sample:
         return Sample(sample=self.getValue('sample'), recalculateUB=True)

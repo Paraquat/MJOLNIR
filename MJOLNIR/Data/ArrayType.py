@@ -28,6 +28,14 @@ class ArrayType(StrEnum):
     NORMALIZATION = "normalization"
     MONITOR = "monitor"
     MASK = "mask"
+
+    # Sample environment, one value per scan step
+    TEMPERATURE = "environment.temperature"
+    TEMPERATURE_SETPOINT = "environment.temperature_setpoint"
+    MAGNETIC_FIELD = "environment.magnetic_field"
+    MAGNETIC_FIELD_SETPOINT = "environment.magnetic_field_setpoint"
+    ELECTRIC_FIELD = "environment.electric_field"
+    ELECTRIC_FIELD_SETPOINT = "environment.electric_field_setpoint"
     QX = "qx"
     QY = "qy"
     ENERGY = "energy"

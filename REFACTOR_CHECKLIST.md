@@ -23,7 +23,8 @@ plots match the reference images next to it. Several items repeat ones further d
       from the user's mask)
 - [ ] Combined data across files without masked points (the old `extractData()`), e.g. for
       the largest energy transfer
-- [ ] `magneticField` (used in the plot title)
+- [x] `magneticField` (used in the plot title): `reader.environment.magnetic_field`,
+      `ds.get_view(ArrayType.MAGNETIC_FIELD)`
 - [ ] Subtraction of two data sets (by measured monitor)
 - [ ] One sample per file in the `DataSet` (needed to rotate files into a common frame)
 - [ ] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
@@ -63,7 +64,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `MonitorMode`, `MonitorPreset`
 - [ ] Monitor fixes: 2018 wrong monitor, extra value in files of running scans
 - [ ] `Time` (counting time per step), `absoluteTime`, `totalCounts`
-- [ ] `temperature`, `magneticField`, `electricField`
+- [x] `temperature`, `magneticField`, `electricField`: `SampleEnvironment` (measured and
+      setpoints, units from the file), identical to the old DataFile for all CAMEA test files
 - [ ] Temperature from the NICOS log when no temperature is stored
 - [ ] Scan parameters (`getScanParameter`: parameters, values, units)
 - [ ] `scanCommand`, `protonBeam`, `singleDetector1/8`, `s2tRaw`

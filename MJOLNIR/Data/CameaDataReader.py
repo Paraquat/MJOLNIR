@@ -28,6 +28,15 @@ class CameaDataReader(NexusDataReader):
         'monitor2': 'entry/monitor_2/data'
     }
 
+    # Where NICOS and older CAMEA files store the sample environment (as the old DataFile)
+    environment_keys = {
+        **NexusDataReader.environment_keys,
+        'temperature': ['{entry}/sample/Ts', '{entry}/sample/Ts/value', '{entry}/sample/se_ts',
+                        '{entry}/sample/T', '{entry}/sample/temperature'],
+        'magnetic_field': ['{entry}/sample/B', '{entry}/sample/B/value',
+                           '{entry}/sample/magnetic_field'],
+    }
+
     # CAMEA-specific hdf5 metadata keys
     nexus_meta_keys = {
         **NexusDataReader.nexus_meta_keys,
