@@ -56,6 +56,9 @@ class DataReader(ABC):
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
             raise AttributeError(f'File path "{filepath}" does not exist')
+        if not self.can_read(filepath):
+            raise ValueError(f'"{filepath.name}" is not a {self.instrument} data file that '
+                             f'{type(self).__name__} can read')
         self.file = filepath
         if calibration_file is not None:
             self.calibration_file = calibration_file
@@ -70,6 +73,13 @@ class DataReader(ABC):
         self.h = None
         self.k = None
         self.l = None
+
+    @classmethod
+    def can_read(cls, filepath: Path) -> bool:
+        """Whether this reader can read a file, from a quick look at it (without reading the
+        data). Never raises. Readers check this before reading; a GUI can use it to find the
+        instrument of a file"""
+        return True
 
     def get_instrument_calibration(self, binning: int) -> InstrumentCalibration:
         """Read the calibration table (CSV) of instruments with one bin per analyser"""

@@ -23,6 +23,7 @@ class MarmotDataReader(NexusDataReader):
         'scanCommand': '{entry}/{instrument}/command_line/actual_command',
         'scannedData': '{entry}/data_scan/scanned_variables/data',
         'scannedLabels': '{entry}/data_scan/scanned_variables/variables_names/label',
+        'instrumentMode': '{entry}/instrument_mode',
     }
 
     # Marmot-specific hdf5 metadata keys
@@ -42,6 +43,12 @@ class MarmotDataReader(NexusDataReader):
         command = self.getValue('scanCommand')[0].decode()
         self.scan_parameters, self.scan_values = self.parse_scan_command(command)
         self.scan_units = np.array(['N/A' for _ in self.scan_parameters])
+
+    @classmethod
+    def identify(cls, f) -> bool:
+        # THALES is also run without Marmot, with the same file layout
+        mode = f.get(cls.nexus_keys['instrumentMode'])
+        return mode is not None and mode[0].strip().lower() == b'marmot'
 
     def get_scanned_variable(self, label: str) -> np.NDArray[np.float64]:
         """Values per step of a variable logged during the scan, e.g. 'A3' or 'Monitor1'"""

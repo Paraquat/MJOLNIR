@@ -19,6 +19,7 @@ class BAMBUSDataReader(NICOSDataReader):
         # Scan parameters precede the ';' separator, which starts with the timer
         return list(range(titles.index('timer')))
 
-    def channel_columns(self, titles: list[str]) -> list[int]:
+    @classmethod
+    def channel_columns(cls, titles: list[str]) -> list[int]:
         # Channels are named by wedge and energy: 1A, 1B, ..., 20E
         return [i for i, title in enumerate(titles) if re.fullmatch(r'\d+[A-E]', title)]

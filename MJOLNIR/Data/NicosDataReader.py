@@ -63,10 +63,31 @@ class NICOSDataReader(DataReader):
         """Indices of the columns holding scanned/logged parameters"""
         pass
 
+    @classmethod
     @abstractmethod
-    def channel_columns(self, titles: list[str]) -> list[int]:
+    def channel_columns(cls, titles: list[str]) -> list[int]:
         """Indices of the detector channel columns, ordered detector-major"""
         pass
+
+    @classmethod
+    def can_read(cls, filepath: Path) -> bool:
+        """A NICOS data file with this instrument's detector channels"""
+        try:
+            titles = cls.read_column_titles(filepath)
+            return len(cls.channel_columns(titles)) == cls.n_detectors * cls.n_analysers
+        except (OSError, UnicodeDecodeError, ValueError):
+            return False
+
+    @staticmethod
+    def read_column_titles(filepath: Path) -> list[str]:
+        """Column titles of the scan data, reading only the header of the file"""
+        with open(filepath) as f:
+            if 'NICOS data file' not in f.readline():
+                raise ValueError(f'"{filepath}" is not a NICOS data file')
+            for line in f:
+                if line.find('### Scan data') > -1:
+                    return [title for title in next(f, '').split()[1:] if title != ';']
+        raise ValueError('No "### Scan data" section found')
 
     @staticmethod
     def read_header(lines: list[str]) -> tuple[dict[str, str], int]:

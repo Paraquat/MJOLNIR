@@ -80,6 +80,23 @@ class NexusDataReader(DataReader):
             for key, value in cls.nexus_meta_keys.items()
         }
 
+    @classmethod
+    def can_read(cls, filepath: Path) -> bool:
+        """An HDF5 file with this instrument's group and counts"""
+        try:
+            if not h5py.is_hdf5(filepath):
+                return False
+            with h5py.File(filepath, mode = 'r') as f:
+                return (cls.nexus_keys['instrument'] in f and cls.nexus_keys['counts'] in f
+                        and cls.identify(f))
+        except (OSError, KeyError):
+            return False
+
+    @classmethod
+    def identify(cls, f: h5py.File) -> bool:
+        """Extra checks for instruments that share a file layout with others"""
+        return True
+
     def getValue(self, key: str):
         """Dataset for a key, or None if the key is not defined for this instrument"""
         if key not in self.nexus_keys:

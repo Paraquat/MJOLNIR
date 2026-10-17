@@ -18,7 +18,7 @@ class MultiFLEXXDataReader(NICOSDataReader):
         # As in DataFile, scan parameters end one column before the first channel
         return list(range(titles.index('ch0') - 1))
 
-    def channel_columns(self, titles: list[str]) -> list[int]:
-        # Channels are named ch0, ..., ch154
-        first = titles.index('ch0')
-        return list(range(first, first + self.n_detectors * self.n_analysers))
+    @classmethod
+    def channel_columns(cls, titles: list[str]) -> list[int]:
+        # Channels are named ch0, ..., ch154 (raises ValueError if one is missing)
+        return [titles.index(f'ch{i}') for i in range(cls.n_detectors * cls.n_analysers)]
