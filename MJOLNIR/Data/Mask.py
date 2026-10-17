@@ -338,10 +338,8 @@ class lineMask(MaskingObject):
         mask = np.sum([np.logical_and(p>self.start,p<=self.end) for p in points],axis=0)>0
         
         if isinstance(x,DataReader):
-            if len(mask) == len(x.intensity) and len(mask.shape)==1: # We have a mask of A3
-                    mask = np.outer(mask,np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
-            if len(mask) == len(x.intensity)+1 and len(mask.shape)==1: # For some reason A3 is 1 longer than I...
-                mask = np.outer(mask[:-1],np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
+            if len(mask) == len(x.intensity) and len(mask.shape)==1: # A mask per scan step, e.g. of A3
+                mask = np.outer(mask,np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
         
         if self.maskInside == False:
             mask = np.logical_not(mask)
