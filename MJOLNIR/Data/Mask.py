@@ -792,6 +792,74 @@ class indexMask(MaskingObject):
 
 
         
+def calculateCurratAxeMask(reader,braggPeaks,dqx=None,dqy=None,dH=None,dK=None,dL=None,spurionType='both',maskInside=True):
+    """Mask the Currat-Axe spurions of a data file: points within an ellipse (in qx, qy) or
+    ellipsoid (in h, k, l) around where a Bragg peak scatters neutrons of the wrong energy.
+
+    Args:
+
+        - reader (DataReader): Transformed data file (qx, qy or h, k, l and its calibration)
+
+        - braggPeaks (list): Bragg peaks [[H1,K1,L1], ..., [HN,KN,LN]]
+
+    Kwargs:
+
+        - dqx, dqy (float): Radii along qx and qy (default None)
+
+        - dH, dK, dL (float): Radii along H, K and L, used if dqx or dqy is None (default None)
+
+        - spurionType (str): 'monochromator', 'analyser' or 'both' (default 'both')
+
+        - maskInside (bool): If true, points inside are masked, otherwise outside (default True)
+
+    Returns:
+
+        - mask (array): Boolean array with the shape of the reader's intensity
+
+    Uses the reader's first Ei, and one Ef per energy bin: the calibrated Ef averaged over
+    the detectors.
+    """
+    if dqx is None or dqy is None:
+        if any(radius is None for radius in [dH, dK, dL]):
+            raise AttributeError('Provided masking radius not understood. Either dqx and dqy are to be given or dH, dK, and dL.\nRecieved: \n{}'.format('\n'.join(['    {}\t= {}'.format(x,v) for x,v in zip(['dqx','dqy','dH','dK','dL'],[dqx,dqy,dH,dK,dL])])))
+        rlu = True
+    else:
+        rlu = False
+
+    spurionTypes = {'monochromator': ['Monochromator'], 'analyser': ['Analyser'],
+                    'both': ['Monochromator', 'Analyser']}
+    if spurionType.lower() not in spurionTypes:
+        raise AttributeError('Provided spurion type not understood. Received '+spurionType+' but expected '+', '.join(spurionTypes))
+
+    sample = reader.sample
+    Ei = reader.Ei[0]
+    bins = reader.n_analysers*reader.binning
+    Ef = reader.calibration.Ef.reshape(-1, bins).mean(axis=0)
+
+    mask = np.zeros(reader.intensity.shape, dtype=bool)
+    for origin in spurionTypes[spurionType.lower()]:
+        # Spurion positions, shape (len(braggPeaks), len(Ef)) each
+        spurionQx, spurionQy = sample.CurratAxe(Ei=Ei, Ef=Ef, Bragg=braggPeaks, HKL=False,
+                                                spurionType=origin)[:,0,:,:2].transpose(2,0,1)
+        if rlu:
+            spurionHKL = sample.calculateQxQyToHKL(spurionQx, spurionQy)
+            data = np.array([reader.h, reader.k, reader.l])
+            scale = np.array([1.0, dH/dK, dH/dL]).reshape(3,1,1,1)
+            radius = dH
+        else:
+            spurionHKL = [spurionQx, spurionQy]
+            data = np.array([reader.qx, reader.qy])
+            scale = np.array([1.0, dqx/dqy]).reshape(2,1,1,1)
+            radius = dqx
+        # One Bragg peak at a time: spurion position per energy bin, the last data axis
+        for position in np.array(spurionHKL).transpose(1,0,2):
+            distance = np.linalg.norm((data - position.reshape(-1,1,1,bins))*scale, axis=0)
+            mask |= distance < radius
+
+    if not maskInside:
+        mask = np.logical_not(mask)
+    return mask
+
 class CurratAxeMask(MaskingObject):
     dimensionality = '3D'
     
@@ -834,9 +902,7 @@ class CurratAxeMask(MaskingObject):
     def call(self,x,*args):
         if not isinstance(x,DataReader):
             raise AttributeError('Expected mask to be called with '+str(DataReader)+' object as argument. Received '+str(type(x)))
-        
-        
-        return x.calculateCurratAxeMask(self.braggPeaks,dqx=self.dqx,dqy=self.dqy,dH=self.dH,dK=self.dK,dL=self.dL,spurionType=self.spurionType,maskInside=self.maskInside)
+        return calculateCurratAxeMask(x,self.braggPeaks,dqx=self.dqx,dqy=self.dqy,dH=self.dH,dK=self.dK,dL=self.dL,spurionType=self.spurionType,maskInside=self.maskInside)
 
 
 def parse(string,masks):

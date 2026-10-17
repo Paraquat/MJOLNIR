@@ -78,7 +78,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `updateCalibration`: external normalisation tables, several binnings, `overwrite`
 - [ ] Calibration plots: `plotA4`, `plotEf`, `plotEfOverview`, `plotNormalization`
 - [ ] `updateSampleParameters`: new unit cell, recalculate UB
-- [ ] `calculateCurratAxeMask`: spurion masking
+- [x] `calculateCurratAxeMask`: spurion masking, moved to `Mask.py` (works for every reader)
 
 ### Saving
 - [ ] `saveNXsqom`: save converted data
@@ -116,7 +116,8 @@ plots match the reference images next to it. Several items repeat ones further d
 
 ### Masking
 - [ ] `mask` property, `appendMask`, `removeMasking`
-- [ ] `calculateCurratAxeMask`
+- [ ] `calculateCurratAxeMask` on the whole set (computing it works through
+      `Mask.CurratAxeMask(...)(ds)`; applying it needs the `mask` property)
 - [ ] Apply `Mask.py` objects
 
 ### Background
@@ -177,8 +178,8 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
       `h/k/l`, `energy`, `A3` work); metaclass replaced by `ABC`; coordinates accept
-      `ArrayType` or strings. Still to do: `CurratAxeMask` (calls the unported
-      `calculateCurratAxeMask`), `DataSet.mask` to apply the result
+      `ArrayType` or strings. `CurratAxeMask` works on readers. Still to do:
+      `DataSet.mask` to apply the result
 - [ ] `BackgroundModel.py`
 - [ ] `Viewer1D.py`, `Viewer3D.py`, `RLUAxes.py`, `DraggableShapes.py`
 - [ ] `_interactiveSettings.py`
