@@ -5,7 +5,7 @@ Tracks the port of `MJOLNIR/Data/DataFile.py` and the original `DataSet`
 `DataReaderFactory`, the new `DataSet` (`MJOLNIR/Data/DataSet.py`) and `AxisView`.
 Items are checked off as they are completed.
 
-## Milestone 1: the CAMEA test script
+## Milestone 1: the CAMEA test script (reached 2026-10-17)
 
 `~/projects/camea_test/make_plots.py` (the original author's `TestScript.ipynb` as a script)
 loads CAMEA scans 2630-2641 and saves a Q-E cut and a Q plane, each also for the data set
@@ -43,7 +43,10 @@ plots match the reference images next to it. Several items repeat ones further d
       pixel-identical to the old code's
 - [x] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits): `Cuts.cut_q_plane` and
       `Plotting.plot_q_plane`; the milestone plot is pixel-identical to the old code's
-- [ ] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references
+- [x] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references:
+      pixel-identical to the old script's (`make_plots_old.py`) once both use the same font.
+      The old plots' font came from importing `ufit`, which changes matplotlib's font on
+      import; the new code does not import it, so its plots use matplotlib's default font
 
 ## Readers and conversion
 
