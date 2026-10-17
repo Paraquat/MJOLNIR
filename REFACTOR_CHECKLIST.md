@@ -5,6 +5,30 @@ Tracks the port of `MJOLNIR/Data/DataFile.py` and the original `DataSet`
 `DataReaderFactory`, the new `DataSet` (`MJOLNIR/Data/DataSet.py`) and `AxisView`.
 Items are checked off as they are completed.
 
+## Milestone 1: the CAMEA test script
+
+`~/projects/camea_test/make_plots.py` (the original author's `TestScript.ipynb` as a script)
+loads CAMEA scans 2630-2641 and saves a Q-E cut and a Q plane, each also for the data set
+minus a copy of itself. The milestone is reached when it runs with the new `DataSet` and its
+plots match the reference images next to it. Several items repeat ones further down; tick both.
+
+- [x] Script that makes the 4 plots with the old `DataSet` (`DataSet_old`); output matches the
+      reference images
+- [x] Load the 12 CAMEA files into a `DataSet` (reader, factory, calibration, transform)
+- [x] Energy transfer, Qx/Qy, h/k/l, intensity, normalization per file
+- [ ] Default binning 8 for CAMEA, as the old conversion chose (the new `DataSet` uses 1)
+- [ ] Monitor and normalization spread to the shape of the data
+- [ ] CAMEA masks: first 2 pixels at binning 8, broken tubes
+- [ ] Combined data across files without masked points (the old `extractData()`), e.g. for
+      the largest energy transfer
+- [ ] `magneticField` (used in the plot title)
+- [ ] Subtraction of two data sets (by measured monitor)
+- [ ] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
+- [ ] `cutQE` with its 1D cut algorithm
+- [ ] `plotCutQE` (Q-E axes, colour limits)
+- [ ] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits)
+- [ ] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references
+
 ## Readers and conversion
 
 ### Done
