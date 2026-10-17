@@ -1,11 +1,24 @@
 import inspect
 from abc import ABC, abstractmethod
+from operator import attrgetter
 import numpy as np
+from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataSet import DataSet
 import sympy
 import warnings
 import pickle
+
+def get_coordinate(x, coordinate: str):
+    """Values of a named coordinate of x. On a data reader the name must be an ArrayType
+    (e.g. ArrayType.QX or 'qx'); on any other object it is an attribute name"""
+    if isinstance(x, DataReader):
+        try:
+            coordinate = ArrayType(coordinate)
+        except ValueError:
+            raise AttributeError(f"'{coordinate}' is not an array of a data file. Use one of: "
+                                 + ', '.join(ArrayType)) from None
+    return attrgetter(coordinate)(x)
 
 class MaskingObject(ABC):
     """Base class for all masking objects.
@@ -36,7 +49,8 @@ class MaskingObject(ABC):
         else:
             if isinstance(coordinates,str):
                 coordinates = [coordinates]
-            self.coordinates = coordinates
+            # Plain strings, so saved masks do not depend on ArrayType
+            self.coordinates = [str(coordinate) for coordinate in coordinates]
         self.bar = self.negate
         if name is None:
             name = 'mask_0'
@@ -287,7 +301,7 @@ class lineMask(MaskingObject):
             
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
             
-            coordinates (list of str): List containing names of attributes on point object. If None, use x,y (default None)
+            coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
             
         Example:
             
@@ -312,7 +326,7 @@ class lineMask(MaskingObject):
     
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
-            points = np.array([getattr(x,coord) for coord in self.coordinates])
+            points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
         else:
             if y is None:
                 #if x.shape[0] != 1:
@@ -348,7 +362,7 @@ class rectangleMask(MaskingObject):
             
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
             
-            coordinates (list of str): List containing names of attributes on point object. If None, use x,y (default None)
+            coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
             
         Example:
             >>> fig,ax = plt.subplots()
@@ -426,7 +440,7 @@ class rectangleMask(MaskingObject):
     
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
-            points = np.array([getattr(x,coord) for coord in self.coordinates])
+            points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
         else:
             if y is None:
                 if x.shape[0] != 2:
@@ -466,7 +480,7 @@ class boxMask(MaskingObject):
             
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
             
-            coordinates (list of str): List containing names of attributes on point object. If None, use x,y (default None)
+            coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
             
         
         """
@@ -600,7 +614,7 @@ class boxMask(MaskingObject):
     
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
-            points = np.array([getattr(x,coord) for coord in self.coordinates])
+            points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
         else:
             if y is None:
                 if x.shape[0] != 3:
@@ -643,7 +657,7 @@ class circleMask(MaskingObject):
 
             maskInside (bool): If true, points inside is masked otherwise outside (default True)
             
-            coordinates (list of str): List containing names of attributes on point object. If None, use x,y (default None)
+            coordinates (list of str or ArrayType): Names of attributes on point object, e.g. ArrayType.QX or 'qx'. If None, use x,y (default None)
             
         Example:
             >>> fig,ax = plt.subplots()
@@ -702,7 +716,7 @@ class circleMask(MaskingObject):
     
     def call(self,x,y=None,z=None):
         if len(self.coordinates)>0:
-            points = np.array([getattr(x,coord) for coord in self.coordinates])
+            points = np.array([get_coordinate(x,coord) for coord in self.coordinates])
         else:
             if self.dimensionality == '2D':
                 if y is None:

@@ -97,6 +97,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] Sorting: `auto_sort`, `arg_auto_sort`, `arg_sort_to`, `apply_sorting`
 - [x] Files calibrated and transformed when added; `set_binning` re-transforms
 - [x] Arrays across files as one contiguous array (`get_view` → `AxisView`)
+- [x] `ArrayType` as a `StrEnum` (own module), used by `get_view` and as mask coordinates
 - [x] `AxisView`: accept numpy integer indices
 - [x] `AxisView`: iteration returns float64 like indexing
 - [x] `AxisView`: clear `ValueError` when built from no arrays
@@ -175,7 +176,8 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
-      `h/k/l`, `energy`, `A3` work). Still to do: `CurratAxeMask` (calls the unported
+      `h/k/l`, `energy`, `A3` work); metaclass replaced by `ABC`; coordinates accept
+      `ArrayType` or strings. Still to do: `CurratAxeMask` (calls the unported
       `calculateCurratAxeMask`), `DataSet.mask` to apply the result
 - [ ] `BackgroundModel.py`
 - [ ] `Viewer1D.py`, `Viewer3D.py`, `RLUAxes.py`, `DraggableShapes.py`

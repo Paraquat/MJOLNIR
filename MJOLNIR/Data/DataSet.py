@@ -1,45 +1,13 @@
 from pathlib import Path
-from enum import Enum
 from operator import attrgetter
 from collections.abc import Callable, Iterable, Iterator
 import numpy as np
 
+from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.AxisView import AxisView
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
-
-class ArrayType(Enum):
-    """Arrays of the data readers that a DataSet can view as one contiguous array. Values are
-    the attribute names on the reader (dotted for nested attributes)"""
-    # Raw data
-    COUNTS = "counts"
-    A3 = "A3"
-    A3OFF = "A3Offset"
-    A4 = "A4"
-    A4OFF = "A4Offset"
-    TWOTHETA = "twotheta"
-    EI = "Ei"
-    MONITOR1 = "monitor1"
-    MONITOR2 = "monitor2"
-
-    # Instrument calibration
-    EF_CAL = "calibration.Ef"
-    WIDTH_CAL = "calibration.width"
-    BG_CAL = "calibration.bg"
-    AMP_CAL = "calibration.amp"
-    A4_CAL = "calibration.A4"
-    BOUND_CAL = "calibration.bound"
-
-    # Derived data
-    INTENSITY = "intensity"
-    NORMALIZATION = "normalization"
-    QX = "qx"
-    QY = "qy"
-    ENERGY = "energy"
-    H = "h"
-    K = "k"
-    L = "l"
 
 # Anything that can be added to a DataSet: a reader, or the path of a file to read
 DataFileLike = DataReader | str | Path
@@ -169,8 +137,9 @@ class DataSet:
 
     # Contiguous arrays
 
-    def get_view(self, arr_type: ArrayType) -> AxisView:
+    def get_view(self, arr_type: ArrayType | str) -> AxisView:
         """One array of all data files, contiguous along the axis of the DataSet"""
+        arr_type = ArrayType(arr_type)
         if len(self) == 0:
             raise ValueError('DataSet contains no data files')
         get = attrgetter(arr_type.value)
