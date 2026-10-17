@@ -177,14 +177,16 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [ ] `save` cannot pickle the data set
 
 ## Mask.py bugs
-- [ ] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
-- [ ] `__hash__` does not match `__eq__` (hashes a temporary `dict.values()` by identity)
-- [ ] `a - b` sets `b.negated` on the original mask
-- [ ] Combining masks (`+`, `*`) renames the input masks
-- [ ] `boxMask` without `corner4` cannot be cloned (NaN corners), so `-box` etc. fail
-- [ ] `RotationMatrix3D` without an axis crashes (`np.eye((3,3))`)
+- [x] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
+- [x] `__hash__` does not match `__eq__` (hashes a temporary `dict.values()` by identity)
+- [x] `a - b` sets `b.negated` on the original mask
+- [x] Combining masks (`+`, `*`) renames the input masks (now names copies)
+- [x] `boxMask` without `corner4` cannot be cloned (NaN corners), so `-box` etc. fail
+- [x] `RotationMatrix3D` without an axis crashes (`np.eye((3,3))`)
 - [ ] `indexMask` / `CurratAxeMask` `plot` raise, so plotting combinations containing them fails
 - [ ] `test/Mask.py` is not collected by pytest, and defines `test_CurratAxeMask` twice
+      (it passes in full when run directly; regression tests for the fixed bugs are in
+      `test/test_MaskBehaviour.py`)
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

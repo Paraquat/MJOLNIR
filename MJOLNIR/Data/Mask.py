@@ -1,3 +1,4 @@
+import copy
 import inspect
 from abc import ABC, abstractmethod
 from operator import attrgetter
@@ -75,7 +76,17 @@ class MaskingObject(ABC):
         return True
 
     def __hash__(self):
-        return hash(self.__dict__.values())
+        # Hash what __eq__ compares: the type and the arguments the mask was made with
+        def hashable(value):
+            try:
+                hash(value)
+                return value
+            except TypeError: # Arrays and lists
+                values = value.tolist() if isinstance(value, np.ndarray) else value
+                return tuple(hashable(v) for v in values)
+        kwargs = self.generateInputKwargs()
+        return hash((type(self).__name__,
+                     tuple((key, hashable(kwargs[key])) for key in sorted(kwargs))))
 
     def plot(self,ax): # pragma: no cover
         """plotting function to put the masked object onto the figure"""
@@ -116,7 +127,6 @@ class MaskingObject(ABC):
         return self.clone()
     
     def __sub__(self,other):
-        other.negated = True
         return self+(-other)
     
     
@@ -158,8 +168,20 @@ class MultiMask(MaskingObject):
     def __init__(self,masks,operation=np.logical_and,negated=False):
         if not hasattr(masks,'__len__'):
             masks = [masks]
-            
-        self.masks = masks
+
+        # Work on copies, so the masks given (and any combination they are in) are not renamed.
+        # Every copy remembers the mask it came from: a mask used several times gets one copy,
+        # and so one name
+        copies = {}
+        memo = {}
+        for leaf in self._leaves(masks):
+            source = getattr(leaf, '_source', leaf)
+            if id(source) not in copies:
+                leafCopy = copy.deepcopy(leaf)
+                leafCopy._source = source
+                copies[id(source)] = leafCopy
+            memo[id(leaf)] = copies[id(source)]
+        self.masks = copy.deepcopy(list(masks), memo)
 
         names = self.getNames()
         newNames = [names[0]] # first mask always keeps it name
@@ -187,6 +209,15 @@ class MultiMask(MaskingObject):
         self.bar = self.negate
         coordinates = np.concatenate([np.array(m.coordinates) for m in self.masks]).flatten()
         self.coordinates = np.array(list(set(coordinates))) # unique coordinates
+
+    @staticmethod
+    def _leaves(masks):
+        """All simple masks in masks, through nested combinations, with repeats"""
+        for mask in masks:
+            if isinstance(mask, MultiMask):
+                yield from MultiMask._leaves(mask.masks)
+            else:
+                yield mask
 
     def getNames(self):
         return [mask.name for mask in self.getMasks()]
@@ -265,7 +296,7 @@ def RotationMatrix3D(theta,n=None,deg=True):
     if deg == True:
         theta = np.deg2rad(theta)
     if n is None:
-        M = np.eye((3,3))
+        M = np.eye(3)
     else:
         n = np.array(n,dtype=float)
         n*=1.0/np.linalg.norm(n)
@@ -486,7 +517,7 @@ class boxMask(MaskingObject):
         self.corner1 = np.array(corner1,dtype=float)
         self.corner2 = np.array(corner2,dtype=float)
         self.corner3 = np.array(corner3,dtype=float)
-        self.corner4 = np.array(corner4,dtype=float)
+        self.corner4 = None if corner4 is None else np.array(corner4,dtype=float)
         
         
 
@@ -906,10 +937,8 @@ class CurratAxeMask(MaskingObject):
 
 
 def parse(string,masks):
-    for m in masks:
-        locals()[m.name]=m
-    
-    return eval(string)
+    """Combine masks by an expression of their names, e.g. '(m1+m2)*m3'"""
+    return eval(string, {}, {m.name: m for m in masks})
 
 
 
