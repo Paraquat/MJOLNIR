@@ -6,29 +6,13 @@ import numpy as np
 
 from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.AxisView import AxisView
+from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
 # Anything that can be added to a DataSet: a reader, or the path of a file to read
 DataFileLike = DataReader | str | Path
-
-def convert_to_qxqy(sample, hkl) -> np.ndarray:
-    """Convert HKL point(s), shape (3,) or (..., 3), to Qx, Qy with the UB matrix of sample"""
-    hkl = np.asarray(hkl)
-    if hkl.shape[-1] != 3:
-        raise AttributeError(f'Provided HKL point is not 3D. Received: {hkl}')
-    qx, qy, qz = np.einsum('ij,...j->i...', sample.orientationMatrix, hkl)
-    return np.array([qx, qy]).T
-
-def convert_to_hkl(sample, qxqy) -> np.ndarray:
-    """Convert Qx, Qy point(s), shape (2,) or (..., 2), to HKL with the UB matrix of sample"""
-    qxqy = np.asarray(qxqy)
-    if qxqy.shape[-1] != 2:
-        raise AttributeError(f'Provided QxQy point is not 2D. Received: {qxqy}')
-    qxqyqz = np.concatenate([qxqy, np.zeros((*qxqy.shape[:-1], 1))], axis=-1)
-    h, k, l = np.einsum('ij,...j->i...', sample.orientationMatrixINV, qxqyqz)
-    return np.array([h, k, l]).T
 
 class DataSet:
     """A container of DataReader objects for different scans, measured on the same sample and

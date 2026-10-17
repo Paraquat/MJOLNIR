@@ -36,7 +36,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `ds.cut_qe` (and `ds.cut_1d`): gather the points and call `Cuts`
 - [x] `cutQE` output compared with the old `DataSet` on the same data (before porting the
       plots): all columns identical for the milestone cut
-- [ ] `plotCutQE` (Q-E axes, colour limits)
+- [x] `plotCutQE` (Q-E axes, colour limits): `Plotting.plot_cut_qe`; the milestone plot is
+      pixel-identical to the old code's
 - [ ] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits)
 - [ ] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references
 
@@ -165,7 +166,7 @@ plots match the reference images next to it. Several items repeat ones further d
 ### Plotting and interactive figures
 - [ ] `plotCut1D`
 - [ ] `plotCut1DE`
-- [ ] `plotCutQE`
+- [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [ ] `plotCutQELine`
 - [ ] `plotCutELine`
 - [ ] `plotCutPowder`
@@ -174,7 +175,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `plotA3A4` (with `boundaryQ`, `convexHullPoints`)
 - [ ] `View3D`
 - [ ] `createQAxis` / `createQEAxes`, `generate1DAxis(E)`
-- [ ] CSV export from figures, click and hover handlers
+- [ ] CSV export from figures, click and hover handlers (Q-E plots: CSV export and hover
+      done; printing the data at a clicked point and the `_interactiveSettings` modes not yet)
 
 ### Instrument physics
 - [ ] `calculateResolutionMatrix`, `calculateResolutionMatrixAndVectors`
@@ -211,6 +213,7 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 ## Cut bugs fixed in the port
 - [x] `cut1D` truncated `Int_err` to whole counts (column types one place out of line), and
       stored `BinCount` as float
+- [x] `plotCutQE` ignored its `counts` option (the values were overwritten with `Int`)
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

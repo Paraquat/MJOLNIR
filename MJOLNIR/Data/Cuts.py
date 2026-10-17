@@ -11,6 +11,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from MJOLNIR import _tools
+from MJOLNIR.Data.Coordinates import convert_to_hkl
 from MJOLNIR.Data.CutResult import CutResult, COLUMNS
 
 FloatArray = npt.NDArray[np.float64]
@@ -19,7 +20,7 @@ def _to_hkl(sample, qxqy: FloatArray) -> FloatArray:
     """H, K, L of Qx, Qy points of shape (n, 2), or NaN without a sample"""
     if sample is None:
         return np.full((len(qxqy), 3), np.nan)
-    return np.array(sample.calculateQxQyToHKL(qxqy[:, 0], qxqy[:, 1])).T
+    return convert_to_hkl(sample, qxqy)
 
 def _directions(q1, q2) -> tuple[FloatArray, FloatArray, float]:
     """Unit vector along the cut, unit vector orthogonal to it, and the cut length"""
@@ -96,11 +97,12 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
     edges = np.concatenate([edges_qxqy, np.full((len(edges_qxqy), 1), 0.5*(energy_min + energy_max))],
                            axis=1)
     centres = 0.5*(edges[:-1] + edges[1:])
-    hkl = _to_hkl(sample, centres[:, :2])
+    hkl_edges = _to_hkl(sample, edges[:, :2])
+    hkl = 0.5*(hkl_edges[:-1] + hkl_edges[1:])
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore') # Empty bins divide by zero
-        scale = bin_count/(normalization_sum*monitor_sum)
+        denominator = normalization_sum*monitor_sum # Operation order as the old code
         data = pd.DataFrame({
             COLUMNS['qx']: centres[:, 0], COLUMNS['qy']: centres[:, 1],
             COLUMNS['h']: hkl[:, 0], COLUMNS['k']: hkl[:, 1], COLUMNS['l']: hkl[:, 2],
@@ -109,8 +111,8 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
             COLUMNS['mon']: monitor_sum.astype(float),
             COLUMNS['norm']: normalization_sum.astype(float),
             COLUMNS['binCount']: bin_count.astype(int),
-            COLUMNS['intError']: np.sqrt(counts)*scale,
-            COLUMNS['int']: counts*scale,
+            COLUMNS['intError']: np.sqrt(counts)*bin_count/denominator,
+            COLUMNS['int']: counts*bin_count/denominator,
         })
     return CutResult(data, dict(positions=edges, orthogonal=orthogonal_positions,
                                 energy=energy_edges), parameters)
@@ -171,8 +173,7 @@ def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore') # Empty bins divide by zero
-        scale = bin_count/(monitor_sum*normalization_sum)
-        normalised = counts*scale
+        normalised = np.divide(counts*bin_count, monitor_sum*normalization_sum)
         normalised_error = np.sqrt(counts)*bin_count.astype(float)/(monitor_sum*normalization_sum)
 
     centres = np.outer(distance_edges, direction) + q1
