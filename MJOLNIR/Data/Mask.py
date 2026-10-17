@@ -1,68 +1,32 @@
-from __future__ import division
-from abc import ABCMeta
+import inspect
+from abc import ABC, abstractmethod
 import numpy as np
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataSet import DataSet
 import sympy
 import warnings
 import pickle
-# Compability of python 2 and 3 with metaclasses
-# Python 2 and 3:
-from six import with_metaclass
-# or
-from future.utils import with_metaclass
 
-def requiredArguments(func,requiredNames):
-    """Return list of arguments not found in arguments of func"""
-    varnames = func.__code__.co_varnames
-    
-    notInSignature = np.array([None if x in varnames else x for x in requiredNames])
-    notInSignature = notInSignature[notInSignature != np.array(None)]
-    return notInSignature
+class MaskingObject(ABC):
+    """Base class for all masking objects.
 
-class MaskingObjectMeta(ABCMeta):
-    """MetaClass to ensure call signatures of derived classes of MaskingObject"""
+    Subclasses implement call, which computes the mask. 2D and 3D masks (set by the class
+    attribute dimensionality) must also implement plot(ax, transformation, ...)"""
 
-    def __new__(mcls,name,bases,namespace): # When a new class is created, that has this metaclass
-        missingMethods = [] # Hold all methods missing
-        wrongSignature = [] # Hold all methods having wrong signature
-        
-        if not name in ['MaskingObject','MultiMask']: # If MaskingObject, then just continue
-            
-            if not 'call' in namespace: # Check if call exists
-                missingMethods.append('call')
-                
-            
-            if namespace['dimensionality'] == '2D' or namespace['dimensionality'] == '3D':
-                if 'plot' in namespace: # Check if plot has the right signature
+    def __init_subclass__(cls, **kwargs):
+        # Checked when the class is defined, so a broken mask class fails on import
+        super().__init_subclass__(**kwargs)
+        if getattr(cls, 'dimensionality', None) not in ('2D', '3D'):
+            return
+        if cls.plot is MaskingObject.plot:
+            raise TypeError(f'{cls.__name__} is a {cls.dimensionality} mask and must '
+                            'implement plot(ax, transformation, ...)')
+        missing = [name for name in ['ax', 'transformation']
+                   if name not in inspect.signature(cls.plot).parameters]
+        if missing:
+            raise TypeError(f'The plot method of {cls.__name__} must take the arguments '
+                            f'ax and transformation; missing: {", ".join(missing)}')
 
-                    callFunction = namespace['plot']
-                    requiredNames = ['ax','transformation']
-                    notInSignature = requiredArguments(callFunction,requiredNames)
-                    if len(notInSignature)>0:
-                        wrongSignature.append(['plot',requiredNames,notInSignature])
-                else:
-                    missingMethods.append('plot')
-            
-            # Write error report
-            ErrorMessage = []
-            if len(missingMethods)>0:
-                ErrorMessage.append("Can't instantiate abstract class {} with abstract methods\n".format(name)+', '.join(missingMethods))
-            
-            for entry in wrongSignature:
-                methodName = entry[0]
-                requiredNames = entry[1]
-                notInSignature = entry[2]
-                ErrorMessage.append('The "{}" method on "{}" must have all of the following arguments in call signature [{}]. Following are missing: [{}]'.format(methodName,name,', '.join(requiredNames),', '.join(notInSignature)))
-            if len(ErrorMessage)>0:
-                raise TypeError('\n'.join(ErrorMessage))
-        
-        return ABCMeta.__new__(mcls,name,bases,namespace)
-    
-            
-class MaskingObject(with_metaclass(MaskingObjectMeta)):
-    """Base class for all masking objects"""
-    #dimensionality = '2D'
     def __init__(self,coordinates=None,maskInside=True,name=None):
 
         self.maskInside = maskInside
@@ -102,6 +66,10 @@ class MaskingObject(with_metaclass(MaskingObjectMeta)):
     def plot(self,ax): # pragma: no cover
         """plotting function to put the masked object onto the figure"""
         pass
+
+    @abstractmethod
+    def call(self,*args,**kwargs):
+        """Compute the mask"""
     
     
     def __call__(self,X=None,*args,**kwargs):

@@ -1,25 +1,22 @@
 from xml.dom.minidom import Attr
 import numpy as np
 import warnings
-# Compability of python 2 and 3 with metaclasses
-# Python 2 and 3:
-from six import with_metaclass
-# or
-from future.utils import with_metaclass
 from MJOLNIR.Data.Mask import MaskingObject, lineMask, rectangleMask, circleMask, boxMask, indexMask, MultiMask, CurratAxeMask, parse, extract, load
 import sympy,os
 
 def test_subclass_MaskingObject():
     # Generate a subclass of MaskingObect that is missing stuff
     
+    # call is an abstract method: the class can be defined, but not instantiated
+    class Missing__call__(MaskingObject):
+        dimensionality = '2D'
+        def __init__(self,*args,**kwargs):
+            pass
+
+        def plot(self,ax,transformation=None,**kwargs):
+            pass
     try:
-        class Missing__call__(MaskingObject):
-            dimensionality = '2D'
-            def __init__(self,*args,**kwargs):
-                pass
-            
-            def plot(self,ax,transformation=None,**kwargs):
-                pass
+        Missing__call__()
         assert False
     except TypeError as E:
         print(E)
