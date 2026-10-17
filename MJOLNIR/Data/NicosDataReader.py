@@ -1,5 +1,6 @@
 import re
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 from abc import abstractmethod
 
@@ -113,7 +114,7 @@ class NICOSDataReader(DataReader):
         return [titles[i] for i in keep], [units[i] for i in keep], table
 
     @staticmethod
-    def get_column(titles: list[str], table: np.NDArray[np.float64], name: str):
+    def get_column(titles: list[str], table: npt.NDArray[np.float64], name: str):
         if name not in titles:
             return None
         return table[:, titles.index(name)]
@@ -122,7 +123,7 @@ class NICOSDataReader(DataReader):
         """Numeric value of a header entry such as 'Ei_value : 6.300 meV'"""
         return float(self.parameters[key].split(' ')[0])
 
-    def get_scan_value(self, titles: list[str], table: np.NDArray[np.float64], name: str):
+    def get_scan_value(self, titles: list[str], table: npt.NDArray[np.float64], name: str):
         """Per-step value of a scanned axis, falling back to the header value"""
         column = self.get_column(titles, table, name)
         if column is None:
@@ -154,6 +155,6 @@ class NICOSDataReader(DataReader):
             if value is not None:
                 self._metadata[key] = value
 
-    def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):
+    def rebin(self, binning: int, shape: tuple, bounds: npt.NDArray[np.int32]):
         # Channels are already one per analyser, so there are no pixels to sum
         return self.counts.reshape(shape).copy()

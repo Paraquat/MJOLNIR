@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 
 import MJOLNIR
@@ -44,7 +45,7 @@ class FlatconeDataReader(NexusDataReader):
         self.scan_parameters, self.scan_values = self.parse_scan_command(command)
         self.scan_units = np.array(['N/A' for _ in self.scan_parameters])
 
-    def get_counts(self) -> np.NDArray[np.float64]:
+    def get_counts(self) -> npt.NDArray[np.float64]:
         # Reduced (PASTIS) intensities are stored as (detectors, steps)
         counts = np.array(self.getValue('counts')).T
         return counts.reshape(-1, self.n_detectors, self.n_analysers)

@@ -187,5 +187,12 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [ ] Command line scripts: Convert, 3DView, History, CalibrationInspector
 - [ ] Command line scripts take an `--instrument` option instead of detecting it
 
+## Project setup
+- [x] Python 3.11 or newer required (`setup.cfg`, Read the Docs, docs/Introduction.rst);
+      new code tested on Python 3.11, 3.12, 3.13 and 3.14. Needed `StrEnum`; the
+      `np.NDArray` annotations (only working on 3.14) replaced by `numpy.typing.NDArray`
+- [ ] `.travis.yml` still tests Python 3.5-3.9 on Travis CI: replace or remove
+- [ ] `setup.cfg` pins numpy below 2: decide whether to allow numpy 2
+
 ## Finish
 - [ ] Remove `DataFile.py` and `DataSet_old.py`

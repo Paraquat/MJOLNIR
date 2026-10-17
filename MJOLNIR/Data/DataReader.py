@@ -2,6 +2,7 @@ from pathlib import Path
 from abc import ABC
 from dataclasses import dataclass
 import numpy as np
+import numpy.typing as npt
 
 from MJOLNIR import _tools
 from MJOLNIR.Data.Metadata import Metadata
@@ -11,12 +12,12 @@ from MJOLNIR import TasUBlibDEG as TasUBlib
 @dataclass
 class InstrumentCalibration:
     """Calibration data from a CAMEA Nexus file"""
-    Ef: np.NDArray[np.float64]
-    width: np.NDArray[np.float64]
-    bg: np.NDArray[np.float64]
-    amp: np.NDArray[np.float64]
-    A4: np.NDArray[np.float64]
-    bound: np.NDArray[np.int32]
+    Ef: npt.NDArray[np.float64]
+    width: npt.NDArray[np.float64]
+    bg: npt.NDArray[np.float64]
+    amp: npt.NDArray[np.float64]
+    A4: npt.NDArray[np.float64]
+    bound: npt.NDArray[np.int32]
 
 class DataReader(ABC):
     """Abstract base class for all data readers (objects that parse data files)"""
@@ -34,25 +35,25 @@ class DataReader(ABC):
     calibration_A4_sign: int = 1
 
     # Input data
-    counts: np.NDArray[np.float64]
-    A3: np.NDArray[np.float64]
-    A3Offset: np.NDArray[np.float64]
-    A4: np.NDArray[np.float64]
-    A4Offset: np.NDArray[np.float64]
-    Ei: np.NDArray[np.float64]
-    twotheta: np.NDArray[np.float64]
+    counts: npt.NDArray[np.float64]
+    A3: npt.NDArray[np.float64]
+    A3Offset: npt.NDArray[np.float64]
+    A4: npt.NDArray[np.float64]
+    A4Offset: npt.NDArray[np.float64]
+    Ei: npt.NDArray[np.float64]
+    twotheta: npt.NDArray[np.float64]
     calibration: InstrumentCalibration
     sample: Sample
 
     # Derived data
-    intensity: np.NDArray[np.int64]
-    normalization: np.NDArray[np.float64]
-    energy: np.NDArray[np.float64]
-    qx: np.NDArray[np.float64]
-    qy: np.NDArray[np.float64]
-    h: np.NDArray[np.float64]
-    k: np.NDArray[np.float64]
-    l: np.NDArray[np.float64]
+    intensity: npt.NDArray[np.int64]
+    normalization: npt.NDArray[np.float64]
+    energy: npt.NDArray[np.float64]
+    qx: npt.NDArray[np.float64]
+    qy: npt.NDArray[np.float64]
+    h: npt.NDArray[np.float64]
+    k: npt.NDArray[np.float64]
+    l: npt.NDArray[np.float64]
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
@@ -107,7 +108,7 @@ class DataReader(ABC):
             binning = self.default_binning
         self.calibration = self.get_instrument_calibration(binning)
 
-    def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):
+    def rebin(self, binning: int, shape: tuple, bounds: npt.NDArray[np.int32]):
         """Sum the detector pixels between the calibration bounds of each energy bin"""
         intensity = np.zeros(shape, dtype=np.result_type(self.counts.dtype, int))
         for i in range(self.n_detectors):

@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.DataReader import DataReader
@@ -106,7 +107,7 @@ class NexusDataReader(DataReader):
     def get_sample(self) -> Sample:
         return Sample(sample=self.getValue('sample'), recalculateUB=True)
 
-    def get_counts(self) -> np.NDArray[np.float64]:
+    def get_counts(self) -> npt.NDArray[np.float64]:
         return np.array(self.getValue('counts'))
 
     def get(self, key: str):

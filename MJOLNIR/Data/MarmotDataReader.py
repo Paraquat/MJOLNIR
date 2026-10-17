@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
@@ -50,7 +51,7 @@ class MarmotDataReader(NexusDataReader):
         mode = f.get(cls.nexus_keys['instrumentMode'])
         return mode is not None and mode[0].strip().lower() == b'marmot'
 
-    def get_scanned_variable(self, label: str) -> np.NDArray[np.float64]:
+    def get_scanned_variable(self, label: str) -> npt.NDArray[np.float64]:
         """Values per step of a variable logged during the scan, e.g. 'A3' or 'Monitor1'"""
         labels = [x.decode() for x in self.getValue('scannedLabels')]
         return np.array(self.getValue('scannedData')[labels.index(label)])
