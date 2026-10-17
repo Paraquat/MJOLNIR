@@ -66,7 +66,7 @@ plots match the reference images next to it. Several items repeat ones further d
 
 ### Conversion output
 - [ ] Monitor spread to the shape of the data
-- [ ] Default mask
+- [x] Default mask (nothing masked; reset by `transform()`)
 - [ ] CAMEA binning 8: mask the first 2 pixels
 - [ ] CAMEA: mask broken tubes (NaN calibration A4), with a message
 - [ ] Marmot: mask Ef < 1
@@ -115,10 +115,11 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] Rotate files into the first file's frame when samples differ slightly (`rlu`)
 
 ### Masking
-- [ ] `mask` property, `appendMask`, `removeMasking`
-- [ ] `calculateCurratAxeMask` on the whole set (computing it works through
-      `Mask.CurratAxeMask(...)(ds)`; applying it needs the `mask` property)
-- [ ] Apply `Mask.py` objects
+- [x] `mask` property, `append_mask`, `remove_masking` (snake case, like the rest of the
+      new `DataSet`)
+- [x] `calculateCurratAxeMask` on the whole set: `ds.mask = Mask.CurratAxeMask(...)`
+- [x] Apply `Mask.py` objects; a mask object is evaluated again after `set_binning` and
+      for files added later
 
 ### Background
 - [ ] `backgroundModel`, `backgroundIntensities`, `generateBackgroundModel`
@@ -172,14 +173,24 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [ ] Combined `h/k/l` point at attributes `H/K/L`
 - [ ] `cutELine` parameter misspelt `EMn`; `plotCutELine` always fails
 - [ ] `plotA3A4` calls the missing `voronoiTessellation`
-- [ ] `removeMasking` fails unless a `Mask` object was applied
+- [x] `removeMasking` fails unless a `Mask` object was applied (new `remove_masking` works)
 - [ ] `save` cannot pickle the data set
+
+## Mask.py bugs
+- [ ] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
+- [ ] `__hash__` does not match `__eq__` (hashes a temporary `dict.values()` by identity)
+- [ ] `a - b` sets `b.negated` on the original mask
+- [ ] Combining masks (`+`, `*`) renames the input masks
+- [ ] `boxMask` without `corner4` cannot be cloned (NaN corners), so `-box` etc. fail
+- [ ] `RotationMatrix3D` without an axis crashes (`np.eye((3,3))`)
+- [ ] `indexMask` / `CurratAxeMask` `plot` raise, so plotting combinations containing them fails
+- [ ] `test/Mask.py` is not collected by pytest, and defines `test_CurratAxeMask` twice
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
       `h/k/l`, `energy`, `A3` work); metaclass replaced by `ABC`; coordinates accept
-      `ArrayType` or strings. `CurratAxeMask` works on readers. Still to do:
-      `DataSet.mask` to apply the result
+      `ArrayType` or strings. `CurratAxeMask` works on readers; masks apply through
+      `DataSet.mask`. Still to do: the bugs listed under "Mask.py bugs"
 - [ ] `BackgroundModel.py`
 - [ ] `Viewer1D.py`, `Viewer3D.py`, `RLUAxes.py`, `DraggableShapes.py`
 - [ ] `_interactiveSettings.py`

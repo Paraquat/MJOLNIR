@@ -26,6 +26,7 @@ class ArrayType(StrEnum):
     # Derived data
     INTENSITY = "intensity"
     NORMALIZATION = "normalization"
+    MASK = "mask"
     QX = "qx"
     QY = "qy"
     ENERGY = "energy"

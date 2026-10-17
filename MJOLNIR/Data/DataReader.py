@@ -54,6 +54,7 @@ class DataReader(ABC):
     h: npt.NDArray[np.float64]
     k: npt.NDArray[np.float64]
     l: npt.NDArray[np.float64]
+    mask: npt.NDArray[np.bool_] # True = point excluded, shape of intensity
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
@@ -75,6 +76,7 @@ class DataReader(ABC):
         self.h = None
         self.k = None
         self.l = None
+        self.mask = None
 
     @classmethod
     def can_read(cls, filepath: Path) -> bool:
@@ -175,3 +177,5 @@ class DataReader(ABC):
             UBINV,[np.rad2deg(A3), np.rad2deg(A4Mean)], Ei, EfMean)
         self.h, self.k, self.l = np.swapaxes(np.swapaxes(HKL, 1, 2), 0, 3)
         self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)
+        # Nothing masked: the shape follows the binning, so a new transform resets it
+        self.mask = np.zeros(self.intensity.shape, dtype=bool)

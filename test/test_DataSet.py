@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 from pathlib import Path
 
+from MJOLNIR.Data import Mask
 from MJOLNIR.Data.DataSet import DataSet, ArrayType
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.DataReader import DataReader
@@ -207,3 +208,75 @@ def test_set_binning():
 def test_view_empty():
     with pytest.raises(ValueError):
         DataSet(InstrumentName.CAMEA).get_view(ArrayType.A4)
+
+# Masking: each test makes its own DataSet, so masks do not leak into the shared readers
+
+@pytest.fixture
+def masked_dataset():
+    return DataSet(InstrumentName.CAMEA, files=files[:2])
+
+circle = Mask.circleMask(center=[-1, 0], radius=0.25, coordinates=['h', 'k'])
+low_energy = Mask.lineMask(start=0.0, end=0.5, coordinates='energy')
+
+def test_default_mask(masked_dataset):
+    masks = masked_dataset.mask
+    assert len(masks) == 2
+    assert all(m.shape == (135, 104, 64) and m.dtype == bool and not m.any() for m in masks)
+    assert masked_dataset.get_view(ArrayType.MASK).shape == (270, 104, 64)
+
+def test_mask_from_arrays(masked_dataset):
+    shape = masked_dataset[0].intensity.shape
+    first = np.zeros(shape, dtype=bool)
+    first[:, 0] = True
+    masked_dataset.mask = [first, np.zeros(shape, dtype=bool)] # One array per file
+    assert masked_dataset.mask[0].sum() == 135 * 64
+    assert not masked_dataset.mask[1].any()
+    masked_dataset.mask = first # The same array for every file
+    assert all(m.sum() == 135 * 64 for m in masked_dataset.mask)
+    masked_dataset.mask = np.array([first, ~first]) # Stacked, one per file
+    assert masked_dataset.mask[1].sum() == first.size - 135 * 64
+    with pytest.raises(ValueError): # Wrong number of masks
+        masked_dataset.mask = [first]
+    with pytest.raises(ValueError): # Wrong shape
+        masked_dataset.mask = np.zeros((135, 104, 8), dtype=bool)
+    with pytest.warns(UserWarning, match='every point'):
+        masked_dataset.mask = np.ones(shape, dtype=bool)
+
+def test_mask_from_object(masked_dataset):
+    mask = circle * low_energy
+    arrays = mask(masked_dataset)
+    masked_dataset.mask = mask
+    assert all(np.array_equal(m, a) for m, a in zip(masked_dataset.mask, arrays))
+    assert sum(m.sum() for m in arrays) > 0
+    masked_dataset.append(files[2]) # Files added later are masked too
+    assert np.array_equal(masked_dataset.mask[2], mask(masked_dataset[2:])[0])
+    assert masked_dataset.mask[2].any()
+
+def test_append_mask(masked_dataset):
+    masked_dataset.mask = circle
+    before = [m.copy() for m in masked_dataset.mask]
+    masked_dataset.append_mask(low_energy)
+    expected = [b | e for b, e in zip(before, low_energy(masked_dataset))]
+    assert all(np.array_equal(m, e) for m, e in zip(masked_dataset.mask, expected))
+    # Both mask objects are kept, so they follow a change of binning
+    masked_dataset.set_binning(3)
+    expected = [c | e for c, e in zip(circle(masked_dataset), low_energy(masked_dataset))]
+    assert all(np.array_equal(m, e) for m, e in zip(masked_dataset.mask, expected))
+
+def test_remove_masking(masked_dataset):
+    masked_dataset.mask = circle
+    masked_dataset.remove_masking()
+    assert not any(m.any() for m in masked_dataset.mask)
+    masked_dataset.set_binning(3) # Nothing comes back
+    assert not any(m.any() for m in masked_dataset.mask)
+
+def test_mask_follows_binning(masked_dataset):
+    masked_dataset.mask = circle
+    masked_dataset.set_binning(3)
+    assert masked_dataset.mask[0].shape == (135, 104, 24)
+    assert all(np.array_equal(m, c) for m, c in zip(masked_dataset.mask, circle(masked_dataset)))
+    # Arrays cannot be re-evaluated: removed, with a warning
+    masked_dataset.mask = [m.copy() for m in masked_dataset.mask]
+    with pytest.warns(UserWarning, match='removed'):
+        masked_dataset.set_binning(8)
+    assert not any(m.any() for m in masked_dataset.mask)

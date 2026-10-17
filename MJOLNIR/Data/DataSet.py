@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from operator import attrgetter
 from collections.abc import Callable, Iterable, Iterator
@@ -22,6 +23,8 @@ class DataSet:
     _binning: int | None # None: the default binning of the reader type
     _axis: int # The contiguous axis for AxisView
     _readers: list[DataReader]
+    _mask_object: object | None # Mask object (Mask.py) the masks were made from, if any
+    _mask_reproducible: bool # Whether _mask_object (or nothing) reproduces the masks
 
     def __init__(self, instrument: InstrumentName | None = None,
                  files: DataFileLike | Iterable[DataFileLike] | None = None):
@@ -36,15 +39,23 @@ class DataSet:
             self._binning = self.reader_type.default_binning
         self._axis = 0
         self._readers = []
+        self._mask_object = None
+        self._mask_reproducible = True
         if files is not None:
             self.extend(files)
 
     def set_binning(self, binning: int):
-        """Recalibrate and transform all data files with a new binning"""
+        """Recalibrate and transform all data files with a new binning. A mask set from a mask
+        object is evaluated again; masks set from arrays no longer fit and are removed"""
         self._binning = binning
         for reader in self._readers:
             reader.set_instrument_calibration(binning)
             reader.transform()
+        if not self._mask_reproducible:
+            warnings.warn('Masks set from arrays do not fit the new binning and were removed')
+            self._mask_reproducible = True
+        elif self._mask_object is not None:
+            self.mask = self._mask_object
 
     # Adding data files
 
@@ -66,6 +77,8 @@ class DataSet:
         if reader.calibration is None or reader.binning != self._binning:
             reader.set_instrument_calibration(self._binning)
             reader.transform()
+        if self._mask_object is not None and self._mask_reproducible:
+            reader.mask = self._mask_arrays(self._mask_object, [reader])[0]
         self._readers.append(reader)
 
     def extend(self, items: DataFileLike | Iterable[DataFileLike]):
@@ -105,6 +118,8 @@ class DataSet:
             subset.reader_type = self.reader_type
             subset._binning = self._binning
             subset.extend(self._readers[index])
+            subset._mask_object = self._mask_object
+            subset._mask_reproducible = self._mask_reproducible
             return subset
         try:
             return self._readers[index]
@@ -134,6 +149,76 @@ class DataSet:
         if len(self) == 0:
             return None
         return self._readers[0].sample
+
+    # Masking
+
+    @property
+    def mask(self) -> list[np.ndarray]:
+        """Mask of each data file: True excludes a point. Can be set to a list of arrays (one
+        per file), one array for every file, or a mask object from Mask.py. A mask object is
+        kept, and evaluated again when the binning changes or files are added"""
+        return [reader.mask for reader in self._readers]
+
+    @mask.setter
+    def mask(self, mask):
+        for reader, array in zip(self._readers, self._mask_arrays(mask, self._readers)):
+            reader.mask = array
+        self._mask_object = mask if self._is_mask_object(mask) else None
+        self._mask_reproducible = self._mask_object is not None
+
+    def append_mask(self, mask):
+        """Mask more points, keeping those already masked. Takes the same input as mask"""
+        for reader, array in zip(self._readers, self._mask_arrays(mask, self._readers)):
+            reader.mask = reader.mask | array
+        if self._is_mask_object(mask) and self._mask_reproducible:
+            self._mask_object = (mask if self._mask_object is None
+                                 else self._mask_object + mask)
+        else:
+            self._mask_object = None
+            self._mask_reproducible = False
+
+    def remove_masking(self):
+        """Unmask all points"""
+        for reader in self._readers:
+            reader.mask = np.zeros(reader.intensity.shape, dtype=bool)
+        self._mask_object = None
+        self._mask_reproducible = True
+
+    @staticmethod
+    def _is_mask_object(mask) -> bool:
+        from MJOLNIR.Data.Mask import MaskingObject # Mask.py imports this module
+        return isinstance(mask, MaskingObject)
+
+    def _mask_arrays(self, mask, readers: list[DataReader]) -> list[np.ndarray]:
+        """One boolean array per reader, checked against the shape of its data"""
+        if self._is_mask_object(mask):
+            subset = DataSet(instrument=self.instrument)
+            subset.reader_type = self.reader_type
+            subset._binning = self._binning
+            subset._readers = list(readers)
+            arrays = mask(subset)
+        elif isinstance(mask, (list, tuple)) or (
+                isinstance(mask, np.ndarray) and mask.dtype == object):
+            if len(mask) != len(readers):
+                raise ValueError(f'Got {len(mask)} masks for {len(readers)} data files')
+            arrays = list(mask)
+        else:
+            array = np.asarray(mask, dtype=bool)
+            shape = readers[0].intensity.shape if readers else ()
+            if array.shape == (len(readers), *shape): # One array per file, stacked
+                arrays = list(array)
+            else: # The same array for every file
+                arrays = [array] * len(readers)
+        result = []
+        for reader, array in zip(readers, arrays):
+            array = np.asarray(array, dtype=bool)
+            if array.shape != reader.intensity.shape:
+                raise ValueError(f'Mask of shape {array.shape} does not fit "{reader.file.name}" '
+                                 f'with data of shape {reader.intensity.shape}')
+            result.append(array)
+        if result and all(array.all() for array in result):
+            warnings.warn('The mask excludes every point')
+        return result
 
     # Contiguous arrays
 
