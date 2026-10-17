@@ -31,9 +31,11 @@ plots match the reference images next to it. Several items repeat ones further d
       rotate files into a common frame
 - [x] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
       (`convert_to_qxqy`, `convert_to_hkl`, `gather_q`; identical to the old code)
-- [ ] `cutQE` with its 1D cut algorithm
-- [ ] `cutQE` output compared with the old `DataSet` on the same data (before porting the
-      plots)
+- [x] `cutQE` with its 1D cut algorithm: pure functions `Cuts.cut_qe`, `Cuts.cut_1d`,
+      returning a `CutResult`
+- [ ] `ds.cut_qe` (and `ds.cut_1d`): gather the points and call `Cuts`
+- [x] `cutQE` output compared with the old `DataSet` on the same data (before porting the
+      plots): all columns identical for the milestone cut
 - [ ] `plotCutQE` (Q-E axes, colour limits)
 - [ ] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits)
 - [ ] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references
@@ -147,16 +149,18 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] `convertToQxQy`, `convertToHKL` (`convert_to_qxqy`, `convert_to_hkl`)
 
 ### Cuts
-- [ ] `cut1D`
+- [x] `cut1D` (`Cuts.cut_1d`; identical to the old code apart from the `Int_err` fix)
 - [ ] `cut1DE`
-- [ ] `cutQE`
+- [x] `cutQE` (`Cuts.cut_qe`; identical to the old code)
+- [ ] Cut options not ported yet: background subtraction, measurement errors (`I_err`),
+      `cutQE` smoothing and scaled energy, `ufit` output, `plotCoverage`
 - [ ] `cutQELine`
 - [ ] `cutELine`
 - [ ] `cutPowder`
 - [ ] `binData3D` (with `calculateGrid3D`, `calculateBins`)
 - [ ] `cutRaw1D`
 - [ ] `extractData` (raw selection by A4 / Ef)
-- [ ] Pandas output columns (`pdNaming`)
+- [x] Pandas output columns (`pdNaming`): `CutResult.COLUMNS`
 
 ### Plotting and interactive figures
 - [ ] `plotCut1D`
@@ -203,6 +207,10 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [x] Clean-up: Python 2 style (`super(Class, self)`, `== True/False`, `not x in`),
       commented-out code, wrong `lineMask` docstring, `MultiMask` copies of inherited
       methods, trailing whitespace
+
+## Cut bugs fixed in the port
+- [x] `cut1D` truncated `Int_err` to whole counts (column types one place out of line), and
+      stored `BinCount` as float
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
