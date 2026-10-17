@@ -16,7 +16,7 @@ plots match the reference images next to it. Several items repeat ones further d
       reference images
 - [x] Load the 12 CAMEA files into a `DataSet` (reader, factory, calibration, transform)
 - [x] Energy transfer, Qx/Qy, h/k/l, intensity, normalization per file
-- [ ] Default binning 8 for CAMEA, as the old conversion chose (the new `DataSet` uses 1)
+- [x] Default binning 8 for CAMEA, as the old conversion chose
 - [ ] Monitor and normalization spread to the shape of the data
 - [ ] CAMEA masks: first 2 pixels at binning 8, broken tubes
 - [ ] Combined data across files without masked points (the old `extractData()`), e.g. for
@@ -39,7 +39,7 @@ plots match the reference images next to it. Several items repeat ones further d
       checked against a synthetic file)
 - [x] `FlatconeDataReader`, `MarmotDataReader` (Marmot needs an external calibration table)
 - [x] `DataReaderFactory` with instrument ↔ reader type lookup
-- [x] Default binning when calibrating a single reader (largest possible)
+- [x] Default binning per reader type (`default_binning`: 8 for CAMEA, 1 otherwise)
 
 ### File handling
 - [x] Readers give a clear error when given the wrong kind of file
@@ -72,7 +72,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] Marmot: mask Ef < 1
 - [ ] Normalization spread over all scan steps (currently shape `(1, det, bins)`)
 - [ ] Detector/analyser selection (`dasel`) and the index calculation from it
-- [ ] Decide the `DataSet` default binning (now 1; the old default was the largest)
+- [x] `DataSet` default binning = the reader type's default binning
 
 ### Calibration and sample
 - [ ] `updateCalibration`: external normalisation tables, several binnings, `overwrite`

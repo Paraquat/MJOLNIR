@@ -51,7 +51,7 @@ class DataSet:
     the purposes of indexing and slicing."""
     instrument: InstrumentName | None
     reader_type: type[DataReader] | None
-    _binning: int
+    _binning: int | None # None: the default binning of the reader type
     _axis: int # The contiguous axis for AxisView
     _readers: list[DataReader]
 
@@ -62,9 +62,10 @@ class DataSet:
         self._reader_factory = DataReaderFactory()
         self.instrument = instrument
         self.reader_type = None
+        self._binning = None
         if instrument is not None:
             self.reader_type = self._reader_factory.get_reader_type(instrument)
-        self._binning = 1
+            self._binning = self.reader_type.default_binning
         self._axis = 0
         self._readers = []
         if files is not None:
@@ -89,12 +90,14 @@ class DataSet:
         if len(self) > 0 and not reader.sample == self.sample:
             raise ValueError(f'Sample of "{reader.file.name}" differs from the sample of '
                              f'"{self._readers[0].file.name}"')
-        if reader.calibration is None or reader.binning != self._binning:
-            reader.set_instrument_calibration(self._binning)
-            reader.transform()
         if self.reader_type is None:
             self.reader_type = type(reader)
             self.instrument = self._reader_factory.get_instrument(self.reader_type)
+        if self._binning is None:
+            self._binning = self.reader_type.default_binning
+        if reader.calibration is None or reader.binning != self._binning:
+            reader.set_instrument_calibration(self._binning)
+            reader.transform()
         self._readers.append(reader)
 
     def extend(self, items: DataFileLike | Iterable[DataFileLike]):

@@ -29,6 +29,7 @@ class DataReader(ABC):
 
     # Calibration: readers with one bin per analyser read it from a CSV table
     possible_binnings: list[int] = [1]
+    default_binning: int = 1
     calibration_file: str | None = None
     calibration_A4_sign: int = 1
 
@@ -101,9 +102,9 @@ class DataReader(ABC):
         return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
 
     def set_instrument_calibration(self, binning: int | None = None):
-        """Load the calibration for a binning (default: the largest possible)"""
+        """Load the calibration for a binning (default: the reader's default binning)"""
         if binning is None:
-            binning = max(self.possible_binnings)
+            binning = self.default_binning
         self.calibration = self.get_instrument_calibration(binning)
 
     def rebin(self, binning: int, shape: tuple, bounds: np.NDArray[np.int32]):

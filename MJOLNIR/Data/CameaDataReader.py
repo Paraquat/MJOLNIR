@@ -11,6 +11,7 @@ class CameaDataReader(NexusDataReader):
     n_analysers = 8
     n_detectors = 104
     instrument = "CAMEA"
+    default_binning = 8 # As chosen by the old DataFile conversion
     entry = 'entry'
 
     # CAMEA-specific hdf5 keys

@@ -188,13 +188,15 @@ def test_view_per_step_values(readers):
 def test_view_calibration(readers):
     dataset = DataSet(files=readers[:2])
     Ef = dataset.get_view(ArrayType.EF_CAL)
-    assert len(Ef) == 2 * 104 * 8 # Binning 1: 8 energies for each of 104 detectors
-    assert Ef[832,] == pytest.approx(readers[1].calibration.Ef[0])
-    assert dataset.get_view(ArrayType.BOUND_CAL).shape == (1664, 2)
+    # Default CAMEA binning 8: 8 energies x 8 bins for each of 104 detectors
+    assert len(Ef) == 2 * 104 * 8 * 8
+    assert Ef[6656,] == pytest.approx(readers[1].calibration.Ef[0])
+    assert dataset.get_view(ArrayType.BOUND_CAL).shape == (13312, 2)
 
 def test_set_binning():
     dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
-    assert dataset.get_view(ArrayType.QX).shape == (270, 104, 8)
+    assert [reader.binning for reader in dataset] == [8, 8] # Default CAMEA binning
+    assert dataset.get_view(ArrayType.QX).shape == (270, 104, 64)
     dataset.set_binning(3)
     # Data files are transformed again, so derived arrays follow the binning
     assert dataset.get_view(ArrayType.QX).shape == (270, 104, 24)
