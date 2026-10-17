@@ -41,6 +41,7 @@ class DataSet:
         self._readers = []
         self._mask_object = None
         self._mask_reproducible = True
+        self._use_default_mask = True
         if files is not None:
             self.extend(files)
 
@@ -77,6 +78,7 @@ class DataSet:
         if reader.calibration is None or reader.binning != self._binning:
             reader.set_instrument_calibration(self._binning)
             reader.transform()
+        reader.use_default_mask = self._use_default_mask
         if self._mask_object is not None and self._mask_reproducible:
             reader.mask = self._mask_arrays(self._mask_object, [reader])[0]
         self._readers.append(reader)
@@ -120,6 +122,7 @@ class DataSet:
             subset.extend(self._readers[index])
             subset._mask_object = self._mask_object
             subset._mask_reproducible = self._mask_reproducible
+            subset._use_default_mask = self._use_default_mask
             return subset
         try:
             return self._readers[index]
@@ -156,8 +159,22 @@ class DataSet:
     def mask(self) -> list[np.ndarray]:
         """Mask of each data file: True excludes a point. Can be set to a list of arrays (one
         per file), one array for every file, or a mask object from Mask.py. A mask object is
-        kept, and evaluated again when the binning changes or files are added"""
+        kept, and evaluated again when the binning changes or files are added.
+
+        What is set here is the user's mask: each file also excludes the points its
+        instrument cannot use (its default mask), unless use_default_mask is False"""
         return [reader.mask for reader in self._readers]
+
+    @property
+    def use_default_mask(self) -> bool:
+        """Whether the instruments' default masks (e.g. broken detectors) apply"""
+        return self._use_default_mask
+
+    @use_default_mask.setter
+    def use_default_mask(self, use: bool):
+        self._use_default_mask = use
+        for reader in self._readers:
+            reader.use_default_mask = use
 
     @mask.setter
     def mask(self, mask):
@@ -169,7 +186,7 @@ class DataSet:
     def append_mask(self, mask):
         """Mask more points, keeping those already masked. Takes the same input as mask"""
         for reader, array in zip(self._readers, self._mask_arrays(mask, self._readers)):
-            reader.mask = reader.mask | array
+            reader.user_mask = reader.user_mask | array
         if self._is_mask_object(mask) and self._mask_reproducible:
             self._mask_object = (mask if self._mask_object is None
                                  else self._mask_object + mask)
@@ -178,9 +195,9 @@ class DataSet:
             self._mask_reproducible = False
 
     def remove_masking(self):
-        """Unmask all points"""
+        """Remove the user's mask; the default masks stay (see use_default_mask)"""
         for reader in self._readers:
-            reader.mask = np.zeros(reader.intensity.shape, dtype=bool)
+            reader.user_mask = np.zeros(reader.intensity.shape, dtype=bool)
         self._mask_object = None
         self._mask_reproducible = True
 

@@ -51,6 +51,13 @@ class MarmotDataReader(NexusDataReader):
         mode = f.get(cls.nexus_keys['instrumentMode'])
         return mode is not None and mode[0].strip().lower() == b'marmot'
 
+    def default_mask(self) -> npt.NDArray[np.bool_]:
+        """The general default mask, and pixels with calibrated Ef below 1 meV (as the old
+        loadMarmot did)"""
+        bins = self.n_analysers * self.binning
+        low_Ef = self.calibration.Ef.reshape(self.n_detectors, bins) < 1
+        return super().default_mask() | np.broadcast_to(low_Ef, self.intensity.shape)
+
     def get_scanned_variable(self, label: str) -> npt.NDArray[np.float64]:
         """Values per step of a variable logged during the scan, e.g. 'A3' or 'Monitor1'"""
         labels = [x.decode() for x in self.getValue('scannedLabels')]

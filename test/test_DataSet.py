@@ -213,7 +213,11 @@ def test_view_empty():
 
 @pytest.fixture
 def masked_dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+    # These tests are about the user's mask, so the instrument's default mask is switched off
+    # (it is tested in test_DefaultMask.py)
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    dataset.use_default_mask = False
+    return dataset
 
 circle = Mask.circleMask(center=[-1, 0], radius=0.25, coordinates=['h', 'k'])
 low_energy = Mask.lineMask(start=0.0, end=0.5, coordinates='energy')

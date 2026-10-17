@@ -18,13 +18,17 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] Energy transfer, qx/qy, h/k/l, intensity, normalization per file
 - [x] Default binning 8 for CAMEA, as the old conversion chose
 - [ ] Monitor and normalization spread to the shape of the data
-- [ ] CAMEA masks: first 2 pixels at binning 8, broken tubes
+- [x] CAMEA masks: first 2 pixels at binning 8, broken tubes (default masks, kept apart
+      from the user's mask)
 - [ ] Combined data across files without masked points (the old `extractData()`), e.g. for
       the largest energy transfer
 - [ ] `magneticField` (used in the plot title)
 - [ ] Subtraction of two data sets (by measured monitor)
+- [ ] One sample per file in the `DataSet` (needed to rotate files into a common frame)
 - [ ] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
 - [ ] `cutQE` with its 1D cut algorithm
+- [ ] `cutQE` output compared with the old `DataSet` on the same data (before porting the
+      plots)
 - [ ] `plotCutQE` (Q-E axes, colour limits)
 - [ ] `plotQPlane` (Q-plane axes from `RLUAxes`, colour limits)
 - [ ] Script switched to `from MJOLNIR.Data import DataSet`; plots match the references
@@ -67,9 +71,10 @@ plots match the reference images next to it. Several items repeat ones further d
 ### Conversion output
 - [ ] Monitor spread to the shape of the data
 - [x] Default mask (nothing masked; reset by `transform()`)
-- [ ] CAMEA binning 8: mask the first 2 pixels
-- [ ] CAMEA: mask broken tubes (NaN calibration A4), with a message
-- [ ] Marmot: mask Ef < 1
+- [x] CAMEA binning 8: mask the first 2 pixels
+- [x] CAMEA: mask broken tubes (NaN calibration A4), with a message (general rule for all
+      instruments: any pixel with a NaN A4, Ef or amplitude)
+- [x] Marmot: mask Ef < 1
 - [ ] Normalization spread over all scan steps (currently shape `(1, det, bins)`)
 - [ ] Detector/analyser selection (`dasel`) and the index calculation from it
 - [x] `DataSet` default binning = the reader type's default binning

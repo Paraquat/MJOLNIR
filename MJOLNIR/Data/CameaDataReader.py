@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.DataReader import InstrumentCalibration
@@ -56,3 +57,11 @@ class CameaDataReader(NexusDataReader):
         bound = np.array(self.get(hdf_key + 'boundaries'))
         self.binning = binning
         return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
+
+    def default_mask(self) -> npt.NDArray[np.bool_]:
+        """The general default mask, and at binning 8 the first two energy bins (as the old
+        DataFile conversion did)"""
+        mask = super().default_mask()
+        if self.binning == 8:
+            mask[:, :, :2] = True
+        return mask

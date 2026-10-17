@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from abc import ABC
 from dataclasses import dataclass
@@ -54,7 +55,10 @@ class DataReader(ABC):
     h: npt.NDArray[np.float64]
     k: npt.NDArray[np.float64]
     l: npt.NDArray[np.float64]
-    mask: npt.NDArray[np.bool_] # True = point excluded, shape of intensity
+    # Masks, shape of intensity, True = point excluded: user_mask is set by the user,
+    # _default_mask by the instrument (default_mask()); mask combines them
+    user_mask: npt.NDArray[np.bool_]
+    use_default_mask: bool = True
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
@@ -76,7 +80,9 @@ class DataReader(ABC):
         self.h = None
         self.k = None
         self.l = None
-        self.mask = None
+        self.user_mask = None
+        self._default_mask = None
+        self.masked_detectors = [] # Detectors excluded by the default mask
 
     @classmethod
     def can_read(cls, filepath: Path) -> bool:
@@ -177,5 +183,39 @@ class DataReader(ABC):
             UBINV,[np.rad2deg(A3), np.rad2deg(A4Mean)], Ei, EfMean)
         self.h, self.k, self.l = np.swapaxes(np.swapaxes(HKL, 1, 2), 0, 3)
         self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)
-        # Nothing masked: the shape follows the binning, so a new transform resets it
-        self.mask = np.zeros(self.intensity.shape, dtype=bool)
+        # Masks follow the binning, so a new transform rebuilds them
+        self.user_mask = np.zeros(self.intensity.shape, dtype=bool)
+        self._default_mask = self.default_mask()
+        self._report_masked_detectors()
+
+    @property
+    def mask(self) -> npt.NDArray[np.bool_] | None:
+        """Points to exclude: the user's mask, and the default mask unless use_default_mask
+        is False"""
+        if self.user_mask is None:
+            return None
+        if self.use_default_mask and self._default_mask is not None:
+            return self.user_mask | self._default_mask
+        return self.user_mask
+
+    @mask.setter
+    def mask(self, mask):
+        # Sets the user's mask; the default mask always comes from default_mask()
+        self.user_mask = np.asarray(mask, dtype=bool)
+
+    def default_mask(self) -> npt.NDArray[np.bool_]:
+        """Points that cannot be used, for every instrument: pixels with a NaN in their
+        calibration (A4, Ef or amplitude). Subclasses add instrument-specific rules"""
+        bins = self.n_analysers * self.binning
+        invalid = (np.isnan(self.calibration.A4) | np.isnan(self.calibration.Ef)
+                   | np.isnan(self.calibration.amp)).reshape(self.n_detectors, bins)
+        return np.broadcast_to(invalid, self.intensity.shape).copy()
+
+    def _report_masked_detectors(self):
+        """Warn once about detectors the default mask excludes completely"""
+        excluded = self._default_mask.all(axis=(0, 2))
+        detectors = [int(d) for d in np.flatnonzero(excluded)]
+        if detectors and detectors != self.masked_detectors:
+            warnings.warn(f'Detectors {", ".join(map(str, detectors))} of "{self.file.name}" are '
+                          'masked: their calibration is missing (NaN)')
+        self.masked_detectors = detectors
