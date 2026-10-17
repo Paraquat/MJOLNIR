@@ -26,7 +26,8 @@ plots match the reference images next to it. Several items repeat ones further d
       `maskIndices` on the 12 milestone files
 - [x] `magneticField` (used in the plot title): `reader.environment.magnetic_field`,
       `ds.get_view(ArrayType.MAGNETIC_FIELD)`
-- [ ] Subtraction of two data sets (by measured monitor)
+- [x] Subtraction of two data sets (by measured monitor): `ds1 - ds2`, a frozen DataSet
+      sharing all but intensity and masks with `ds1`; milestone plots pixel-identical
 - [x] Expose each file's sample (`ds.samples`; every reader already has its own), needed to
       rotate files into a common frame
 - [x] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
@@ -62,7 +63,8 @@ plots match the reference images next to it. Several items repeat ones further d
       synthetic file
 - [ ] Read converted `.nxs` (NXsqom) files
 - [ ] McStas simulated files
-- [ ] Copy a reader (old copy constructor `DataFile(other)`, used by subtraction)
+- [x] Copy a reader (old copy constructor `DataFile(other)`, used by subtraction): shallow
+      copies in `__sub__`
 - [ ] `createEmptyDataFile`: simulated file for planning/resolution
 - [ ] `shallowRead`: quick read of a few parameters (history tool)
 - [ ] Clear error for files without data
@@ -143,7 +145,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `backgroundSubtraction` in cuts
 
 ### Arithmetic and normalisation
-- [ ] Monitor-scaled subtraction (`__sub__`)
+- [x] Monitor-scaled subtraction (`__sub__`): by measured monitor per point, not preset
 - [ ] `absoluteNormalize` / `undoAbsoluteNormalize`
 - [ ] `symmetrize`
 

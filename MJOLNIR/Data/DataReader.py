@@ -75,6 +75,10 @@ class DataReader(ABC):
     user_mask: npt.NDArray[np.bool_]
     use_default_mask: bool = True
 
+    # Frozen readers hold derived data (e.g. a difference of two data sets): transforming them
+    # again would rebuild intensity from the raw counts
+    frozen: bool = False
+
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
             raise AttributeError(f'File path "{filepath}" does not exist')
@@ -127,8 +131,14 @@ class DataReader(ABC):
         self.binning = binning
         return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
 
+    def _check_not_frozen(self, action: str):
+        if self.frozen:
+            raise ValueError(f'Cannot {action} "{self.file.name}": it holds derived data (e.g. a '
+                             'difference of data sets). Change the original data instead')
+
     def set_instrument_calibration(self, binning: int | None = None):
         """Load the calibration for a binning (default: the reader's default binning)"""
+        self._check_not_frozen('recalibrate')
         if binning is None:
             binning = self.default_binning
         self.calibration = self.get_instrument_calibration(binning)
@@ -173,6 +183,7 @@ class DataReader(ABC):
 
 
     def transform(self):
+        self._check_not_frozen('transform')
         A4 = np.deg2rad(self.calibration.A4)
         A4 = A4.reshape(self.n_detectors, self.binning * self.n_analysers, order='C')
         pixelEdge = self.calibration.bound.reshape(

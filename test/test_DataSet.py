@@ -371,3 +371,63 @@ def test_gather_q_aligned_to_lattice():
     aligned = np.array([np.asarray(aligned_x)[:5], np.asarray(aligned_y)[:5]]).T
     assert np.allclose(convert_to_hkl(dataset.sample, points),
                        convert_to_hkl(align_to_lattice(dataset.sample), aligned))
+
+# Subtraction
+
+def two_sets(count=2):
+    return (DataSet(InstrumentName.CAMEA, files=files[:count]),
+            DataSet(InstrumentName.CAMEA, files=files[:count]))
+
+def test_subtraction_of_same_data():
+    first, second = two_sets()
+    difference = first - second
+    assert len(difference) == 2 and difference.frozen
+    assert all(np.all(reader.intensity[~reader.mask] == 0) for reader in difference)
+    # Shares everything with the first set but intensity and masks
+    assert difference[0].qx is first[0].qx and difference[0].sample is first[0].sample
+    assert difference[0].intensity is not first[0].intensity
+    difference.mask = Mask.lineMask(start=0.0, end=0.5, coordinates='energy')
+    assert not first[0].user_mask.any() # Masking the difference leaves the original alone
+
+def test_subtraction_scales_by_monitor():
+    first, second = two_sets(1)
+    second[0].monitor = second[0].monitor*2 # Same counts for twice the monitor
+    difference = first - second
+    assert np.allclose(difference[0].intensity, first[0].intensity/2)
+
+def test_subtraction_masks():
+    first, second = two_sets(1)
+    extra = np.zeros(second[0].intensity.shape, dtype=bool)
+    extra[:, 3] = True
+    second.mask = extra # Masked in the second set only
+    second[0].monitor = second[0].monitor.copy()
+    second[0].monitor[0] = 0 # No monitor: nothing to scale
+    difference = first - second
+    assert difference[0].mask[:, 3].all()
+    assert difference[0].mask[0].all()
+    assert not first[0].user_mask[:, 3].any() # The first set is unchanged
+
+def test_subtraction_is_frozen():
+    first, second = two_sets()
+    difference = first - second
+    with pytest.raises(ValueError, match='derived data'):
+        difference.set_binning(3)
+    with pytest.raises(ValueError, match='derived data'):
+        difference.append(files[2])
+    with pytest.raises(ValueError, match='derived data'):
+        difference[0].transform()
+    assert difference[0:1].frozen # Slices too
+    # Rebinning the original does not change the difference
+    first.set_binning(3)
+    assert first[0].intensity.shape == (135, 104, 24)
+    assert difference[0].intensity.shape == (135, 104, 64)
+
+def test_subtraction_mismatch():
+    first, second = two_sets()
+    with pytest.raises(ValueError): # Number of files
+        first - DataSet(InstrumentName.CAMEA, files=files[:1])
+    second.set_binning(3)
+    with pytest.raises(ValueError): # Binning
+        first - second
+    with pytest.raises(TypeError):
+        first - 1

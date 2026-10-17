@@ -1,3 +1,4 @@
+import copy
 import warnings
 from pathlib import Path
 from operator import attrgetter
@@ -43,12 +44,14 @@ class DataSet:
         self._mask_object = None
         self._mask_reproducible = True
         self._use_default_mask = True
+        self.frozen = False # A difference of data sets: cannot be rebinned or extended
         if files is not None:
             self.extend(files)
 
     def set_binning(self, binning: int):
         """Recalibrate and transform all data files with a new binning. A mask set from a mask
         object is evaluated again; masks set from arrays no longer fit and are removed"""
+        self._check_not_frozen('rebin')
         self._binning = binning
         for reader in self._readers:
             reader.set_instrument_calibration(binning)
@@ -64,6 +67,7 @@ class DataSet:
     def append(self, item: DataFileLike):
         """Add a data reader, or read a file with the instrument of the DataSet. Data files are
         calibrated with the binning of the DataSet and transformed when added"""
+        self._check_not_frozen('add data files to')
         reader = self._to_reader(item)
         if self.reader_type is not None and type(reader) is not self.reader_type:
             raise TypeError(f'Cannot add {type(reader).__name__} "{reader.file.name}" to a '
@@ -112,6 +116,51 @@ class DataSet:
     def number_of_files(self) -> int:
         return len(self._readers)
 
+    def _check_not_frozen(self, action: str):
+        if self.frozen:
+            raise ValueError(f'Cannot {action} a DataSet holding derived data (a difference of '
+                             'data sets). Change the original data sets and subtract again')
+
+    def __sub__(self, other: 'DataSet') -> 'DataSet':
+        """Difference of two data sets with matching data files (same reader type, binning,
+        number of files and data shapes). Per point, the counts of this set minus those of
+        other scaled to this set's monitor: I1 - I2 * M1/M2.
+
+        The result holds shallow copies of this set's readers: each has its own intensity and
+        masks, and shares everything else (counts, coordinates, calibration, sample) with this
+        set. Points masked in either set, or without monitor in other, are masked. The result
+        is frozen: it cannot be rebinned or extended (rebin the originals and subtract again)"""
+        if not isinstance(other, DataSet):
+            return NotImplemented
+        if other.reader_type is not self.reader_type:
+            raise ValueError(f'Cannot subtract a DataSet of {getattr(other.reader_type, "__name__", None)} '
+                             f'from one of {getattr(self.reader_type, "__name__", None)}')
+        if len(other) != len(self):
+            raise ValueError(f'Cannot subtract a DataSet of {len(other)} data files from one of '
+                             f'{len(self)}')
+        if other._binning != self._binning:
+            raise ValueError(f'Cannot subtract data at binning {other._binning} from data at '
+                             f'binning {self._binning}')
+        readers = []
+        for mine, theirs in zip(self._readers, other._readers):
+            if mine.intensity.shape != theirs.intensity.shape:
+                raise ValueError(f'"{theirs.file.name}" ({theirs.intensity.shape}) does not match '
+                                 f'"{mine.file.name}" ({mine.intensity.shape})')
+            difference = copy.copy(mine) # Shares all arrays; intensity and masks replaced below
+            with np.errstate(divide='ignore', invalid='ignore'):
+                difference.intensity = mine.intensity - theirs.intensity*(mine.monitor/theirs.monitor)
+            difference.user_mask = mine.user_mask | theirs.mask | ~np.isfinite(difference.intensity)
+            difference.frozen = True
+            readers.append(difference)
+        result = DataSet(instrument=self.instrument)
+        result.reader_type = self.reader_type
+        result._binning = self._binning
+        result._use_default_mask = self._use_default_mask
+        result._readers = readers
+        result._mask_reproducible = False # The masks are arrays now
+        result.frozen = True
+        return result
+
     def __len__(self) -> int:
         return len(self._readers)
 
@@ -124,6 +173,7 @@ class DataSet:
             subset._mask_object = self._mask_object
             subset._mask_reproducible = self._mask_reproducible
             subset._use_default_mask = self._use_default_mask
+            subset.frozen = self.frozen
             return subset
         try:
             return self._readers[index]
