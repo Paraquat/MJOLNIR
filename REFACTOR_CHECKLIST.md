@@ -27,8 +27,10 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] `magneticField` (used in the plot title): `reader.environment.magnetic_field`,
       `ds.get_view(ArrayType.MAGNETIC_FIELD)`
 - [ ] Subtraction of two data sets (by measured monitor)
-- [ ] One sample per file in the `DataSet` (needed to rotate files into a common frame)
-- [ ] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
+- [x] Expose each file's sample (`ds.samples`; every reader already has its own), needed to
+      rotate files into a common frame
+- [x] `convertToQxQy`, `convertToHKL`, and rotating files into the first file's frame
+      (`convert_to_qxqy`, `convert_to_hkl`, `gather_q`; identical to the old code)
 - [ ] `cutQE` with its 1D cut algorithm
 - [ ] `cutQE` output compared with the old `DataSet` on the same data (before porting the
       plots)
@@ -122,7 +124,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`
       (`gather`; boundaries are `view.offsets[1:]`)
 - [ ] `I_err`
-- [ ] Rotate files into the first file's frame when samples differ slightly (`rlu`)
+- [x] Rotate files into the first file's frame when samples differ slightly (`rlu`):
+      `gather_q`
 
 ### Masking
 - [x] `mask` property, `append_mask`, `remove_masking` (snake case, like the rest of the
@@ -141,7 +144,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `symmetrize`
 
 ### Coordinates
-- [ ] `convertToQxQy`, `convertToHKL`
+- [x] `convertToQxQy`, `convertToHKL` (`convert_to_qxqy`, `convert_to_hkl`)
 
 ### Cuts
 - [ ] `cut1D`

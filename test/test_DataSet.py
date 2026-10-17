@@ -317,3 +317,41 @@ def test_gather_errors():
         dataset.gather(ArrayType.A3)
     with pytest.raises(ValueError):
         DataSet(InstrumentName.CAMEA).gather(ArrayType.QX)
+
+# Samples and coordinates
+
+def test_samples():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:3])
+    assert len(dataset.samples) == 3
+    assert all(sample is reader.sample for sample, reader in zip(dataset.samples, dataset))
+    assert dataset.sample is dataset.samples[0]
+
+def test_coordinate_conversion():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:1])
+    hkl = np.array([[-0.5, 1.5, 0.0], [1.0, 0.0, 0.0]])
+    qxqy = dataset.convert_to_qxqy(hkl)
+    assert qxqy.shape == (2, 2)
+    assert np.allclose(dataset.convert_to_qxqy(hkl[1]), qxqy[1]) # A single point
+    assert np.allclose(dataset.convert_to_hkl(qxqy), hkl) # Round trip
+    assert np.linalg.norm(qxqy[1]) == pytest.approx(2 * np.pi / dataset.sample.a, rel=1e-6)
+    with pytest.raises(AttributeError):
+        dataset.convert_to_qxqy([1, 0])
+    with pytest.raises(AttributeError):
+        dataset.convert_to_hkl([1, 0, 0])
+
+def test_gather_q():
+    from MJOLNIR import _tools
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    qx, qy = dataset.gather(ArrayType.QX), dataset.gather(ArrayType.QY)
+    # Same orientation in both files: nothing to rotate
+    rotated_qx, rotated_qy = dataset.gather_q()
+    assert np.allclose(np.asarray(rotated_qx), np.asarray(qx))
+    assert rotated_qx.offsets == qx.offsets
+    # Give the second file another orientation: its points are rotated by the difference
+    second = dataset.samples[1]
+    second.RotMat = _tools.Rot(second.theta + 10) # Degrees, as Sample uses it
+    rotated_qx, rotated_qy = dataset.gather_q()
+    expected = _tools.Rot(10) @ np.array([qx.arrays[1], qy.arrays[1]])
+    assert np.allclose(rotated_qx.arrays[1], expected[0])
+    assert np.allclose(rotated_qy.arrays[1], expected[1])
+    assert np.allclose(rotated_qx.arrays[0], qx.arrays[0]) # The first file defines the frame

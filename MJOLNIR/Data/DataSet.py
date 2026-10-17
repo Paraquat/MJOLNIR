@@ -13,6 +13,23 @@ from MJOLNIR.Data.InstrumentName import InstrumentName
 # Anything that can be added to a DataSet: a reader, or the path of a file to read
 DataFileLike = DataReader | str | Path
 
+def convert_to_qxqy(sample, hkl) -> np.ndarray:
+    """Convert HKL point(s), shape (3,) or (..., 3), to Qx, Qy with the UB matrix of sample"""
+    hkl = np.asarray(hkl)
+    if hkl.shape[-1] != 3:
+        raise AttributeError(f'Provided HKL point is not 3D. Received: {hkl}')
+    qx, qy, qz = np.einsum('ij,...j->i...', sample.orientationMatrix, hkl)
+    return np.array([qx, qy]).T
+
+def convert_to_hkl(sample, qxqy) -> np.ndarray:
+    """Convert Qx, Qy point(s), shape (2,) or (..., 2), to HKL with the UB matrix of sample"""
+    qxqy = np.asarray(qxqy)
+    if qxqy.shape[-1] != 2:
+        raise AttributeError(f'Provided QxQy point is not 2D. Received: {qxqy}')
+    qxqyqz = np.concatenate([qxqy, np.zeros((*qxqy.shape[:-1], 1))], axis=-1)
+    h, k, l = np.einsum('ij,...j->i...', sample.orientationMatrixINV, qxqyqz)
+    return np.array([h, k, l]).T
+
 class DataSet:
     """A container of DataReader objects for different scans, measured on the same sample and
     all read by the same type of data reader. Data members of different scans can be returned
@@ -148,10 +165,39 @@ class DataSet:
 
     @property
     def sample(self):
-        """The sample shared by all data files"""
+        """The sample of the first data file, which defines the frame of the DataSet"""
         if len(self) == 0:
             return None
         return self._readers[0].sample
+
+    @property
+    def samples(self) -> list:
+        """The sample of each data file: the same crystal, but each with its own orientation"""
+        return [reader.sample for reader in self._readers]
+
+    # Coordinates
+
+    def convert_to_qxqy(self, hkl) -> np.ndarray:
+        """Convert HKL point(s) to Qx, Qy in the frame of the DataSet (its first file)"""
+        return convert_to_qxqy(self.sample, hkl)
+
+    def convert_to_hkl(self, qxqy) -> np.ndarray:
+        """Convert Qx, Qy point(s) in the frame of the DataSet (its first file) to HKL"""
+        return convert_to_hkl(self.sample, qxqy)
+
+    def rotations(self) -> list[np.ndarray]:
+        """2x2 matrix per data file that rotates its Qx, Qy into the frame of the first file"""
+        first = self.sample.RotMat
+        return [np.dot(first.T, sample.RotMat) for sample in self.samples]
+
+    def gather_q(self) -> tuple[AxisView, AxisView]:
+        """Qx and Qy of the unmasked points (as gather), with each data file rotated into the
+        frame of the first, so that the same HKL has the same Qx, Qy in every file"""
+        qx, qy = self.gather(ArrayType.QX), self.gather(ArrayType.QY)
+        rotated = [np.einsum('ij,j...->i...', rotation, np.array([x, y]))
+                   for rotation, x, y in zip(self.rotations(), qx.arrays, qy.arrays)]
+        return (AxisView([r[0] for r in rotated], axis = 0),
+                AxisView([r[1] for r in rotated], axis = 0))
 
     # Masking
 
