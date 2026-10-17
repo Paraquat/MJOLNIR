@@ -184,9 +184,12 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [x] `boxMask` without `corner4` cannot be cloned (NaN corners), so `-box` etc. fail
 - [x] `RotationMatrix3D` without an axis crashes (`np.eye((3,3))`)
 - [ ] `indexMask` / `CurratAxeMask` `plot` raise, so plotting combinations containing them fails
-- [ ] `test/Mask.py` is not collected by pytest, and defines `test_CurratAxeMask` twice
-      (it passes in full when run directly; regression tests for the fixed bugs are in
+- [x] `test/Mask.py` is not collected by pytest, and defines `test_CurratAxeMask` twice
+      (renamed to `test/test_Mask.py`; regression tests for the fixed bugs are in
       `test/test_MaskBehaviour.py`)
+- [x] Clean-up: Python 2 style (`super(Class, self)`, `== True/False`, `not x in`),
+      commented-out code, wrong `lineMask` docstring, `MultiMask` copies of inherited
+      methods, trailing whitespace
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
