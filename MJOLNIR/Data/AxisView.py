@@ -7,13 +7,20 @@ import numpy.typing as npt
 
 FloatArray = npt.NDArray[np.float64]
 
+def normalize_axis_index(axis: int, ndim: int) -> int:
+    """Turn a possibly negative axis into a positive one (numpy's own helper moved between
+    numpy 1.x and 2.x)"""
+    if not -ndim <= axis < ndim:
+        raise np.exceptions.AxisError(axis, ndim)
+    return axis % ndim
+
 class AxisView(Sequence[FloatArray]):
     """Take a container of numpy float arrays and return a view that is
     concatenated along the given axis. Use bisection to find elements faster"""
 
     def __init__(self, arrays: list[FloatArray], axis: int = 0) -> None:
         self._arrays = arrays
-        self._axis = np._core.numeric.normalize_axis_index(axis, arrays[0].ndim)
+        self._axis = normalize_axis_index(axis, arrays[0].ndim)
 
         self._offsets: list[int] = []
         self._length = 0
@@ -22,7 +29,7 @@ class AxisView(Sequence[FloatArray]):
     
 
         for array in arrays:
-            normalized_axis = np._core.numeric.normalize_axis_index(axis, array.ndim)
+            normalized_axis = normalize_axis_index(axis, array.ndim)
             remaining_shape = (
                 array.shape[:normalized_axis] + array.shape[normalized_axis + 1:])
             if (remaining_shape != self._remaining_shape):

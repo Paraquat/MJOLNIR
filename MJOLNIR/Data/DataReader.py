@@ -48,11 +48,10 @@ class DataReader(ABC):
     normalization: np.NDArray[np.float64]
     energy: np.NDArray[np.float64]
     Qx: np.NDArray[np.float64]
-    Qx: np.NDArray[np.float64]
+    Qy: np.NDArray[np.float64]
     h: np.NDArray[np.float64]
     k: np.NDArray[np.float64]
     l: np.NDArray[np.float64]
-    energy: np.NDArray[np.float64]
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
@@ -71,7 +70,6 @@ class DataReader(ABC):
         self.h = None
         self.k = None
         self.l = None
-        self.energy = None
 
     def get_instrument_calibration(self, binning: int) -> InstrumentCalibration:
         """Read the calibration table (CSV) of instruments with one bin per analyser"""
@@ -164,5 +162,4 @@ class DataReader(ABC):
         HKL, self.Qx, self.Qy = TasUBlib.calcTasQH(
             UBINV,[np.rad2deg(A3), np.rad2deg(A4Mean)], Ei, EfMean)
         self.h, self.k, self.l = np.swapaxes(np.swapaxes(HKL, 1, 2), 0, 3)
-        self.energy = Ei - EfMean
         self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)

@@ -3,18 +3,26 @@ import pytest
 import numpy as np
 from pathlib import Path
 
-from MJOLNIR.Data.DataSet import DataSet
-from MJOLNIR.Data.DataSet import ArrayType
+from MJOLNIR.Data.DataSet import DataSet, ArrayType
+from MJOLNIR.Data.CameaDataReader import CameaDataReader
+from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-def test_dataset():
-    data_path = Path('/home/zamaan/Projects/bambus')
-    files = data_path.glob("camea2024*.hdf")
-    data_files = sorted(list(files))
+data_path = Path(__file__).parent.parent / 'sampledata'
+files = sorted(data_path.glob('camea2024*.hdf'))
 
+@pytest.fixture(scope="module") # Read the files: common across all test functions here
+def readers():
+    return [CameaDataReader(f) for f in files]
+
+def names(dataset):
+    return [reader.file.name for reader in dataset]
+
+
+def test_dataset():
     dataset = DataSet(InstrumentName.CAMEA)
     dataset.set_binning(3)
-    dataset.add_files(data_files)
+    dataset.add_files(files)
     assert dataset.number_of_files() == 8
     first_reader = dataset._readers[0]
     second_reader = dataset._readers[1]
@@ -39,3 +47,161 @@ def test_dataset():
     # contiguity
     assert h_view[134, 0, 0] == pytest.approx(ref_h_1)
     assert h_view[135, 0, 0] == pytest.approx(ref_h_2)
+
+def test_create_from_paths():
+    dataset = DataSet(files=files[:3], instrument=InstrumentName.CAMEA)
+    assert len(dataset) == 3
+    assert all(isinstance(reader, CameaDataReader) for reader in dataset)
+    assert names(dataset) == \
+        ['camea2024n001486.hdf', 'camea2024n001487.hdf', 'camea2024n001488.hdf']
+    assert dataset.sample.a == pytest.approx(5.34993, abs=1e-5)
+
+def test_create_from_readers(readers):
+    assert len(DataSet()) == 0
+    assert DataSet().sample is None
+    assert names(DataSet(files=readers[0])) == ['camea2024n001486.hdf']
+    dataset = DataSet(files=readers)
+    assert len(dataset) == 8
+    assert dataset[0] is readers[0]
+
+def test_path_needs_instrument():
+    with pytest.raises(ValueError):
+        DataSet(files=files[0])
+    with pytest.raises(TypeError):
+        DataSet(files=[42])
+
+def test_indexing(readers):
+    dataset = DataSet(files=readers[:4])
+    assert dataset[-1] is readers[3]
+    with pytest.raises(IndexError):
+        dataset[4]
+    subset = dataset[1:3]
+    assert isinstance(subset, DataSet)
+    assert names(subset) == ['camea2024n001487.hdf', 'camea2024n001488.hdf']
+    assert names(reversed(dataset)) == names(dataset)[::-1]
+    assert repr(dataset).startswith('DataSet([camea2024n001486.hdf, ')
+
+def test_nested_iteration(readers):
+    dataset = DataSet(files=readers[:3])
+    pairs = [(a.file.name, b.file.name) for a in dataset for b in dataset]
+    assert len(pairs) == 9
+
+def test_append_extend_delete(readers):
+    dataset = DataSet(files=readers[:2], instrument=InstrumentName.CAMEA)
+    dataset.append(readers[2])
+    dataset.append(files[3]) # Paths are read with the data set's instrument
+    dataset.extend(readers[4:6])
+    assert len(dataset) == 6
+    assert isinstance(dataset[3], CameaDataReader)
+    del dataset[0]
+    del dataset[-1]
+    assert names(dataset) == [f.name for f in files[1:5]]
+    del dataset[1:3]
+    assert names(dataset) == [files[1].name, files[4].name]
+    with pytest.raises(IndexError):
+        del dataset[2]
+
+def test_sample_must_match(readers):
+    dataset = DataSet(files=readers[:1])
+    other = CameaDataReader(files[1])
+    other.sample = DataReader.sample_from_reflections(
+        [4.0, 4.0, 4.0, 90, 90, 90], np.array([1, 0, 0]), np.array([0, 1, 0]))
+    with pytest.raises(ValueError):
+        dataset.append(other)
+    assert len(dataset) == 1
+
+class OtherReader(CameaDataReader):
+    """A different reader type for the same files"""
+
+def test_single_reader_type(readers):
+    dataset = DataSet(files=readers[:2])
+    assert dataset.reader_type is CameaDataReader
+    # Instrument is taken from the reader type, so paths can be added
+    assert dataset.instrument == InstrumentName.CAMEA
+    dataset.append(files[2])
+    with pytest.raises(TypeError):
+        dataset.append(OtherReader(files[3]))
+    assert len(dataset) == 3
+
+    with pytest.raises(TypeError):
+        DataSet(files=[readers[0], OtherReader(files[1])])
+    with pytest.raises(TypeError):
+        DataSet(files=OtherReader(files[0]), instrument=InstrumentName.CAMEA)
+    with pytest.raises(TypeError):
+        DataSet(files=readers[0], instrument=InstrumentName.BAMBUS)
+
+    empty = DataSet(instrument=InstrumentName.CAMEA)
+    assert empty.reader_type is CameaDataReader
+    assert dataset[5:].reader_type is CameaDataReader
+
+    other = DataSet(files=[OtherReader(f) for f in files[:2]])
+    assert other.reader_type is OtherReader
+    assert other.instrument is None # Not registered with the factory
+    with pytest.raises(ValueError):
+        other.append(files[2])
+
+def test_sorting(readers):
+    dataset = DataSet(files=readers)
+    order = dataset.arg_auto_sort()
+    # Same order as the old DataSet.argAutoSort for these files
+    assert list(order) == [1, 0, 5, 4, 2, 3, 6, 7]
+    dataset.auto_sort()
+    assert names(dataset) == [files[i].name for i in order]
+    Ei = [np.round(reader.Ei[0], 1) for reader in dataset]
+    assert Ei == sorted(Ei)
+
+    by_A4 = DataSet(files=readers)
+    by_A4.auto_sort(key=lambda reader: (reader.A4[0],))
+    assert [reader.A4[0] for reader in by_A4] == sorted(reader.A4[0] for reader in readers)
+
+def test_sort_to(readers):
+    dataset = DataSet(files=readers)
+    other = DataSet(files=readers[::-1])
+    order = dataset.arg_sort_to(other)
+    dataset.apply_sorting(order)
+    assert names(dataset) == names(other)
+    with pytest.raises(ValueError):
+        dataset.apply_sorting([0, 0, 1, 2, 3, 4, 5, 6])
+
+def test_view_per_file_values(readers):
+    dataset = DataSet(files=readers)
+    # A4 holds one value per file
+    A4 = dataset.get_view(ArrayType.A4)
+    assert len(A4) == 8
+    assert A4[1,] == pytest.approx(readers[1].A4[0])
+    assert [a4 for a4 in A4] == pytest.approx([reader.A4[0] for reader in readers])
+
+def test_view_per_step_values(readers):
+    dataset = DataSet(files=readers[:3])
+    monitor = dataset.get_view(ArrayType.MONITOR1)
+    assert monitor.shape == (405,)
+    # Entry 135 is the first scan step of the second file
+    assert monitor[134,] == readers[0].monitor1[-1]
+    assert monitor[135,] == readers[1].monitor1[0]
+    assert monitor[-1,] == readers[2].monitor1[-1]
+    assert np.array_equal(monitor[130:140,], np.concatenate([readers[0].monitor1[130:],
+                                                            readers[1].monitor1[:5]]))
+    counts = dataset.get_view(ArrayType.COUNTS)
+    assert counts.shape == (405, 104, 1024)
+    assert counts[135, 0, 93] == readers[1].counts[0, 0, 93] == 1
+
+def test_view_calibration(readers):
+    dataset = DataSet(files=readers[:2])
+    Ef = dataset.get_view(ArrayType.EF_CAL)
+    assert len(Ef) == 2 * 104 * 8 # Binning 1: 8 energies for each of 104 detectors
+    assert Ef[832,] == pytest.approx(readers[1].calibration.Ef[0])
+    assert dataset.get_view(ArrayType.BOUND_CAL).shape == (1664, 2)
+
+def test_set_binning():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    assert dataset.get_view(ArrayType.QX).shape == (270, 104, 8)
+    dataset.set_binning(3)
+    # Data files are transformed again, so derived arrays follow the binning
+    assert dataset.get_view(ArrayType.QX).shape == (270, 104, 24)
+    assert dataset.get_view(ArrayType.INTENSITY).shape == (270, 104, 24)
+    dataset.append(CameaDataReader(files[2])) # Added files get the binning of the DataSet
+    assert dataset[2].binning == 3
+
+def test_view_empty():
+    with pytest.raises(ValueError):
+        DataSet(InstrumentName.CAMEA).get_view(ArrayType.A4)

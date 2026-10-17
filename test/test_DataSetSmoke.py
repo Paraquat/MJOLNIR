@@ -1,4 +1,4 @@
-"""Smoke tests for the (old) DataSet: every public operation runs on real CAMEA data and
+"""Smoke tests for the old DataSet (DataSet_old): every public operation runs on real CAMEA data and
 returns something sensible. They pin behaviour while DataSet is being refactored, so they
 check shapes and sanity rather than exact values."""
 import pytest
@@ -9,8 +9,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from MJOLNIR.Data import DataSet as DataSetModule
-from MJOLNIR.Data.DataSet import DataSet
+from MJOLNIR.Data import DataSet_old as DataSetModule
+from MJOLNIR.Data.DataSet_old import DataSet
 
 data_path = Path(__file__).parent.parent / 'sampledata'
 files = [str(f) for f in sorted(data_path.glob('camea2024*.hdf'))]
