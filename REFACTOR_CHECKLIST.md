@@ -73,6 +73,9 @@ Items are checked off as they are completed.
 - [x] Sorting: `auto_sort`, `arg_auto_sort`, `arg_sort_to`, `apply_sorting`
 - [x] Files calibrated and transformed when added; `set_binning` re-transforms
 - [x] Arrays across files as one contiguous array (`get_view` → `AxisView`)
+- [x] `AxisView`: accept numpy integer indices
+- [x] `AxisView`: iteration returns float64 like indexing
+- [x] `AxisView`: clear `ValueError` when built from no arrays
 
 ### Files and setup
 - [ ] Normalisation and calibration files as inputs; converted files as inputs

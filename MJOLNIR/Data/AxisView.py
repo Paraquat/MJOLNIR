@@ -7,6 +7,9 @@ import numpy.typing as npt
 
 FloatArray = npt.NDArray[np.float64]
 
+# Index types accepted: Python and numpy integers (e.g. from np.argmax or np.arange)
+Integer = (int, np.integer)
+
 def normalize_axis_index(axis: int, ndim: int) -> int:
     """Turn a possibly negative axis into a positive one (numpy's own helper moved between
     numpy 1.x and 2.x)"""
@@ -19,6 +22,8 @@ class AxisView(Sequence[FloatArray]):
     concatenated along the given axis. Use bisection to find elements faster"""
 
     def __init__(self, arrays: list[FloatArray], axis: int = 0) -> None:
+        if len(arrays) == 0:
+            raise ValueError("AxisView needs at least one array")
         self._arrays = arrays
         self._axis = normalize_axis_index(axis, arrays[0].ndim)
 
@@ -33,7 +38,7 @@ class AxisView(Sequence[FloatArray]):
             remaining_shape = (
                 array.shape[:normalized_axis] + array.shape[normalized_axis + 1:])
             if (remaining_shape != self._remaining_shape):
-                raise ValueError("All arrays must have the same shape along the"
+                raise ValueError("All arrays must have the same shape along the "
                                  "non-view axis")
             # if normalized_axis != self._axis:
             #     raise ValueError("Inconsistent array dimensions")
@@ -49,7 +54,12 @@ class AxisView(Sequence[FloatArray]):
 
     def __iter__(self) -> Iterator[FloatArray]:
         for array in self._arrays:
-            yield from np.moveaxis(array, self._axis, 0)
+            for entry in np.moveaxis(array, self._axis, 0):
+                # Convert one entry at a time, as indexing does, rather than copying the array
+                if np.ndim(entry) == 0:
+                    yield np.float64(entry)
+                else:
+                    yield entry.astype(np.float64)
 
     def _locate(self, global_index: int) -> tuple[FloatArray, int]:
         if global_index < 0:
@@ -97,13 +107,13 @@ class AxisView(Sequence[FloatArray]):
         logical_index = key[0]
         fixed_indices = key[1:]
 
-        if not all(isinstance(index, int) for index in fixed_indices):
+        if not all(isinstance(index, Integer) for index in fixed_indices):
             raise TypeError("Indices for non-view axes must be integers")
 
-        fixed_indices = tuple(fixed_indices)
+        fixed_indices = tuple(int(index) for index in fixed_indices)
 
-        if isinstance(logical_index, int):
-            array, local_index = self._locate(logical_index)
+        if isinstance(logical_index, Integer):
+            array, local_index = self._locate(int(logical_index))
             array_index = self._make_array_index(array, local_index, fixed_indices,)
             return np.float64(array[array_index])
 
