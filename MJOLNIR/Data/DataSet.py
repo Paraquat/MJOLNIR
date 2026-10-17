@@ -34,8 +34,8 @@ class ArrayType(Enum):
     # Derived data
     INTENSITY = "intensity"
     NORMALIZATION = "normalization"
-    QX = "Qx"
-    QY = "Qy"
+    QX = "qx"
+    QY = "qy"
     ENERGY = "energy"
     H = "h"
     K = "k"

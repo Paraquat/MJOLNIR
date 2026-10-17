@@ -1,7 +1,8 @@
 from __future__ import division
 from abc import ABCMeta
 import numpy as np
-from MJOLNIR.Data import DataSet,DataFile
+from MJOLNIR.Data.DataReader import DataReader
+from MJOLNIR.Data.DataSet import DataSet
 import sympy
 import warnings
 import pickle
@@ -106,12 +107,12 @@ class MaskingObject(with_metaclass(MaskingObjectMeta)):
     def __call__(self,X=None,*args,**kwargs):
         if X is None:
             return self.call()
-        elif isinstance(X,(DataSet.DataSet)):
+        elif isinstance(X,DataSet):
             result = []
             for x in X:
                 temp = self.call(x,*args,**kwargs)
-                if not len(temp.shape) == len(x.I.shape):
-                    temp = np.outer(temp,np.ones_like(x.I[0],dtype=bool)).reshape(*x.I.shape)
+                if not len(temp.shape) == len(x.intensity.shape):
+                    temp = np.outer(temp,np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
                 result.append(temp)
             return result
         else:
@@ -354,11 +355,11 @@ class lineMask(MaskingObject):
         
         mask = np.sum([np.logical_and(p>self.start,p<=self.end) for p in points],axis=0)>0
         
-        if isinstance(x,DataFile.DataFile):
-            if len(mask) == len(x.I) and len(mask.shape)==1: # We have a mask of A3
-                    mask = np.outer(mask,np.ones_like(x.I[0],dtype=bool)).reshape(*x.I.shape)
-            if len(mask) == len(x.I)+1 and len(mask.shape)==1: # For some reason A3 is 1 longer than I...
-                mask = np.outer(mask[:-1],np.ones_like(x.I[0],dtype=bool)).reshape(*x.I.shape)
+        if isinstance(x,DataReader):
+            if len(mask) == len(x.intensity) and len(mask.shape)==1: # We have a mask of A3
+                    mask = np.outer(mask,np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
+            if len(mask) == len(x.intensity)+1 and len(mask.shape)==1: # For some reason A3 is 1 longer than I...
+                mask = np.outer(mask[:-1],np.ones_like(x.intensity[0],dtype=bool)).reshape(*x.intensity.shape)
         
         if self.maskInside == False:
             mask = np.logical_not(mask)
@@ -851,8 +852,8 @@ class CurratAxeMask(MaskingObject):
         raise NotImplementedError('It is not possible to plot a Currat-Axe masks currently.')
     
     def call(self,x,*args):
-        if not isinstance(x,DataFile.DataFile):
-            raise AttributeError('Expected mask to be called with '+str(type(DataFile.DataFile))+' object as argument. Received '+str(type(x)))
+        if not isinstance(x,DataReader):
+            raise AttributeError('Expected mask to be called with '+str(DataReader)+' object as argument. Received '+str(type(x)))
         
         
         return x.calculateCurratAxeMask(self.braggPeaks,dqx=self.dqx,dqy=self.dqy,dH=self.dH,dK=self.dK,dL=self.dL,spurionType=self.spurionType,maskInside=self.maskInside)

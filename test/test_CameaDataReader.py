@@ -42,10 +42,10 @@ def test_read(datareader):
 def test_transform(datareader):
     camea_file = datareader
     camea_file.transform()
-    assert camea_file.Qx.shape == (135, 104, 24)
+    assert camea_file.qx.shape == (135, 104, 24)
     assert camea_file.h.shape == (135, 104, 24)
-    assert camea_file.Qx[58, 103, 13] == pytest.approx(-1.588105, abs=1e-6)
-    assert camea_file.Qy[58, 103, 13] == pytest.approx(-0.1967104, abs=1e-6)
+    assert camea_file.qx[58, 103, 13] == pytest.approx(-1.588105, abs=1e-6)
+    assert camea_file.qy[58, 103, 13] == pytest.approx(-0.1967104, abs=1e-6)
     assert camea_file.h[58, 103, 13] == pytest.approx(-0.991790, abs=1e-6)
     assert camea_file.k[58, 103, 13] == pytest.approx(0.980587, abs=1e-6)
     assert camea_file.l[58, 103, 13] == pytest.approx(0.0, abs=1e-6)

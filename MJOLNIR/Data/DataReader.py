@@ -48,8 +48,8 @@ class DataReader(ABC):
     intensity: np.NDArray[np.int64]
     normalization: np.NDArray[np.float64]
     energy: np.NDArray[np.float64]
-    Qx: np.NDArray[np.float64]
-    Qy: np.NDArray[np.float64]
+    qx: np.NDArray[np.float64]
+    qy: np.NDArray[np.float64]
     h: np.NDArray[np.float64]
     k: np.NDArray[np.float64]
     l: np.NDArray[np.float64]
@@ -69,8 +69,8 @@ class DataReader(ABC):
         self.intensity = None
         self.normalization = None
         self.energy = None
-        self.Qx = None
-        self.Qy = None
+        self.qx = None
+        self.qy = None
         self.h = None
         self.k = None
         self.l = None
@@ -170,7 +170,7 @@ class DataReader(ABC):
         Ei = self.Ei.copy().reshape(-1, 1, 1)
         self.energy = (Ei - EfMean) * np.ones((self.n_steps, 1, 1))
         UBINV = np.linalg.inv(self.sample.orientationMatrix)
-        HKL, self.Qx, self.Qy = TasUBlib.calcTasQH(
+        HKL, self.qx, self.qy = TasUBlib.calcTasQH(
             UBINV,[np.rad2deg(A3), np.rad2deg(A4Mean)], Ei, EfMean)
         self.h, self.k, self.l = np.swapaxes(np.swapaxes(HKL, 1, 2), 0, 3)
         self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)

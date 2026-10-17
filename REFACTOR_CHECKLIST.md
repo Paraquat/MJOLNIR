@@ -15,7 +15,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] Script that makes the 4 plots with the old `DataSet` (`DataSet_old`); output matches the
       reference images
 - [x] Load the 12 CAMEA files into a `DataSet` (reader, factory, calibration, transform)
-- [x] Energy transfer, Qx/Qy, h/k/l, intensity, normalization per file
+- [x] Energy transfer, qx/qy, h/k/l, intensity, normalization per file
 - [x] Default binning 8 for CAMEA, as the old conversion chose
 - [ ] Monitor and normalization spread to the shape of the data
 - [ ] CAMEA masks: first 2 pixels at binning 8, broken tubes
@@ -33,7 +33,7 @@ plots match the reference images next to it. Several items repeat ones further d
 
 ### Done
 - [x] `DataReader` base class: calibration, `transform()` (intensity, normalization,
-      energy, Qx/Qy, h/k/l), pixel rebinning, sample from two reflections
+      energy, qx/qy, h/k/l), pixel rebinning, sample from two reflections
 - [x] `NexusDataReader`, `CameaDataReader`
 - [x] `NICOSDataReader`, `BAMBUSDataReader`, `MultiFLEXXDataReader` (MultiFLEXX only
       checked against a synthetic file)
@@ -174,7 +174,9 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [ ] `save` cannot pickle the data set
 
 ## Code still using the old API
-- [ ] `Mask.py`
+- [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
+      `h/k/l`, `energy`, `A3` work). Still to do: `CurratAxeMask` (calls the unported
+      `calculateCurratAxeMask`), `DataSet.mask` to apply the result
 - [ ] `BackgroundModel.py`
 - [ ] `Viewer1D.py`, `Viewer3D.py`, `RLUAxes.py`, `DraggableShapes.py`
 - [ ] `_interactiveSettings.py`
