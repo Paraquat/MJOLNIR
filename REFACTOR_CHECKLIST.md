@@ -34,7 +34,9 @@ plots match the reference images next to it. Several items repeat ones further d
       (`convert_to_qxqy`, `convert_to_hkl`, `gather_q`; identical to the old code)
 - [x] `cutQE` with its 1D cut algorithm: pure functions `Cuts.cut_qe`, `Cuts.cut_1d`,
       returning a `CutResult`
-- [ ] `ds.cut_qe` (and `ds.cut_1d`): gather the points and call `Cuts`
+- [x] `ds.cut_qe` (and `ds.cut_1d`): gather the points and call `Cuts`; also
+      `ds.cut_q_plane`, `ds.plot_cut_qe`, `ds.plot_q_plane` (identical to the old code;
+      `ds.plot_cut_1d` waits for a 1D plot in `Plotting`)
 - [x] `cutQE` output compared with the old `DataSet` on the same data (before porting the
       plots): all columns identical for the milestone cut
 - [x] `plotCutQE` (Q-E axes, colour limits): `Plotting.plot_cut_qe`; the milestone plot is
@@ -167,7 +169,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] Pandas output columns (`pdNaming`): `CutResult.COLUMNS`
 
 ### Plotting and interactive figures
-- [ ] `plotCut1D`
+- [ ] `plotCut1D` (cut done: `Cuts.cut_1d` / `ds.cut_1d`; no plot yet)
 - [ ] `plotCut1DE`
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [ ] `plotCutQELine`

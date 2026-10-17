@@ -431,3 +431,62 @@ def test_subtraction_mismatch():
         first - second
     with pytest.raises(TypeError):
         first - 1
+
+# Cut and plot methods: gather the points and call Cuts and Plotting
+
+def test_cut_methods():
+    import pandas as pd
+    from MJOLNIR.Data import Cuts
+    from MJOLNIR.Data.Coordinates import align_to_lattice
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    hkl1, hkl2 = [-1, 0, 0], [0, 1, 0]
+    qx, qy = dataset.gather_q()
+    gather = lambda arr_type: np.asarray(dataset.gather(arr_type))
+    points = dict(qx=np.asarray(qx), qy=np.asarray(qy), energy=gather(ArrayType.ENERGY),
+                  intensity=gather(ArrayType.INTENSITY),
+                  normalization=gather(ArrayType.NORMALIZATION),
+                  monitor=gather(ArrayType.MONITOR))
+    q1, q2 = dataset.convert_to_qxqy([hkl1, hkl2])
+    expected = Cuts.cut_qe(**points, q1=q1, q2=q2, width=0.1, min_pixel=0.02, energy_min=-1.0,
+                           energy_max=0.8, energy_step=0.1, sample=dataset.sample)
+    result = dataset.cut_qe(hkl1, hkl2, 0.1, 0.02, energy_min=-1.0, energy_max=0.8,
+                            energy_step=0.1)
+    pd.testing.assert_frame_equal(result.data, expected.data)
+    expected = Cuts.cut_1d(**points, q1=q1, q2=q2, width=0.1, min_pixel=0.02, energy_min=-1.0,
+                           energy_max=0.8, sample=dataset.sample)
+    pd.testing.assert_frame_equal(dataset.cut_1d(hkl1, hkl2, 0.1, 0.02, -1.0, 0.8).data,
+                                  expected.data)
+    # Q planes on RLU axes use points aligned to the lattice, and the matching sample
+    qx, qy = dataset.gather_q(align_to_lattice=True)
+    aligned = {**points, 'qx': np.asarray(qx), 'qy': np.asarray(qy)}
+    expected = Cuts.cut_q_plane(**aligned, energy_min=-0.2, energy_max=0.2,
+                                sample=align_to_lattice(dataset.sample))
+    pd.testing.assert_frame_equal(dataset.cut_q_plane(energy_min=-0.2, energy_max=0.2).data,
+                                  expected.data)
+
+def test_cut_methods_without_rlu():
+    # As the old cuts: in Qx, Qy the files are not rotated into a common frame
+    from MJOLNIR import _tools
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    second = dataset.samples[1]
+    second.RotMat = _tools.Rot(second.theta + 10)
+    q1, q2 = dataset.convert_to_qxqy([[-1, 0, 0], [0, 1, 0]])
+    in_q = dataset.cut_1d(q1, q2, 0.1, 0.02, -1.0, 0.8, rlu=False)
+    in_hkl = dataset.cut_1d([-1, 0, 0], [0, 1, 0], 0.1, 0.02, -1.0, 0.8)
+    assert in_q.data['intensity'].sum() != in_hkl.data['intensity'].sum()
+    assert np.allclose(in_q.parameters['q1'], q1)
+
+def test_plot_methods():
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    ax = dataset.plot_cut_qe([-1, 0, 0], [0, 1, 0], width=0.1, min_pixel=0.02, energy_min=-1.0,
+                             energy_max=0.8, energy_step=0.1, colorbar=True)
+    assert ax.type == 'QE' and len(ax.result) == 82 * 18
+    ax.set_clim(0, 0.025)
+    assert ax.get_clim() == (0, 0.025)
+    ax = dataset.plot_q_plane(energy_min=-0.2, energy_max=0.2, colorbar=True)
+    assert ax.type == 'QPlane' and len(ax.pmeshs) == 1
+    assert ax.get_xlabel().endswith('[RLU]')
+    plt.close('all')

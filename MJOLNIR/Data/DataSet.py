@@ -7,7 +7,9 @@ import numpy as np
 
 from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.AxisView import AxisView
-from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl
+from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl, align_to_lattice
+from MJOLNIR.Data import Cuts, Plotting
+from MJOLNIR.Data.CutResult import CutResult
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
@@ -354,6 +356,84 @@ class DataSet:
                                  f'{reader.mask.shape}, so it cannot be masked; use get_view')
             arrays.append(np.asarray(array)[~reader.mask])
         return AxisView(arrays, axis = 0)
+
+    # Cuts and plots: gather the points and call Cuts and Plotting
+
+    def _points(self, rotate: bool = True, align_to_lattice: bool = False) -> dict:
+        """The unmasked points, as the arrays Cuts takes. Qx, Qy rotated into the first file's
+        frame (rotate), each file's own lattice frame (align_to_lattice), or not at all"""
+        if rotate:
+            qx, qy = self.gather_q(align_to_lattice=align_to_lattice)
+        else:
+            qx, qy = self.gather(ArrayType.QX), self.gather(ArrayType.QY)
+        gather = lambda arr_type: np.asarray(self.gather(arr_type))
+        return dict(qx=np.asarray(qx), qy=np.asarray(qy), energy=gather(ArrayType.ENERGY),
+                    intensity=gather(ArrayType.INTENSITY),
+                    normalization=gather(ArrayType.NORMALIZATION),
+                    monitor=gather(ArrayType.MONITOR))
+
+    def _cut_positions(self, q1, q2, rlu: bool):
+        """q1, q2 in Qx, Qy: converted from H, K, L with rlu"""
+        if rlu:
+            return self.convert_to_qxqy(q1), self.convert_to_qxqy(q2)
+        return np.asarray(q1, dtype=float), np.asarray(q2, dtype=float)
+
+    def cut_1d(self, q1, q2, width: float, min_pixel: float, energy_min: float,
+               energy_max: float, rlu: bool = True, extend: bool = False,
+               constant_bins: bool = False) -> CutResult:
+        """1D cut from q1 to q2 (H, K, L with rlu, else Qx, Qy), summed over energy_min to
+        energy_max. As in the old cut1D, files are rotated into the first file's frame only
+        with rlu. See Cuts.cut_1d"""
+        q1, q2 = self._cut_positions(q1, q2, rlu)
+        return Cuts.cut_1d(**self._points(rotate=rlu), q1=q1, q2=q2, width=width, min_pixel=min_pixel,
+                           energy_min=energy_min, energy_max=energy_max, sample=self.sample,
+                           extend=extend, constant_bins=constant_bins)
+
+    def cut_qe(self, q1, q2, width: float, min_pixel: float, energy_bins=None,
+               energy_min=None, energy_max=None, energy_step=None, rlu: bool = True,
+               extend: bool = False) -> CutResult:
+        """Q-E cut from q1 to q2 (H, K, L with rlu, else Qx, Qy), in energy_bins or from
+        energy_min to energy_max in steps of energy_step. As in the old cutQE, files are rotated
+        into the first file's frame only with rlu. See Cuts.cut_qe"""
+        q1, q2 = self._cut_positions(q1, q2, rlu)
+        return Cuts.cut_qe(**self._points(rotate=rlu), q1=q1, q2=q2, width=width, min_pixel=min_pixel,
+                           energy_bins=energy_bins, energy_min=energy_min,
+                           energy_max=energy_max, energy_step=energy_step,
+                           sample=self.sample, extend=extend)
+
+    def cut_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
+                    x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,
+                    rlu: bool = True) -> CutResult:
+        """Constant-energy planes binned in Qx, Qy. With rlu, the points are aligned to the
+        reciprocal lattice (for RLU axes), else left in each file's frame, as the old
+        plotQPlane did. See Cuts.cut_q_plane"""
+        sample = align_to_lattice(self.sample) if rlu else self.sample
+        return Cuts.cut_q_plane(**self._points(rotate=rlu, align_to_lattice=True),
+                                energy_bins=energy_bins, energy_min=energy_min,
+                                energy_max=energy_max, x_bin_tolerance=x_bin_tolerance,
+                                y_bin_tolerance=y_bin_tolerance, sample=sample)
+
+    def plot_cut_qe(self, q1, q2, width: float = 0.1, min_pixel: float = 0.05,
+                    energy_bins=None, energy_min=None, energy_max=None, energy_step=None,
+                    rlu: bool = True, extend: bool = False, **plot_options):
+        """Q-E cut (cut_qe) plotted as a colour map (Plotting.plot_cut_qe, which takes
+        plot_options such as ax, colorbar, vmin, vmax, log). Returns the axes; the cut is
+        ax.result"""
+        result = self.cut_qe(q1, q2, width, min_pixel, energy_bins=energy_bins,
+                             energy_min=energy_min, energy_max=energy_max,
+                             energy_step=energy_step, rlu=rlu, extend=extend)
+        return Plotting.plot_cut_qe(result, sample=self.sample, rlu=rlu, **plot_options)
+
+    def plot_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
+                     x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,
+                     rlu: bool = True, **plot_options):
+        """Constant-energy planes (cut_q_plane) plotted on reciprocal lattice axes
+        (Plotting.plot_q_plane, which takes plot_options such as ax, colorbar, vmin, vmax,
+        log). Returns the axes; the cut is ax.result"""
+        result = self.cut_q_plane(energy_min=energy_min, energy_max=energy_max,
+                                  energy_bins=energy_bins, x_bin_tolerance=x_bin_tolerance,
+                                  y_bin_tolerance=y_bin_tolerance, rlu=rlu)
+        return Plotting.plot_q_plane(result, sample=self.sample, rlu=rlu, **plot_options)
 
     # Sorting
 
