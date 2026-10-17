@@ -49,6 +49,7 @@ class DataReader(ABC):
     # Derived data
     intensity: npt.NDArray[np.int64]
     normalization: npt.NDArray[np.float64]
+    monitor: npt.NDArray[np.float64]
     energy: npt.NDArray[np.float64]
     qx: npt.NDArray[np.float64]
     qy: npt.NDArray[np.float64]
@@ -74,6 +75,7 @@ class DataReader(ABC):
 
         self.intensity = None
         self.normalization = None
+        self.monitor = None
         self.energy = None
         self.qx = None
         self.qy = None
@@ -170,8 +172,14 @@ class DataReader(ABC):
 
         EfMean = self.calibration.Ef.reshape(
             1, A4.shape[0], self.n_analysers*self.binning)
+        # Normalization and monitor per point, like the data: (steps, detectors, energy bins)
         self.normalization = self.calibration.amp.reshape(
-            1, A4.shape[0], self.n_analysers*self.binning)
+            1, A4.shape[0], self.n_analysers*self.binning) * np.ones((self.n_steps, 1, 1))
+        monitor = np.asarray(self.scan_monitor(), dtype=float)
+        if monitor.shape != (self.n_steps,):
+            raise ValueError(f'"{self.file.name}" has {monitor.size} monitor values for '
+                             f'{self.n_steps} scan steps')
+        self.monitor = monitor.reshape(-1, 1, 1) * np.ones((1, *self.intensity.shape[1:]))
         A3 = np.deg2rad(self.A3) + np.deg2rad(self.A3Offset)
         if A3.shape[0]==1:
             A3 = A3*np.ones((self.n_steps))
@@ -202,6 +210,10 @@ class DataReader(ABC):
     def mask(self, mask):
         # Sets the user's mask; the default mask always comes from default_mask()
         self.user_mask = np.asarray(mask, dtype=bool)
+
+    def scan_monitor(self) -> npt.NDArray[np.float64]:
+        """Monitor counts per scan step, used to normalise the data"""
+        return self.monitor1
 
     def default_mask(self) -> npt.NDArray[np.bool_]:
         """Points that cannot be used, for every instrument: pixels with a NaN in their

@@ -58,6 +58,15 @@ class CameaDataReader(NexusDataReader):
         self.binning = binning
         return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
 
+    def scan_monitor(self) -> npt.NDArray[np.float64]:
+        """Monitor used for normalisation, chosen as the old DataFile did: files written by
+        NICOS (which have entry/data/data) use entry/monitor_2/data if present, older files
+        entry/control/data"""
+        written_by_nicos = self.get('entry/data/data') is not None
+        if written_by_nicos and self.get(self.nexus_keys['monitor2']) is not None:
+            return self.monitor2
+        return self.monitor1
+
     def default_mask(self) -> npt.NDArray[np.bool_]:
         """The general default mask, and at binning 8 the first two energy bins (as the old
         DataFile conversion did)"""

@@ -1,3 +1,4 @@
+import numpy as np
 from pathlib import Path
 
 import MJOLNIR
@@ -17,6 +18,10 @@ class MultiFLEXXDataReader(NICOSDataReader):
     def scan_columns(self, titles: list[str]) -> list[int]:
         # As in DataFile, scan parameters end one column before the first channel
         return list(range(titles.index('ch0') - 1))
+
+    def scan_monitor(self):
+        # As the old DataFile: MultiFLEXX data are not normalised by monitor
+        return np.ones(self.n_steps)
 
     @classmethod
     def channel_columns(cls, titles: list[str]) -> list[int]:

@@ -17,7 +17,8 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] Load the 12 CAMEA files into a `DataSet` (reader, factory, calibration, transform)
 - [x] Energy transfer, qx/qy, h/k/l, intensity, normalization per file
 - [x] Default binning 8 for CAMEA, as the old conversion chose
-- [ ] Monitor and normalization spread to the shape of the data
+- [x] Monitor and normalization spread to the shape of the data (`monitor`,
+      `normalization`; identical to the old conversion for all 5 instruments)
 - [x] CAMEA masks: first 2 pixels at binning 8, broken tubes (default masks, kept apart
       from the user's mask)
 - [ ] Combined data across files without masked points (the old `extractData()`), e.g. for
@@ -69,13 +70,13 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] Analyser / monochromator settings
 
 ### Conversion output
-- [ ] Monitor spread to the shape of the data
+- [x] Monitor spread to the shape of the data
 - [x] Default mask (nothing masked; reset by `transform()`)
 - [x] CAMEA binning 8: mask the first 2 pixels
 - [x] CAMEA: mask broken tubes (NaN calibration A4), with a message (general rule for all
       instruments: any pixel with a NaN A4, Ef or amplitude)
 - [x] Marmot: mask Ef < 1
-- [ ] Normalization spread over all scan steps (currently shape `(1, det, bins)`)
+- [x] Normalization spread over all scan steps
 - [ ] Detector/analyser selection (`dasel`) and the index calculation from it
 - [x] `DataSet` default binning = the reader type's default binning
 
