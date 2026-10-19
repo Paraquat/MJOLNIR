@@ -4,6 +4,7 @@ from pathlib import Path
 
 import MJOLNIR
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
+from MJOLNIR.Data.NexusLayout import FlatconeLayout
 from MJOLNIR.Data.Sample import Sample
 
 class FlatconeDataReader(NexusDataReader):
@@ -11,30 +12,9 @@ class FlatconeDataReader(NexusDataReader):
 
     n_analysers = 1
     n_detectors = 31
-    instrument = "IN20"
-    entry = 'entry0'
+    layout = FlatconeLayout
+    instrument = FlatconeLayout.instrument
     calibration_file = MJOLNIR.__flatConeNormalization__
-
-    # Flatcone-specific hdf5 keys
-    nexus_keys = {
-        **NexusDataReader.nexus_keys,
-        'counts': '{entry}/data_scan/pastis_data/ii',
-        'A3': '{entry}/{instrument}/A3P/value',
-        'A4': '{entry}/{instrument}/A4/value',
-        'Ei': '{entry}/{instrument}/Monochromator/ei',
-        'monitor1': '{entry}/monitor/data',
-        'temperature': '{entry}/sample/temperature',
-        'sampleParameters': '{entry}/sample/param',
-        'scanCommand': '{entry}/{instrument}/command_line/actual_command',
-    }
-
-    # Flatcone-specific hdf5 metadata keys
-    nexus_meta_keys = {
-        **NexusDataReader.nexus_meta_keys,
-        'localContact': '{entry}/user/namelocalcontact',
-        'proposalUser': '{entry}/user/name',
-        'proposal': '{entry}/experiment_identifier',
-    }
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)

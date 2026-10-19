@@ -22,9 +22,9 @@ class Field:
 
 @dataclass(frozen=True)
 class Group:
-    """A group in a Nexus file and its NX_class"""
+    """A group in a Nexus file and its NX_class (None: the files give it none)"""
     path: str
-    nx_class: str
+    nx_class: str | None
 
     def format(self, **context) -> 'Group':
         return replace(self, path=_format(self.path, context))
@@ -47,7 +47,8 @@ class NexusLayout:
     the same name, {binning} in calibration paths by calibration_fields(binning). The
     dictionaries hold the templates, so a subclass can change entry or instrument and reuse
     its parent's entries; field(), group() etc. return them filled in. Keys are unique across
-    fields, metadata and environment"""
+    fields, metadata and environment. This base class holds what all NeXus files share; a
+    layout used by a reader defines instrument"""
 
     entry = 'entry'
     instrument: str # Name of the NXinstrument group
@@ -56,62 +57,29 @@ class NexusLayout:
         'entry': Group('{entry}', 'NXentry'),
         'instrument': Group('{entry}/{instrument}', 'NXinstrument'),
         'sample': Group('{entry}/sample', 'NXsample'),
-        'control': Group('{entry}/control', 'NXmonitor'),
-        'data': Group('{entry}/data', 'NXdata'),
-        'local_contact': Group('{entry}/local_contact', 'NXuser'),
-        'proposal_user': Group('{entry}/proposal_user', 'NXuser'),
         'user': Group('{entry}/user', 'NXuser'),
     }
 
     # Data used in reduction
-    fields: dict[str, Field] = {
-        'A3': Field('{entry}/sample/rotation_angle', units='degree', dtype='float32'),
-        'A3Offset': Field('{entry}/sample/rotation_angle_zero', units='degree', dtype='float32'),
-        'unitCell': Field('{entry}/sample/unit_cell', dtype='float64'),
-        'orientationMatrix': Field('{entry}/sample/orientation_matrix', dtype='float32'),
-        'planeVector1': Field('{entry}/sample/plane_vector_1', dtype='float32'),
-        'planeVector2': Field('{entry}/sample/plane_vector_2', dtype='float32'),
-        'planeNormal': Field('{entry}/sample/plane_normal', dtype='float32'),
-        'azimuthalAngle': Field('{entry}/sample/azimuthal_angle', dtype='float32'),
-        'monitor1': Field('{entry}/control/data', units='counts', dtype='float32'),
-        'preset': Field('{entry}/control/preset', dtype='float32'),
-        'time': Field('{entry}/control/time', units='seconds', dtype='float32'),
-        'absoluteTime': Field('{entry}/control/absolute_time', dtype='float64'),
-        'scanCommand': Field('{entry}/scancommand'),
-        'scanVariables': Field('{entry}/scanvars'),
-    }
+    fields: dict[str, Field] = {}
 
     # Data kept for information only (the reader's metadata)
     metadata: dict[str, Field] = {
         'title': Field('{entry}/title'),
         'startTime': Field('{entry}/start_time'),
         'endTime': Field('{entry}/end_time'),
-        'comment': Field('{entry}/comment'),
-        'proposal': Field('{entry}/proposal_id'),
-        'proposalTitle': Field('{entry}/proposal_title'),
         'experimentalIdentifier': Field('{entry}/experiment_identifier'),
-        'sampleName': Field('{entry}/sample/name'),
-        'localContact': Field('{entry}/local_contact/name'),
-        'proposalUser': Field('{entry}/proposal_user/name'),
-        'proposalEmail': Field('{entry}/proposal_user/email'),
         'user': Field('{entry}/user/name'),
-        'email': Field('{entry}/user/email'),
-        'address': Field('{entry}/user/address'),
-        'affiliation': Field('{entry}/user/affiliation'),
-        'mode': Field('{entry}/control/mode'),
     }
 
     # Sample environment, keyed by SampleEnvironment field
     environment: dict[str, Field] = {
-        'temperature': Field('{entry}/sample/temperature', units='K', dtype='float64'),
-        'temperature_setpoint': Field('{entry}/sample/setpoint_temperature', units='K',
-                                      dtype='float64'),
-        'magnetic_field': Field('{entry}/sample/magnetic_field', units='T', dtype='float64'),
-        'magnetic_field_setpoint': Field('{entry}/sample/setpoint_magnetic_field', units='T',
-                                         dtype='float64'),
-        'electric_field': Field('{entry}/sample/electric_field', dtype='float64'),
-        'electric_field_setpoint': Field('{entry}/sample/setpoint_electric_field',
-                                         dtype='float64'),
+        'temperature': Field('{entry}/sample/temperature', units='K'),
+        'temperature_setpoint': Field('{entry}/sample/setpoint_temperature', units='K'),
+        'magnetic_field': Field('{entry}/sample/magnetic_field', units='T'),
+        'magnetic_field_setpoint': Field('{entry}/sample/setpoint_magnetic_field', units='T'),
+        'electric_field': Field('{entry}/sample/electric_field'),
+        'electric_field_setpoint': Field('{entry}/sample/setpoint_electric_field'),
     }
 
     # Instrument calibration for one binning ({binning}); empty if the files store none
@@ -120,8 +88,6 @@ class NexusLayout:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        if not hasattr(cls, 'instrument'):
-            raise TypeError(f'{cls.__name__} must define instrument')
         cls._check_keys()
         cls._check_placeholders()
 
@@ -155,6 +121,8 @@ class NexusLayout:
 
     @classmethod
     def context(cls) -> dict[str, str]:
+        if not hasattr(cls, 'instrument'):
+            raise TypeError(f'{cls.__name__} does not define instrument')
         return {'entry': cls.entry, 'instrument': cls.instrument}
 
     @classmethod
@@ -207,6 +175,10 @@ class CameaLayout(NexusLayout):
 
     groups = {
         **NexusLayout.groups,
+        'control': Group('{entry}/control', 'NXmonitor'),
+        'data': Group('{entry}/data', 'NXdata'),
+        'local_contact': Group('{entry}/local_contact', 'NXuser'),
+        'proposal_user': Group('{entry}/proposal_user', 'NXuser'),
         'analyzer': Group('{entry}/{instrument}/analyzer', 'NXcrystal'),
         'monochromator': Group('{entry}/{instrument}/monochromator', 'NXcrystal'),
         'monochromator_slit': Group('{entry}/{instrument}/monochromator_slit', 'NXslit'),
@@ -221,6 +193,20 @@ class CameaLayout(NexusLayout):
 
     fields = {
         **NexusLayout.fields,
+        'A3': Field('{entry}/sample/rotation_angle', units='degree', dtype='float32'),
+        'A3Offset': Field('{entry}/sample/rotation_angle_zero', units='degree', dtype='float32'),
+        'unitCell': Field('{entry}/sample/unit_cell', dtype='float64'),
+        'orientationMatrix': Field('{entry}/sample/orientation_matrix', dtype='float32'),
+        'planeVector1': Field('{entry}/sample/plane_vector_1', dtype='float32'),
+        'planeVector2': Field('{entry}/sample/plane_vector_2', dtype='float32'),
+        'planeNormal': Field('{entry}/sample/plane_normal', dtype='float32'),
+        'azimuthalAngle': Field('{entry}/sample/azimuthal_angle', dtype='float32'),
+        'monitor1': Field('{entry}/control/data', units='counts', dtype='float32'),
+        'preset': Field('{entry}/control/preset', dtype='float32'),
+        'time': Field('{entry}/control/time', units='seconds', dtype='float32'),
+        'absoluteTime': Field('{entry}/control/absolute_time', dtype='float64'),
+        'scanCommand': Field('{entry}/scancommand'),
+        'scanVariables': Field('{entry}/scanvars'),
         # Older files store the counts in detector/counts
         'counts': Field('{entry}/{instrument}/detector/data',
                         aliases=('{entry}/{instrument}/detector/counts',), dtype='uint32'),
@@ -275,6 +261,21 @@ class CameaLayout(NexusLayout):
                                       dtype='float32'),
     }
 
+    metadata = {
+        **NexusLayout.metadata,
+        'comment': Field('{entry}/comment'),
+        'proposal': Field('{entry}/proposal_id'),
+        'proposalTitle': Field('{entry}/proposal_title'),
+        'sampleName': Field('{entry}/sample/name'),
+        'localContact': Field('{entry}/local_contact/name'),
+        'proposalUser': Field('{entry}/proposal_user/name'),
+        'proposalEmail': Field('{entry}/proposal_user/email'),
+        'email': Field('{entry}/user/email'),
+        'address': Field('{entry}/user/address'),
+        'affiliation': Field('{entry}/user/affiliation'),
+        'mode': Field('{entry}/control/mode'),
+    }
+
     # Where NICOS and older CAMEA files store the sample environment (as the old DataFile)
     environment = {
         **NexusLayout.environment,
@@ -285,6 +286,7 @@ class CameaLayout(NexusLayout):
         'magnetic_field': Field('{entry}/sample/magnetic_field',
                                 aliases=('{entry}/sample/B', '{entry}/sample/B/value'),
                                 units='T', dtype='float64'),
+        'electric_field': Field('{entry}/sample/electric_field', dtype='float64'),
     }
 
     # The files store no units for the calibration
@@ -296,4 +298,90 @@ class CameaLayout(NexusLayout):
         'bound': Field('{entry}/{instrument}/calib{binning}/boundaries', dtype='int32'),
         'Ef': Field('{entry}/{instrument}/calib{binning}/final_energy', dtype='float32'),
         'width': Field('{entry}/{instrument}/calib{binning}/width', dtype='float32'),
+    }
+
+class IllLayout(NexusLayout):
+    """What the ILL (NOMAD) files of Flatcone and Marmot share. Not a complete layout: the
+    instrument and the counts come from the subclasses. The files also store
+    {instrument}/A4/offset_value, which the readers do not use (A4Offset is 0, as before)"""
+
+    entry = 'entry0'
+
+    groups = {
+        **NexusLayout.groups,
+        'data': Group('{entry}/data_scan', 'NXdata'),
+        'scannedVariables': Group('{entry}/data_scan/scanned_variables', 'NXill_data_scan_vars'),
+        'monochromator': Group('{entry}/{instrument}/Monochromator', 'NXcrystal'),
+        'analyser': Group('{entry}/{instrument}/Analyser', 'NXcrystal'),
+        'commandLine': Group('{entry}/{instrument}/command_line', 'NXparameters'),
+    }
+
+    fields = {
+        **NexusLayout.fields,
+        'Ei': Field('{entry}/{instrument}/Monochromator/ei', units='meV', dtype='float32'),
+        'scanCommand': Field('{entry}/{instrument}/command_line/actual_command'),
+        'scannedData': Field('{entry}/data_scan/scanned_variables/data', dtype='float64'),
+        'scannedLabels': Field('{entry}/data_scan/scanned_variables/variables_names/label'),
+    }
+
+    metadata = {
+        **NexusLayout.metadata,
+        'localContact': Field('{entry}/user/namelocalcontact'),
+        'proposalUser': Field('{entry}/user/name'),
+        'proposal': Field('{entry}/experiment_identifier'),
+    }
+
+    environment = {
+        **NexusLayout.environment,
+        'temperature_setpoint': Field('{entry}/sample/setpoint_temperature', units='K',
+                                      dtype='float32'),
+    }
+
+class FlatconeLayout(IllLayout):
+    """Flatcone on IN20 (ILL): reduced (PASTIS) files. Checked against 043555_pastis.nxs"""
+
+    instrument = 'IN20'
+
+    groups = {
+        **IllLayout.groups,
+        'monitor': Group('{entry}/monitor', None),
+        'sampleParameters': Group('{entry}/sample/param', None),
+    }
+
+    fields = {
+        **IllLayout.fields,
+        # Reduced intensities, stored as (detectors, steps)
+        'counts': Field('{entry}/data_scan/pastis_data/ii', dtype='float64'),
+        'A3': Field('{entry}/{instrument}/A3P/value', dtype='float64'),
+        'A4': Field('{entry}/{instrument}/A4/value', dtype='float64'),
+        'monitor1': Field('{entry}/monitor/data', dtype='int32'),
+    }
+
+    environment = {
+        **IllLayout.environment,
+        'temperature': Field('{entry}/sample/temperature', dtype='float64'),
+    }
+
+class MarmotLayout(IllLayout):
+    """Marmot on THALES (ILL). Checked against 054724.nxs. A3 and the monitors are read
+    from the scanned variables"""
+
+    instrument = 'THALES'
+
+    groups = {
+        **IllLayout.groups,
+        'detectorData': Group('{entry}/data_scan/detector_data', 'NXill_detectors_data_scan'),
+    }
+
+    fields = {
+        **IllLayout.fields,
+        'counts': Field('{entry}/data_scan/detector_data/data', dtype='uint32'),
+        'A4': Field('{entry}/{instrument}/A4/value', units='deg', dtype='float32'),
+        # 'marmot' when THALES runs with Marmot; files without it share the layout
+        'instrumentMode': Field('{entry}/instrument_mode'),
+    }
+
+    environment = {
+        **IllLayout.environment,
+        'temperature': Field('{entry}/sample/temperature', units='K', dtype='float32'),
     }

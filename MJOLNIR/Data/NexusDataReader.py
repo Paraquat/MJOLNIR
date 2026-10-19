@@ -8,65 +8,10 @@ from MJOLNIR.Data.NexusLayout import NexusLayout
 from MJOLNIR.Data.Sample import Sample
 
 class NexusDataReader(DataReader):
-    """Parse a Nexus HDF5 file.
+    """Parse a Nexus HDF5 file. Where the data is stored comes from layout (a NexusLayout
+    subclass), set by each instrument's reader"""
 
-    Where the data is comes from layout (a NexusLayout) if the subclass sets one, otherwise
-    from the key tables below (readers not yet moved to a layout)"""
-
-    layout: type[NexusLayout] | None = None
-
-    # These keys are for critical data
-    nexus_keys = {
-        'instrument': '{entry}/{instrument}',
-        'sample': '{entry}/sample',
-        'unitCell': '{entry}/sample/unit_cell',
-        'intensity': '{entry}/data/intensity',
-        'energy': '{entry}/data/en',
-        'normalization': '{entry}/data/normalization',
-        'preset': '{entry}/control/preset',
-        'hdfMonitor': '{entry}/control/data',
-        'monitor': '{entry}/monitor_2/data',
-        'monitor_1': '{entry}/control/data',
-        'time': '{entry}/control/time',
-        'A3': '{entry}/sample/rotation_angle',
-        'temperature': '{entry}/sample/temperature',
-        'magneticField': '{entry}/sample/magnetic_field',
-        'electricField': '{entry}/sample/electric_field',
-        'scanCommand': '{entry}/scancommand',
-        'absoluteTime': '{entry}/control/absolute_time',
-        'protonBeam': '{entry}/proton_beam/data',
-    }
-
-    # These keys are for metadata fields
-    nexus_meta_keys = {
-        'title': '{entry}/title',
-        'startTime': '{entry}/start_time',
-        'endTime': '{entry}/end_time',
-        'comment': '{entry}/comment',
-        'proposal': '{entry}/proposal_id',
-        'proposalTitle': '{entry}/proposal_title',
-        'experimentalIdentifier': '{entry}/experiment_identifier',
-        'sampleName': '{entry}/sample/name',
-        'localContact': '{entry}/local_contact/name',
-        'proposalUser': '{entry}/proposal_user/name',
-        'proposalEmail': '{entry}/proposal_user/email',
-        'user': '{entry}/user/name',
-        'email': '{entry}/user/email',
-        'address': '{entry}/user/address',
-        'affiliation': '{entry}/user/affiliation',
-        'mode': '{entry}/control/mode',
-    }
-
-    # Sample environment: candidate paths per SampleEnvironment field, the first that exists
-    # is used
-    environment_keys = {
-        'temperature': ['{entry}/sample/temperature'],
-        'temperature_setpoint': ['{entry}/sample/setpoint_temperature'],
-        'magnetic_field': ['{entry}/sample/magnetic_field'],
-        'magnetic_field_setpoint': ['{entry}/sample/setpoint_magnetic_field'],
-        'electric_field': ['{entry}/sample/electric_field'],
-        'electric_field_setpoint': ['{entry}/sample/setpoint_electric_field'],
-    }
+    layout: type[NexusLayout]
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)
@@ -84,28 +29,6 @@ class NexusDataReader(DataReader):
         self.environment = self.get_environment()
         self.get_metadata()
 
-    def __init_subclass__(cls):
-        if cls.layout is not None:
-            return
-        context = {}
-        for c in reversed(cls.__mro__):
-            context.update(vars(c))
-
-        cls.nexus_keys = {
-            key: value.format_map(context)
-            for key, value in cls.nexus_keys.items()
-        }
-
-        cls.nexus_meta_keys = {
-            key: value.format_map(context)
-            for key, value in cls.nexus_meta_keys.items()
-        }
-
-        cls.environment_keys = {
-            key: [path.format_map(context) for path in paths]
-            for key, paths in cls.environment_keys.items()
-        }
-
     @classmethod
     def can_read(cls, filepath: Path) -> bool:
         """An HDF5 file with this instrument's group and counts"""
@@ -113,11 +36,8 @@ class NexusDataReader(DataReader):
             if not h5py.is_hdf5(filepath):
                 return False
             with h5py.File(filepath, mode = 'r') as f:
-                if cls.layout is not None:
-                    return (cls.layout.group('instrument').path in f
-                            and any(path in f for path in cls.layout.field('counts').paths)
-                            and cls.identify(f))
-                return (cls.nexus_keys['instrument'] in f and cls.nexus_keys['counts'] in f
+                return (cls.layout.group('instrument').path in f
+                        and any(path in f for path in cls.layout.field('counts').paths)
                         and cls.identify(f))
         except (OSError, KeyError):
             return False
@@ -129,34 +49,26 @@ class NexusDataReader(DataReader):
 
     def getValue(self, key: str):
         """Dataset (or group) for a key, or None if the key is not defined for this instrument
-        or not in the file. With a layout, the first of the field's paths in the file"""
-        if self.layout is not None:
-            if key in self.layout.groups:
-                return self._file.get(self.layout.group(key).path)
-            try:
-                paths = self.layout.field(key).paths
-            except KeyError:
-                return None
-            for path in paths:
-                value = self._file.get(path)
-                if value is not None:
-                    return value
+        or not in the file: the first of the field's paths in the file"""
+        if key in self.layout.groups:
+            return self._file.get(self.layout.group(key).path)
+        try:
+            paths = self.layout.field(key).paths
+        except KeyError:
             return None
-        if key not in self.nexus_keys:
-            return None
-        return self._file.get(self.nexus_keys[key])
+        for path in paths:
+            value = self._file.get(path)
+            if value is not None:
+                return value
+        return None
 
     def environment_paths(self) -> dict[str, tuple[str, ...]]:
         """Candidate paths per SampleEnvironment field, in the order they are tried"""
-        if self.layout is not None:
-            return {key: self.layout.field(key).paths for key in self.layout.environment}
-        return {key: tuple(paths) for key, paths in self.environment_keys.items()}
+        return {key: self.layout.field(key).paths for key in self.layout.environment}
 
     def metadata_paths(self) -> dict[str, tuple[str, ...]]:
         """Candidate paths per metadata key, in the order they are tried"""
-        if self.layout is not None:
-            return {key: self.layout.field(key).paths for key in self.layout.metadata}
-        return {key: (path,) for key, path in self.nexus_meta_keys.items()}
+        return {key: self.layout.field(key).paths for key in self.layout.metadata}
 
     def get_environment(self) -> SampleEnvironment:
         """Sample conditions from the first existing path of each quantity"""

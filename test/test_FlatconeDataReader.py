@@ -13,7 +13,7 @@ def datareader():
 def test_read(datareader):
     flatcone_file = datareader
     assert flatcone_file.file.name == '043555_pastis.nxs'
-    assert flatcone_file.nexus_keys['instrument'] == 'entry0/IN20'
+    assert flatcone_file.layout.group('instrument').path == 'entry0/IN20'
     assert flatcone_file.counts.shape == (6, 31, 1)
     assert flatcone_file.counts[0, 1, 0] == pytest.approx(1.556019, abs=1e-6)
     assert flatcone_file.n_steps == 6

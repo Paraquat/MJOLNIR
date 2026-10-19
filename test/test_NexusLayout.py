@@ -5,11 +5,13 @@ from types import SimpleNamespace
 import numpy as np
 from pathlib import Path
 
-from MJOLNIR.Data.NexusLayout import Field, Group, NexusLayout, CameaLayout
+from MJOLNIR.Data.NexusLayout import (Field, Group, NexusLayout, CameaLayout, FlatconeLayout,
+                                      MarmotLayout)
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
 
 SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
+ILL_DATA = Path.home() / 'projects' / 'marmot+flatcone'
 
 def test_field_format_keeps_unknown_placeholders():
     field = Field('{entry}/{instrument}/calib{binning}/width', aliases=('{entry}/w',))
@@ -53,13 +55,14 @@ def test_subclass_changes_entry():
     assert CameaLayout.path('counts') == 'entry/CAMEA/detector/data'
 
 def test_subclass_checks():
-    with pytest.raises(TypeError, match='must define instrument'):
-        class NoInstrument(NexusLayout):
-            pass
+    class NoInstrument(NexusLayout): # Allowed for a shared base, as IllLayout
+        pass
+    with pytest.raises(TypeError, match='does not define instrument'):
+        NoInstrument.path('title')
     with pytest.raises(TypeError, match='defined twice'):
         class Repeated(NexusLayout):
             instrument = 'X'
-            metadata = {**NexusLayout.metadata, 'A3': Field('{entry}/a3')}
+            fields = {'title': Field('{entry}/other_title')}
     with pytest.raises(TypeError, match='unknown placeholder'):
         class Misspelt(NexusLayout):
             instrument = 'X'
@@ -84,34 +87,56 @@ def test_reader_tries_aliases(tmp_path):
     assert NexusDataReader.getValue(reader, 'notAField') is None
     reader._file.close()
 
+def check_against_file(layout, f, binnings=()):
+    """Groups (NX_class), units and dtypes of every main path of the layout present in a file;
+    returns the number of fields found"""
+    def text(value):
+        return value.decode() if isinstance(value, bytes) else value
+
+    for group in layout.all_groups().values():
+        if group.path in f:
+            assert text(f[group.path].attrs.get('NX_class')) == group.nx_class, group.path
+    fields = list(layout.all_fields().items())
+    for binning in binnings:
+        group = layout.calibration_group_for(binning)
+        assert text(f[group.path].attrs['NX_class']) == group.nx_class
+        fields += layout.calibration_fields(binning).items()
+    found = 0
+    for key, field in fields:
+        if field.path not in f:
+            continue
+        found += 1
+        dataset = f[field.path]
+        assert text(dataset.attrs.get('units')) == field.units, key
+        if field.dtype is not None:
+            assert dataset.dtype == np.dtype(field.dtype), key
+    return found
+
 @pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 @pytest.mark.parametrize('data_file', SAMPLE_DATA[:2], ids=lambda p: p.name)
 def test_camea_matches_files(data_file):
-    """Groups, units and dtypes of every main path present in a NICOS file"""
-    def units(dataset):
-        value = dataset.attrs.get('units')
-        return value.decode() if isinstance(value, bytes) else value
-
     with h5py.File(data_file) as f:
-        for group in CameaLayout.all_groups().values():
-            if group.path in f:
-                assert f[group.path].attrs['NX_class'].decode() == group.nx_class, group.path
-        fields = list(CameaLayout.all_fields().items())
-        for binning in (1, 3, 5, 8):
-            group = CameaLayout.calibration_group_for(binning)
-            assert f[group.path].attrs['NX_class'].decode() == group.nx_class
-            fields += CameaLayout.calibration_fields(binning).items()
-        found = 0
-        for key, field in fields:
-            if field.path not in f:
-                continue
-            found += 1
-            dataset = f[field.path]
-            assert units(dataset) == field.units, key
-            if field.dtype is not None:
-                assert dataset.dtype == np.dtype(field.dtype), key
+        assert check_against_file(CameaLayout, f, binnings=(1, 3, 5, 8)) > 60
         assert f[CameaLayout.path('counts')].ndim == 3
-    assert found > 60
+
+@pytest.mark.skipif(not ILL_DATA.exists(), reason='marmot+flatcone data not available')
+@pytest.mark.parametrize('layout, file_name, n_fields', [(FlatconeLayout, '043555_pastis.nxs', 18),
+                                                         (MarmotLayout, '054724.nxs', 17)],
+                         ids=['Flatcone', 'Marmot'])
+def test_ill_matches_files(layout, file_name, n_fields):
+    """Every field but the magnetic and electric fields, which these files do not record"""
+    with h5py.File(ILL_DATA / file_name) as f:
+        assert check_against_file(layout, f) == n_fields
+
+def test_ill_layouts_share_base():
+    assert FlatconeLayout.path('Ei') == 'entry0/IN20/Monochromator/ei'
+    assert MarmotLayout.path('Ei') == 'entry0/THALES/Monochromator/ei'
+    assert FlatconeLayout.path('proposal') == MarmotLayout.path('proposal') \
+        == 'entry0/experiment_identifier'
+    assert FlatconeLayout.group('sampleParameters') == Group('entry0/sample/param', None)
+    with pytest.raises(KeyError):
+        FlatconeLayout.field('instrumentMode') # Marmot only
+    assert FlatconeLayout.calibration_group_for(1) is None # Calibration from a CSV table
 
 @pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 def test_camea_reader_uses_layout():

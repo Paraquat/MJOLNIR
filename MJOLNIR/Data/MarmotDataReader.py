@@ -3,6 +3,7 @@ import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
+from MJOLNIR.Data.NexusLayout import MarmotLayout
 from MJOLNIR.Data.Sample import Sample
 
 class MarmotDataReader(NexusDataReader):
@@ -10,30 +11,10 @@ class MarmotDataReader(NexusDataReader):
 
     n_analysers = 256
     n_detectors = 30
-    instrument = "THALES"
-    entry = 'entry0'
+    layout = MarmotLayout
+    instrument = MarmotLayout.instrument
     # No calibration table is shipped for Marmot: pass calibration_file to the constructor
     calibration_file = None
-
-    # Marmot-specific hdf5 keys
-    nexus_keys = {
-        **NexusDataReader.nexus_keys,
-        'counts': '{entry}/data_scan/detector_data/data',
-        'A4': '{entry}/{instrument}/A4/value',
-        'Ei': '{entry}/{instrument}/Monochromator/ei',
-        'scanCommand': '{entry}/{instrument}/command_line/actual_command',
-        'scannedData': '{entry}/data_scan/scanned_variables/data',
-        'scannedLabels': '{entry}/data_scan/scanned_variables/variables_names/label',
-        'instrumentMode': '{entry}/instrument_mode',
-    }
-
-    # Marmot-specific hdf5 metadata keys
-    nexus_meta_keys = {
-        **NexusDataReader.nexus_meta_keys,
-        'localContact': '{entry}/user/namelocalcontact',
-        'proposalUser': '{entry}/user/name',
-        'proposal': '{entry}/experiment_identifier',
-    }
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)
@@ -48,7 +29,7 @@ class MarmotDataReader(NexusDataReader):
     @classmethod
     def identify(cls, f) -> bool:
         # THALES is also run without Marmot, with the same file layout
-        mode = f.get(cls.nexus_keys['instrumentMode'])
+        mode = f.get(cls.layout.path('instrumentMode'))
         return mode is not None and mode[0].strip().lower() == b'marmot'
 
     def default_mask(self) -> npt.NDArray[np.bool_]:

@@ -25,7 +25,7 @@ def datareader(calibration_file):
 def test_read(datareader):
     marmot_file = datareader
     assert marmot_file.file.name == '054724.nxs'
-    assert marmot_file.nexus_keys['instrument'] == 'entry0/THALES'
+    assert marmot_file.layout.group('instrument').path == 'entry0/THALES'
     assert marmot_file.counts.shape == (361, 30, 256)
     assert marmot_file.counts[208, 2, 182] == 3803
     assert marmot_file.n_steps == 361

@@ -96,9 +96,9 @@ work is the open items in the sections further down; tick both.
       the files and checks the paths agree with `CameaDataReader`'s keys
 - [x] `CameaDataReader` reads through `CameaLayout` (`layout = CameaLayout`); its
       `nexus_keys`, `nexus_meta_keys` and `environment_keys` are removed.
-      `NexusDataReader` uses the layout when a subclass sets one (`getValue` takes the first
-      of a field's paths in the file, and also returns groups; `environment_paths`,
-      `metadata_paths`, `can_read`), the key tables otherwise. Calibration, possible
+      `NexusDataReader` reads through the layout (`getValue` takes the first of a field's
+      paths in the file, and also returns groups; `environment_paths`, `metadata_paths`,
+      `can_read`). Calibration, possible
       binnings and the NICOS check in `scan_monitor` come from the layout. Reader output
       identical before and after on all 20 CAMEA files (counts, angles, monitors,
       environment, metadata, every calibration, sample, `can_read`). Changes: the
@@ -106,8 +106,19 @@ work is the open items in the sections further down; tick both.
       `T` (the reader tried `temperature` last; same for `magnetic_field` and `B`), which
       only matters for a file that has both; `can_read` accepts old files with
       `detector/counts`
-- [ ] `FlatconeLayout`, `MarmotLayout`; connect their readers, then remove the key tables
-      and the fallback from `NexusDataReader`
+- [x] `FlatconeLayout`, `MarmotLayout`, sharing `IllLayout` (`entry0`, Ei, scan command and
+      scanned variables, ILL user metadata), checked against `043555_pastis.nxs` and
+      `054724.nxs`; their readers use them (Marmot's `identify` too). `NexusLayout` now
+      holds only what all NeXus files share; the PSI parts (control, monitors, sample
+      angles and UB, `scancommand`, PSI metadata) moved to `CameaLayout`. `Group.nx_class`
+      may be None (Flatcone's `monitor` and `sample/param` have none). The key tables, the
+      fallback and `__init_subclass__` are removed from `NexusDataReader`, and the readers'
+      `entry` attributes with them. Reader output identical before and after on both ILL
+      files and all 20 CAMEA files, and every reader's `can_read` unchanged on every file
+- [ ] ILL files store `{instrument}/A4/offset_value` (-178.65 and -179.8 degrees in the two
+      test files), not read: `A4Offset` is 0 for Flatcone and Marmot. The old `loadMarmot`
+      read it but then set `_A4Off = 0.0`. Confirm with ILL that it is not a correction to
+      apply
 - [x] In `CameaLayout`: the lists of `environment_keys` are aliases; old CAMEA
       `detector/counts` is an alias of `detector/data`
 - [x] In the layouts: no duplicate keys (`monitor1`, `monitor2` replace `hdfMonitor`,
@@ -115,7 +126,8 @@ work is the open items in the sections further down; tick both.
       (`intensity`, `energy`, `normalization`) left out until converted files are decided
 - [x] Calibration sub-layout: `calibration_group` and `calibration` (keys as in
       `InstrumentCalibration`). The files store no units for it, so none are written
-- [ ] Reader tests pass unchanged on the layouts
+- [x] Reader tests pass on the layouts (only the `nexus_keys['instrument']` checks became
+      `layout.group('instrument').path`)
 - [ ] `DataWriter` ABC (beside `DataReader`); `NexusWriter` on a layout; `CameaWriter`.
       NICOS text formats (Bambus, MultiFLEXX) get no writer
 - [ ] Update-a-copy mode, the default: copy the source file, open the copy `'r+'`, replace
