@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import numpy.typing as npt
 from pathlib import Path
@@ -21,6 +22,69 @@ class CameaDataReader(NexusDataReader):
         self.monitor1 = np.array(self.getValue('monitor1'))
         self.monitor2 = np.array(self.getValue('monitor2'))
         self.get_possible_binnings()
+        # Detector and analyser monitored during the scan (NICOS SelectDetectorAnalyser)
+        for attribute, key in [('detector_selection', 'detectorSelection'),
+                               ('analyser_selection', 'analyzerSelection')]:
+            value = self.getValue(key)
+            if value is not None:
+                setattr(self, attribute, int(np.asarray(value).ravel()[0]))
+        self.scan_parameters, self.scan_values, self.scan_units = self.get_scan_parameters()
+
+    # entry/data entries that are not scan variables (old getScanParameter)
+    _not_scanned = {'counts', 'summed_counts', 'en', 'h', 'intensity', 'k', 'l', 'monitor',
+                    'normalization', 'qx', 'qy', 'data', 'scanvar'}
+    # NICOS scan variable -> layout key and name (old getScanParameter)
+    _scan_variables = {'a3': ('A3', 'A3'), 'A3': ('A3', 'A3'), 's2t': ('A4', 'A4'),
+                       'a4': ('A4', 'A4'), 'A4': ('A4', 'A4'), 'ei': ('Ei', 'Ei'),
+                       'Ei': ('Ei', 'Ei')}
+
+    def get_scan_parameters(self):
+        """Scanned variables, their values per step and units, as the old getScanParameter:
+        the variables stored in entry/data (older files), else those named in entry/scanvars
+        (NICOS), else for a manual scan the first of temperature, magnetic field, Ei, A3 and
+        2theta that changes"""
+        def text(value):
+            return value.decode() if isinstance(value, bytes) else str(value)
+
+        parameters, values, units = [], [], []
+        data = self.getValue('data')
+        if data is not None:
+            for name in data:
+                if name in self._not_scanned or name.endswith('zero'):
+                    continue
+                dataset = data[name]
+                parameters.append(name)
+                values.append(np.asarray(dataset, dtype=float))
+                units.append(text(dataset.attrs.get('units', 'N/A')))
+        if not parameters:
+            scanvars = self.getValue('scanVariables')
+            names = [] if scanvars is None else \
+                [name for name in text(np.asarray(scanvars).ravel()[0]).split(',') if name]
+            for name in names:
+                if name == 'CAMEA':
+                    warnings.warn(f'"{self.file.name}" is a Q scan (qcscan): its scan '
+                                  'parameters are not read')
+                    continue
+                if name not in self._scan_variables:
+                    warnings.warn(f'Scan variable "{name}" of "{self.file.name}" not known; left out')
+                    continue
+                key, label = self._scan_variables[name]
+                dataset = self.getValue(key)
+                parameters.append(label)
+                values.append(np.asarray(dataset, dtype=float).ravel())
+                units.append(text(dataset.attrs.get('units', 'N/A')))
+            if not names: # Manual scan: guess the variable that changes
+                candidates = [('T', self.environment.temperature, 'K', 0.01),
+                              ('B', self.environment.magnetic_field, 'T', 0.01),
+                              ('Ei', self.Ei, 'meV', 0.001), ('A3', self.A3, 'deg', 0.001),
+                              ('A4', self.twotheta, 'deg', 0.001)]
+                for name, value, unit, threshold in candidates:
+                    value = None if value is None else np.asarray(value, dtype=float).ravel()
+                    if value is not None and value.size > 1 and \
+                            np.abs(np.diff(value)).mean() > threshold:
+                        parameters, values, units = [name], [value], [unit]
+                        break
+        return np.array(parameters), np.array(values), np.array(units)
 
     def get_possible_binnings(self):
         """Binnings with a calibration group in the file (one digit, as the old DataFile)"""

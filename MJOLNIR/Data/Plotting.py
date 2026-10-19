@@ -7,6 +7,7 @@ interactive modes of _interactiveSettings (cutting from a plot).
 import warnings
 from types import SimpleNamespace
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
@@ -394,6 +395,72 @@ def plot_cut_qe_line(result: CutResult, sample=None, rlu: bool = True, ax=None, 
         data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
     ax.get_figure().tight_layout()
+    return ax
+
+def plot_raw_1d(results: list[CutResult], ax=None, legend=True, grid: bool = True, **kwargs):
+    """Plot raw counts (from DataSet.cut_raw_1d) against the first scan variable, one series
+    per file (the old DataSet.plotRaw1D).
+
+    Args:
+
+        - results (list of CutResult): One raw cut per file
+
+    Kwargs:
+
+        - ax (Axes): Axes to draw on (default None: new figure)
+
+        - legend (bool or list): Legend with the file names (True), the given names, or none
+          (default True)
+
+        - grid (bool): Show a grid (default True)
+
+    Other kwargs go to scatter. The read-out under the cursor gives every scan variable at the
+    position (interpolated for variables scanned together, e.g. A3 and A4) and the counts.
+    The returned axes have results and to_csv.
+    """
+    if not results:
+        raise ValueError('No raw cuts to plot')
+    if ax is None:
+        _, ax = plt.subplots()
+    parameters = results[0].parameters['scan_parameters']
+    units = results[0].parameters['scan_units']
+    if not parameters:
+        raise ValueError(f'"{results[0].parameters["file"]}" has no scan variables to plot against')
+    if legend is True:
+        legend = [result.parameters['file'] for result in results]
+    elif legend and len(legend) != len(results):
+        raise AttributeError(f'Provided list of legends does not match the number of files. '
+                             f'Expected {len(results)}, but got {len(legend)}')
+    for index, result in enumerate(results):
+        label = legend[index] if legend else '_nolegend_'
+        ax.scatter(result.data[parameters[0]], result.data[COLUMNS['intensity']], label=label,
+                   **kwargs)
+    xlabels = [f'{parameter} [{unit}]' for parameter, unit in zip(parameters, units)]
+    ax.set_xlabel(xlabels[0])
+    ax.set_ylabel('Int [counts]')
+    if legend:
+        ax.legend()
+    ax.grid(grid)
+
+    # All files' scan values, to give every variable at a position on the first one
+    scan = np.concatenate([result.data[parameters].to_numpy(dtype=float).T for result in results],
+                          axis=1)
+    def format_coord(x, y): # pragma: no cover
+        start, end = scan[0][0], scan[0][-1]
+        fraction = (x - start)/(end - start) if end != start else 0.0
+        values = [x] + [row[0] + fraction*(row[-1] - row[0]) for row in scan[1:]]
+        steps = np.abs(np.diff(scan, axis=1)).mean(axis=1)
+        decimals = [max(int(np.ceil(-np.log10(step))), 0) if step > 0 else 2 for step in steps]
+        text = [f'{label} = {value:.{decimal}f}' for label, value, decimal
+                in zip(xlabels, values, decimals)]
+        return ', '.join(text + [f'Int [count] = {y:.0f}'])
+    ax.format_coord = format_coord
+    ax.results = results
+
+    def to_csv(file_name):
+        frames = [result.data.assign(file=result.parameters['file']) for result in results]
+        pd.concat(frames, ignore_index=True).to_csv(file_name, index=False)
+    ax.to_csv = to_csv
     return ax
 
 def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log: bool = False,

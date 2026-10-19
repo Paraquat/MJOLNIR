@@ -101,6 +101,10 @@ class DataReader(ABC):
     # Set for derived data, e.g. a difference of data sets
     intensity_error: npt.NDArray[np.float64] | None
     use_default_mask: bool = True
+    # Detector and analyser monitored during the scan (the old dasel), the default of
+    # raw_counts; read from CAMEA files, else 0, 0
+    detector_selection: int = 0
+    analyser_selection: int = 0
 
     # Frozen readers hold derived data (e.g. a difference of two data sets): transforming them
     # again would rebuild intensity from the raw counts
@@ -203,6 +207,31 @@ class DataReader(ABC):
         table = np.genfromtxt(self.calibration_file, skip_header=1, delimiter=',')
         self.binning = binning
         return calibration_from_table(table, self.calibration_A4_sign)
+
+    def raw_counts(self, detector: int | None = None, analyser: int | None = None):
+        """Counts per scan step of one detector and analyser, not normalised: the detector's
+        pixels within the analyser's range at binning 1 summed, or its channel for instruments
+        with one channel per analyser (the old cutRaw1D for one file). Defaults:
+        detector_selection, analyser_selection"""
+        self._check_not_frozen('read raw counts of')
+        detector = self.detector_selection if detector is None else int(detector)
+        analyser = self.analyser_selection if analyser is None else int(analyser)
+        for name, value, limit in [('detector', detector, self.n_detectors),
+                                   ('analyser', analyser, self.n_analysers)]:
+            if not 0 <= value < limit:
+                raise ValueError(f'{name} {value} out of range: {type(self).__name__} has '
+                                 f'{limit} {name}s, numbered 0-{limit - 1}')
+        if self.counts.shape[2] == self.n_analysers: # One channel per analyser
+            return np.asarray(self.counts[:, detector, analyser], dtype=float)
+        if 1 in self.calibration_updates:
+            calibration = self.calibration_updates[1]
+        else: # get_instrument_calibration sets binning: keep the current one
+            binning = getattr(self, 'binning', None)
+            calibration = self.get_instrument_calibration(1)
+            if binning is not None:
+                self.binning = binning
+        low, high = calibration.bound.reshape(self.n_detectors, self.n_analysers, 2)[detector, analyser]
+        return np.sum(self.counts[:, detector, int(low):int(high)], axis=1, dtype=float)
 
     def _check_not_frozen(self, action: str):
         if self.frozen:

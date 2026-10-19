@@ -4,12 +4,13 @@ from pathlib import Path
 from operator import attrgetter
 from collections.abc import Callable, Iterable, Iterator
 import numpy as np
+import pandas as pd
 
 from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.AxisView import AxisView
 from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl, align_to_lattice
 from MJOLNIR.Data import Cuts, Plotting
-from MJOLNIR.Data.CutResult import CutResult
+from MJOLNIR.Data.CutResult import CutResult, COLUMNS
 from MJOLNIR.Data.BackgroundModel import PowderBackground, AMBERBackground
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
@@ -647,6 +648,48 @@ class DataSet:
                              extend=extend, constant_bins=constant_bins,
                              background_subtraction=background_subtraction)
         return Plotting.plot_cut_1d(result, sample=self.sample, rlu=rlu, **plot_options)
+
+    def cut_raw_1d(self, detector=None, analyser=None) -> list[CutResult]:
+        """Raw counts per scan step of one detector and analyser in each file, against the scan
+        variables (the old cutRaw1D): no conversion or normalisation. detector and analyser
+        are one value for all files or one per file (default: each file's
+        detector_selection, analyser_selection). Files must scan the same variables.
+
+        One CutResult per file: columns for each scan variable, intensity (counts) and Monitor
+        (the normalisation monitor); parameters file, detector, analyser, scan_parameters,
+        scan_units. See DataReader.raw_counts"""
+        if len(self) == 0:
+            raise ValueError('DataSet contains no data files')
+        parameters = [list(reader.scan_parameters) for reader in self._readers]
+        if any(p != parameters[0] for p in parameters):
+            raise ValueError('The data files do not scan the same variables: '
+                             f'{sorted(set(map(tuple, parameters)))}')
+        def per_file(value, name):
+            if value is None or np.ndim(value) == 0:
+                return [value]*len(self)
+            if len(value) != len(self):
+                raise ValueError(f'{name} has {len(value)} values for {len(self)} data files')
+            return list(value)
+        results = []
+        for reader, detector, analyser in zip(self._readers, per_file(detector, 'detector'),
+                                              per_file(analyser, 'analyser')):
+            detector = reader.detector_selection if detector is None else int(detector)
+            analyser = reader.analyser_selection if analyser is None else int(analyser)
+            data = pd.DataFrame({name: np.asarray(values, dtype=float) for name, values in
+                                 zip(reader.scan_parameters, reader.scan_values)})
+            data[COLUMNS['intensity']] = reader.raw_counts(detector, analyser)
+            data[COLUMNS['mon']] = np.asarray(reader.scan_monitor(), dtype=float)
+            results.append(CutResult(data, {}, dict(
+                file=reader.file.name, detector=detector, analyser=analyser,
+                scan_parameters=list(reader.scan_parameters),
+                scan_units=list(reader.scan_units))))
+        return results
+
+    def plot_raw_1d(self, detector=None, analyser=None, **plot_options):
+        """Raw counts of one detector and analyser against the first scan variable, one series
+        per file (cut_raw_1d, Plotting.plot_raw_1d, which takes plot_options such as ax,
+        legend, grid). Returns the axes; the cuts are ax.results"""
+        return Plotting.plot_raw_1d(self.cut_raw_1d(detector, analyser), **plot_options)
 
     def generate_ufit_dataset(self, result: CutResult, rlu: bool = True):
         """A ufit dataset of a 1D cut of this data set (from cut_1d or cut_constant_q), with

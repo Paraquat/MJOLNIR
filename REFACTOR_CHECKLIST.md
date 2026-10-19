@@ -83,8 +83,8 @@ work is the open items in the sections further down; tick both.
 - [ ] Files: error for files without data. Done: `shallowRead`. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
 - [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
-      scan parameters and command, `startTime`/`endTime`, `title`, `comment`, detector and
-      analyser selection (`dasel`)
+      scan command, `startTime`/`endTime`, `title`, `comment`. Done: CAMEA scan parameters,
+      detector and analyser selection (`dasel`)
 - [ ] Calibration and sample: calibration plots, `updateSampleParameters`. Done:
       `updateCalibration`
 - [x] Saving: `saveHDF` is replaced by the writers below. Dropped (2026-10-19):
@@ -155,13 +155,14 @@ work is the open items in the sections further down; tick both.
       unchanged
 - [x] Full-file mode: Dropped (2026-10-19). Only `createEmptyDataFile` and NXsqom output
       needed it, and both are dropped
-- [ ] Cuts: `cutPowder`, `cutRaw1D`, raw `extractData`, measurement errors (`I_err`),
-      `cutQE` smoothing and scaled energy, `plotCoverage`. Done: `cut1DE`
-      (`cut_constant_q`), `cutQELine` (`cut_qe_line`)
-- [ ] Plots and axes: `plotCut1DE`, `plotCutPowder`, `plotRaw1D`, `createQAxis` /
+- [ ] Cuts: `cutPowder`, measurement errors (`I_err`), `cutQE` smoothing and scaled energy,
+      `plotCoverage`. Done: `cut1DE` (`cut_constant_q`), `cutQELine` (`cut_qe_line`),
+      `cutRaw1D` (`cut_raw_1d`). Dropped: raw `extractData`
+- [ ] Plots and axes: `plotCut1DE`, `plotCutPowder`, `createQAxis` /
       `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
       click handlers and `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`),
-      `plotCutQELine` (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`)
+      `plotCutQELine` (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
+      (`plot_raw_1d`)
 - [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
@@ -224,8 +225,9 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] Electronic log book: the same metadata for many files, from a quick read: on
       `DataReaderFactory().shallow_read(instrument, files, keys)`, which returns one dict
       per file (the old one returned lists); parameter list from `shallow_keys()`
-- [ ] Raw 1D view: detector and analyser selection, `calcualteDataIndexFromDasel`, the
-      binning-1 calibration, `plotRaw1D`
+- [ ] Raw 1D view: `reader.detector_selection` / `analyser_selection` (settable; the GUI
+      keeps the originals itself), `ds.plot_raw_1d()`; `reader.raw_counts(detector,
+      analyser)` replaces `calcualteDataIndexFromDasel` and the binning-1 calibration
 
 ### GUI views on the new API
 - [ ] Data set manager: open files, binning (`set_binning`), sorting (`auto_sort`), masks
@@ -300,7 +302,14 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `temperature`, `magneticField`, `electricField`: `SampleEnvironment` (measured and
       setpoints, units from the file), identical to the old DataFile for all CAMEA test files
 - [ ] Temperature from the NICOS log when no temperature is stored
-- [ ] Scan parameters (`getScanParameter`: parameters, values, units)
+- [x] Scan parameters (`getScanParameter`: parameters, values, units):
+      `CameaDataReader.get_scan_parameters` -> `scan_parameters`, `scan_values`, `scan_units`
+      (as the other readers): variables in `entry/data`, else named in `entry/scanvars`
+      (`a3` -> A3, `s2t`/`a4` -> A4, `ei` -> Ei), else for a manual scan the first of
+      temperature, field, Ei, A3, 2theta that changes. Identical to the old `DataFile` for all
+      20 CAMEA files. Not ported: Q scans (`qcscan`, scan variable `CAMEA`; no test data):
+      left out with a warning, as are unknown variables (the old code added the name
+      without values)
 - [ ] `scanCommand` (the GUI shows it)
 - [x] `protonBeam`, `singleDetector1/8`, `s2tRaw`, analyser / monochromator settings,
       `totalCounts`: Dropped (2026-10-19) as reader attributes; they stay in `CameaLayout`, so
@@ -314,7 +323,13 @@ runs on the new `DataSet` and readers, and every view works.
       instruments: any pixel with a NaN A4, Ef or amplitude)
 - [x] Marmot: mask Ef < 1
 - [x] Normalization spread over all scan steps
-- [ ] Detector/analyser selection (`dasel`) and the index calculation from it
+- [x] Detector/analyser selection (`dasel`) and the index calculation from it:
+      `detector_selection`, `analyser_selection` on every reader (read from CAMEA files,
+      else 0, 0, as the old `DataFile`); `DataReader.raw_counts(detector, analyser)` replaces
+      `calcualteDataIndexFromDasel`: the analyser's pixels at binning 1 (calibration
+      updates included) summed, or the channel for instruments with one channel per
+      analyser (NICOS, Flatcone, Marmot). Leaves the reader's binning and calibration as
+      they were
 - [x] `DataSet` default binning = the reader type's default binning
 
 ### Calibration and sample
@@ -431,8 +446,15 @@ runs on the new `DataSet` and readers, and every view works.
       `calculateGrid3D` reduced to `Cuts.grid_edges`, one edge array per axis). Identical
       to the old code. Not ported: `noApproximation` (returned 2 arrays instead of 4) and the
       debug branch `backgroundSubtraction == 2`
-- [ ] `cutRaw1D`
-- [ ] `extractData` (raw selection by A4 / Ef)
+- [x] `cutRaw1D`: `ds.cut_raw_1d(detector=None, analyser=None)` -> one `CutResult` per
+      file (columns per scan variable, `intensity` (counts), `Monitor`; parameters file,
+      detector, analyser, scan variables and units) instead of `(X, I, parameter, unit)`.
+      Detector and analyser shared or per file; files must scan the same variables; frozen
+      data sets refused. Counts and scan values identical to the old `cutRaw1D` for all 20
+      CAMEA files (file selection and three others) and all 100 Bambus channels
+- [x] `extractData` (raw selection by A4 / Ef): Dropped (2026-10-19). Used only in the
+      FAQ; CAMEA-only (104 x 8 hard-coded) and binning 1 only. `raw_counts(detector,
+      analyser)` gives a channel's counts; `gather` the converted data
 - [x] Pandas output columns (`pdNaming`): `CutResult.COLUMNS`
 
 ### Plotting and interactive figures
@@ -462,7 +484,11 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] `plotCutPowder`
 - [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
       polar binning, `enlargen`, 3D axes, `scaleFunction`)
-- [ ] `plotRaw1D`
+- [x] `plotRaw1D`: `Plotting.plot_raw_1d(results, ax, legend, grid, **scatter options)`,
+      `ds.plot_raw_1d(detector, analyser, **plot_options)`: a scatter per file of counts
+      against the first scan variable, legend of file names (or given names), read-out of
+      all scan variables at a position (interpolated) and the counts, `ax.results`,
+      `ax.to_csv`. Returns the axes. Not ported: the click printout (`outputFunction`)
 - [x] `plotA3A4` (with `boundaryQ`, `convexHullPoints`): Dropped (2026-10-19)
 - [x] `View3D`: `ds.view_3d(dx, dy, dz, rlu, background_subtraction, **viewer options)`,
       `SliceViewer.SliceViewer(result of bin_3d, sample, rlu, axis, counts, log, vmin, vmax,
@@ -591,6 +617,12 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       background (and measurement errors); now `Int_err` of the cut
 - [x] `generateUFitDataset` along energy labelled x with the Q point and a mean energy as if
       it were a Q cut; now 'E [meV] at (H, K, L) [RLU]'
+- [x] `cutRaw1D` / `plotRaw1D` failed on Flatcone files (IndexError: counts indexed as 3D);
+      `cut_raw_1d` works for every reader
+- [x] `calcualteDataIndexFromDasel` checked the analyser against Bambus's limit for every
+      non-CAMEA instrument, hard-coded CAMEA's 8 analysers and accepted negative numbers;
+      `raw_counts` checks 0 <= detector < n_detectors and 0 <= analyser < n_analysers
+- [x] `plotRaw1D` read-out chose decimals from the natural logarithm of the step; now log10
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
