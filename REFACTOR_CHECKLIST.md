@@ -85,17 +85,36 @@ work is the open items in the sections further down; tick both.
       analyser selection (`dasel`)
 - [ ] Calibration and sample: `updateCalibration`, calibration plots, `updateSampleParameters`
 - [ ] Saving: `saveNXsqom`, DataSet `save`/`load`. `saveHDF` is replaced by the writers below
-- [ ] Shared file layouts: move the HDF5 paths out of the readers into `NexusLayout` and
-      one subclass per instrument (`CameaLayout`, `FlatconeLayout`, `MarmotLayout`). Each
-      field is a `Field(path, aliases, units, dtype)`: readers try `path` then the aliases,
-      writers write `path` with its units and dtype; group `NX_class` values in `groups`.
-      `{entry}`/`{instrument}` filled in once (CAMEA's keys now hard-code `entry/`)
-- [ ] Merge the per-field lists of `environment_keys` into the aliases; old CAMEA
-      `detector/counts` becomes an alias of `detector/data`
-- [ ] Remove duplicate and group keys from the key tables (`hdfMonitor`, `monitor_1` and
-      `monitor1` all name `entry/control/data`; `instrument`, `sample` are groups)
-- [ ] Calibration sub-layout (`calibN`: a4offset, amplitude, background, boundaries,
-      final_energy, width, with units) shared by `get_instrument_calibration` and the writer
+- [x] `NexusLayout` and `CameaLayout` (`MJOLNIR/Data/NexusLayout.py`), not used by anything
+      yet. Each field is a `Field(path, aliases, units, dtype)`: readers are to try `path`
+      then the aliases, writers write `path` with its units and dtype; groups are
+      `Group(path, nx_class)`. The class dictionaries hold templates (`{entry}`,
+      `{instrument}`, `{binning}` for calibration), filled in by `field`, `path`, `group`,
+      `all_fields`, `calibration_fields(binning)`; misspelt placeholders and keys defined
+      twice fail when the class is defined. CAMEA units, dtypes and `NX_class` values taken
+      from the 2023 and 2024 NICOS files; `test/test_NexusLayout.py` checks them against
+      the files and checks the paths agree with `CameaDataReader`'s keys
+- [x] `CameaDataReader` reads through `CameaLayout` (`layout = CameaLayout`); its
+      `nexus_keys`, `nexus_meta_keys` and `environment_keys` are removed.
+      `NexusDataReader` uses the layout when a subclass sets one (`getValue` takes the first
+      of a field's paths in the file, and also returns groups; `environment_paths`,
+      `metadata_paths`, `can_read`), the key tables otherwise. Calibration, possible
+      binnings and the NICOS check in `scan_monitor` come from the layout. Reader output
+      identical before and after on all 20 CAMEA files (counts, angles, monitors,
+      environment, metadata, every calibration, sample, `can_read`). Changes: the
+      temperature is read from `sample/temperature` first, then `Ts`, `Ts/value`, `se_ts`,
+      `T` (the reader tried `temperature` last; same for `magnetic_field` and `B`), which
+      only matters for a file that has both; `can_read` accepts old files with
+      `detector/counts`
+- [ ] `FlatconeLayout`, `MarmotLayout`; connect their readers, then remove the key tables
+      and the fallback from `NexusDataReader`
+- [x] In `CameaLayout`: the lists of `environment_keys` are aliases; old CAMEA
+      `detector/counts` is an alias of `detector/data`
+- [x] In the layouts: no duplicate keys (`monitor1`, `monitor2` replace `hdfMonitor`,
+      `monitor`, `monitor_1`); `instrument` and `sample` are groups. Converted-file keys
+      (`intensity`, `energy`, `normalization`) left out until converted files are decided
+- [x] Calibration sub-layout: `calibration_group` and `calibration` (keys as in
+      `InstrumentCalibration`). The files store no units for it, so none are written
 - [ ] Reader tests pass unchanged on the layouts
 - [ ] `DataWriter` ABC (beside `DataReader`); `NexusWriter` on a layout; `CameaWriter`.
       NICOS text formats (Bambus, MultiFLEXX) get no writer

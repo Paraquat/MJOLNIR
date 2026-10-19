@@ -4,10 +4,16 @@ import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.DataReader import DataReader, SampleEnvironment
+from MJOLNIR.Data.NexusLayout import NexusLayout
 from MJOLNIR.Data.Sample import Sample
 
 class NexusDataReader(DataReader):
-    """Parse a Nexus HDF5 file"""
+    """Parse a Nexus HDF5 file.
+
+    Where the data is comes from layout (a NexusLayout) if the subclass sets one, otherwise
+    from the key tables below (readers not yet moved to a layout)"""
+
+    layout: type[NexusLayout] | None = None
 
     # These keys are for critical data
     nexus_keys = {
@@ -79,6 +85,8 @@ class NexusDataReader(DataReader):
         self.get_metadata()
 
     def __init_subclass__(cls):
+        if cls.layout is not None:
+            return
         context = {}
         for c in reversed(cls.__mro__):
             context.update(vars(c))
@@ -105,6 +113,10 @@ class NexusDataReader(DataReader):
             if not h5py.is_hdf5(filepath):
                 return False
             with h5py.File(filepath, mode = 'r') as f:
+                if cls.layout is not None:
+                    return (cls.layout.group('instrument').path in f
+                            and any(path in f for path in cls.layout.field('counts').paths)
+                            and cls.identify(f))
                 return (cls.nexus_keys['instrument'] in f and cls.nexus_keys['counts'] in f
                         and cls.identify(f))
         except (OSError, KeyError):
@@ -116,15 +128,40 @@ class NexusDataReader(DataReader):
         return True
 
     def getValue(self, key: str):
-        """Dataset for a key, or None if the key is not defined for this instrument"""
+        """Dataset (or group) for a key, or None if the key is not defined for this instrument
+        or not in the file. With a layout, the first of the field's paths in the file"""
+        if self.layout is not None:
+            if key in self.layout.groups:
+                return self._file.get(self.layout.group(key).path)
+            try:
+                paths = self.layout.field(key).paths
+            except KeyError:
+                return None
+            for path in paths:
+                value = self._file.get(path)
+                if value is not None:
+                    return value
+            return None
         if key not in self.nexus_keys:
             return None
         return self._file.get(self.nexus_keys[key])
 
+    def environment_paths(self) -> dict[str, tuple[str, ...]]:
+        """Candidate paths per SampleEnvironment field, in the order they are tried"""
+        if self.layout is not None:
+            return {key: self.layout.field(key).paths for key in self.layout.environment}
+        return {key: tuple(paths) for key, paths in self.environment_keys.items()}
+
+    def metadata_paths(self) -> dict[str, tuple[str, ...]]:
+        """Candidate paths per metadata key, in the order they are tried"""
+        if self.layout is not None:
+            return {key: self.layout.field(key).paths for key in self.layout.metadata}
+        return {key: (path,) for key, path in self.nexus_meta_keys.items()}
+
     def get_environment(self) -> SampleEnvironment:
-        """Sample conditions from the first existing path of each quantity in environment_keys"""
+        """Sample conditions from the first existing path of each quantity"""
         environment = SampleEnvironment()
-        for quantity, paths in self.environment_keys.items():
+        for quantity, paths in self.environment_paths().items():
             for path in paths:
                 dataset = self._file.get(path)
                 if not isinstance(dataset, h5py.Dataset): # Missing, or a group
@@ -149,8 +186,8 @@ class NexusDataReader(DataReader):
         return self._file.get(key)
 
     def get_metadata(self):
-        for key in self.nexus_meta_keys:
-            value = self._file.get(self.nexus_meta_keys[key])
+        for key, paths in self.metadata_paths().items():
+            value = next((self._file.get(path) for path in paths if path in self._file), None)
             if value is not None:
                 value = value[0]
                 self._metadata[key] = value.decode() if isinstance(value, bytes) else value

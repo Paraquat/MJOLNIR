@@ -1,11 +1,13 @@
 import pytest
 
 import h5py
+from types import SimpleNamespace
 import numpy as np
 from pathlib import Path
 
 from MJOLNIR.Data.NexusLayout import Field, Group, NexusLayout, CameaLayout
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
+from MJOLNIR.Data.NexusDataReader import NexusDataReader
 
 SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
 
@@ -67,21 +69,20 @@ def test_subclass_checks():
             instrument = 'X'
             fields = {'A3': Field('{entry}/calib{binning}/a3')}
 
-def test_camea_matches_reader_keys():
-    """Until the reader uses the layout: the paths both define agree"""
-    renamed = {'monitor': 'monitor2', 'monitor_1': 'monitor1', 'hdfMonitor': 'monitor1',
-               'magneticField': 'magnetic_field', 'electricField': 'electric_field'}
-    groups = {'instrument', 'sample'}
-    dropped = {'intensity', 'energy', 'normalization'} # Converted (.nxs) files only
-    for key, path in CameaDataReader.nexus_keys.items():
-        if key in groups:
-            assert CameaLayout.group(key).path == path
-        elif key not in dropped:
-            assert CameaLayout.path(renamed.get(key, key)) == path, key
-    for key, path in CameaDataReader.nexus_meta_keys.items():
-        assert CameaLayout.path(key) == path
-    for key, paths in CameaDataReader.environment_keys.items():
-        assert set(CameaLayout.field(key).paths) == set(paths), key
+def test_reader_tries_aliases(tmp_path):
+    """getValue takes the first of a field's paths in the file: old CAMEA files store the
+    counts in detector/counts"""
+    with h5py.File(tmp_path / 'old.hdf', 'w') as f:
+        f['entry/CAMEA/detector/counts'] = np.ones((2, 3, 4))
+        f['entry/sample/T'] = [1.5, 2.5]
+        f['entry/sample/temperature'] = [3.5, 4.5]
+    reader = SimpleNamespace(layout=CameaLayout, _file=h5py.File(tmp_path / 'old.hdf'))
+    assert NexusDataReader.getValue(reader, 'counts').shape == (2, 3, 4)
+    assert NexusDataReader.getValue(reader, 'temperature')[0] == 3.5 # Main path first
+    assert NexusDataReader.getValue(reader, 'sample').name == '/entry/sample' # A group
+    assert NexusDataReader.getValue(reader, 'Ei') is None # In the layout, not in the file
+    assert NexusDataReader.getValue(reader, 'notAField') is None
+    reader._file.close()
 
 @pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 @pytest.mark.parametrize('data_file', SAMPLE_DATA[:2], ids=lambda p: p.name)
@@ -111,3 +112,19 @@ def test_camea_matches_files(data_file):
                 assert dataset.dtype == np.dtype(field.dtype), key
         assert f[CameaLayout.path('counts')].ndim == 3
     assert found > 60
+
+@pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
+def test_camea_reader_uses_layout():
+    data_file = SAMPLE_DATA[0]
+    assert CameaDataReader.can_read(data_file)
+    reader = CameaDataReader(data_file)
+    assert reader.layout is CameaLayout
+    assert reader.possible_binnings == [1, 3, 5, 8]
+    calibration = reader.get_instrument_calibration(3)
+    with h5py.File(data_file) as f:
+        assert np.array_equal(calibration.Ef, f['entry/CAMEA/calib3/final_energy'][()])
+        assert np.array_equal(calibration.bound, f['entry/CAMEA/calib3/boundaries'][()])
+        assert np.array_equal(reader.environment.temperature, f['entry/sample/temperature'][()])
+        assert np.array_equal(reader.monitor2, f['entry/monitor_2/data'][()])
+    assert reader.environment.units['temperature'] == 'K'
+    assert reader._metadata['sampleName'] == 'TbFeO3'

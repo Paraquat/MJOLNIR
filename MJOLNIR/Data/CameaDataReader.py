@@ -1,46 +1,19 @@
-import h5py
 import numpy as np
 import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.DataReader import InstrumentCalibration
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
+from MJOLNIR.Data.NexusLayout import CameaLayout
 
 class CameaDataReader(NexusDataReader):
     """Parse a CAMEA Nexus file"""
 
     n_analysers = 8
     n_detectors = 104
-    instrument = "CAMEA"
+    instrument = CameaLayout.instrument
     default_binning = 8 # As chosen by the old DataFile conversion
-    entry = 'entry'
-
-    # CAMEA-specific hdf5 keys
-    nexus_keys = {
-        **NexusDataReader.nexus_keys,
-        'counts': f'entry/{instrument}/detector/data',
-        'A4' : f'entry/{instrument}/analyzer/polar_angle',
-        'A4Offset' : f'entry/{instrument}/analyzer/polar_angle_offset',
-        'Ei' : f'entry/{instrument}/monochromator/energy',
-        'singleDetector1': f'entry/{instrument}/segment_1/data',
-        'singleDetector8': f'entry/{instrument}/segment_8/data',
-        'monitor1': 'entry/control/data',
-        'monitor2': 'entry/monitor_2/data'
-    }
-
-    # Where NICOS and older CAMEA files store the sample environment (as the old DataFile)
-    environment_keys = {
-        **NexusDataReader.environment_keys,
-        'temperature': ['{entry}/sample/Ts', '{entry}/sample/Ts/value', '{entry}/sample/se_ts',
-                        '{entry}/sample/T', '{entry}/sample/temperature'],
-        'magnetic_field': ['{entry}/sample/B', '{entry}/sample/B/value',
-                           '{entry}/sample/magnetic_field'],
-    }
-
-    # CAMEA-specific hdf5 metadata keys
-    nexus_meta_keys = {
-        **NexusDataReader.nexus_meta_keys,
-    }
+    layout = CameaLayout
 
     def __init__(self, filepath: Path):
         super().__init__(filepath)
@@ -50,29 +23,22 @@ class CameaDataReader(NexusDataReader):
         self.get_possible_binnings()
 
     def get_possible_binnings(self):
-        self.possible_binnings = []
-        for value in self.getValue('instrument'):
-            if value[:5] == 'calib':
-                self.possible_binnings.append(int(value[5]))
+        """Binnings with a calibration group in the file (one digit, as the old DataFile)"""
+        self.possible_binnings = [binning for binning in range(1, 10)
+                                  if self.layout.calibration_group_for(binning).path in self._file]
 
     def get_instrument_calibration(self, binning: int) -> InstrumentCalibration:
-        instrument = self.nexus_keys['instrument']
-        hdf_key = f'/{instrument}/calib{binning}/'
-        Ef = np.array(self.get(hdf_key + 'final_energy'))
-        width = np.array(self.get(hdf_key + 'width'))
-        bg = np.array(self.get(hdf_key + 'background'))
-        amp = np.array(self.get(hdf_key + 'amplitude'))
-        A4 = np.array(self.get(hdf_key + 'a4offset'))
-        bound = np.array(self.get(hdf_key + 'boundaries'))
+        fields = self.layout.calibration_fields(binning)
         self.binning = binning
-        return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
+        return InstrumentCalibration(**{key: np.array(self.get(field.path))
+                                        for key, field in fields.items()})
 
     def scan_monitor(self) -> npt.NDArray[np.float64]:
         """Monitor used for normalisation, chosen as the old DataFile did: files written by
         NICOS (which have entry/data/data) use entry/monitor_2/data if present, older files
         entry/control/data"""
-        written_by_nicos = self.get('entry/data/data') is not None
-        if written_by_nicos and self.get(self.nexus_keys['monitor2']) is not None:
+        written_by_nicos = self.get(self.layout.group('data').path + '/data') is not None
+        if written_by_nicos and self.getValue('monitor2') is not None:
             return self.monitor2
         return self.monitor1
 

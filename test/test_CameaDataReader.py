@@ -15,7 +15,7 @@ def datareader():
 def test_read(datareader):
     camea_file = datareader
     assert camea_file.file.name == 'camea2024n001486.hdf'
-    assert camea_file.nexus_keys['instrument'] == 'entry/CAMEA'
+    assert camea_file.layout.group('instrument').path == 'entry/CAMEA'
     assert camea_file.counts.shape == (135, 104, 1024)
     assert camea_file.A4[0] == pytest.approx(-43.99, abs=1e-2)
     assert camea_file.A4Offset == pytest.approx(-4, abs=1e-2)
