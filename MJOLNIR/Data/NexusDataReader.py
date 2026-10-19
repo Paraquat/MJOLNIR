@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 from pathlib import Path
+from typing import Any
 
 from MJOLNIR.Data.DataReader import DataReader, SampleEnvironment
 from MJOLNIR.Data.NexusLayout import NexusLayout
@@ -41,6 +42,61 @@ class NexusDataReader(DataReader):
                         and cls.identify(f))
         except (OSError, KeyError):
             return False
+
+    @classmethod
+    def shallow_keys(cls) -> list[str]:
+        """Keys shallow_read accepts: every field of the layout, the file name and folder,
+        and 2θ, sorted ignoring case"""
+        return sorted({*cls._shallow_extras, *cls.layout.all_fields()}, key=str.lower)
+
+    @classmethod
+    def metadata_keys(cls) -> list[str]:
+        return list(cls.layout.metadata)
+
+    @classmethod
+    def shallow_read(cls, filepath: Path, keys: list[str]) -> dict[str, Any]:
+        """A few values from a file, reading only the datasets asked for (the old
+        shallowRead). Values are as stored in the file, not reshaped as the reader does
+        (e.g. CAMEA counts, one temperature for a whole scan); metadata and single strings
+        are decoded as the reader's metadata. None for a key the file does not have"""
+        cls._check_shallow_keys(keys)
+        filepath = Path(filepath)
+        if not cls.can_read(filepath):
+            raise ValueError(f'"{filepath.name}" is not a {cls.instrument} data file that '
+                             f'{cls.__name__} can read')
+        with h5py.File(filepath, mode = 'r') as f:
+            def dataset(key: str):
+                return next((f[path] for path in cls.layout.field(key).paths
+                             if isinstance(f.get(path), h5py.Dataset)), None)
+
+            values = {}
+            for key in keys:
+                if key == 'name':
+                    values[key] = filepath.name
+                elif key == 'fileLocation':
+                    values[key] = str(filepath.parent)
+                elif key == 'twoTheta': # As the reader: A4 - A4Offset, offset 0 if not stored
+                    A4 = dataset('A4') if 'A4' in cls.layout.all_fields() else None
+                    offset = dataset('A4Offset') if 'A4Offset' in cls.layout.all_fields() \
+                        else None
+                    values[key] = None if A4 is None else \
+                        np.array(A4) - (np.array([0.0]) if offset is None else np.array(offset))
+                else:
+                    values[key] = cls._shallow_value(key, dataset(key))
+        return values
+
+    @classmethod
+    def _shallow_value(cls, key: str, dataset):
+        if dataset is None:
+            return None
+        if key in cls.layout.metadata: # As get_metadata
+            value = dataset[0]
+            return value.decode() if isinstance(value, bytes) else value
+        value = np.array(dataset)
+        if value.dtype.kind in 'SO' and value.size == 1:
+            value = value.ravel()[0]
+            return value.decode() if isinstance(value, bytes) else value
+        return value
 
     @classmethod
     def identify(cls, f: h5py.File) -> bool:

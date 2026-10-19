@@ -1,7 +1,8 @@
 import warnings
 from pathlib import Path
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
+from typing import Any
 import numpy as np
 import numpy.typing as npt
 
@@ -106,6 +107,56 @@ class DataReader(ABC):
         self.masked_detectors = [] # Detectors excluded by the default mask
         self.background = None
         self.environment = SampleEnvironment()
+
+    # Keys shallow_read gives for every reader: the file's name and folder, and 2θ (A4 - A4Offset)
+    _shallow_extras = ('name', 'fileLocation', 'twoTheta')
+    # Reader attributes shallow_read gives for readers without a file layout
+    _shallow_attributes = ('A3', 'A4', 'A4Offset', 'Ei', 'monitor1', 'monitor2', 'time')
+
+    @classmethod
+    def shallow_keys(cls) -> list[str]:
+        """Keys shallow_read accepts, sorted ignoring case (the old possibleAttributes)"""
+        environment = [f.name for f in fields(SampleEnvironment) if f.name not in ('other', 'units')]
+        keys = {*cls._shallow_extras, *cls._shallow_attributes, *environment,
+                *cls.metadata_keys()}
+        return sorted(keys, key=str.lower)
+
+    @classmethod
+    def metadata_keys(cls) -> list[str]:
+        """Keys the reader's metadata can hold"""
+        return []
+
+    @classmethod
+    def _check_shallow_keys(cls, keys):
+        unknown = [key for key in keys if key not in cls.shallow_keys()]
+        if unknown:
+            raise KeyError(f'{cls.__name__} cannot read {unknown}; see shallow_keys()')
+
+    @classmethod
+    def shallow_read(cls, filepath: Path, keys: list[str]) -> dict[str, Any]:
+        """A few values from a file without converting its data (the old shallowRead), e.g.
+        for a log book of many files. Keys from shallow_keys(); None for a key the file does
+        not have. This version reads the whole file (NICOS text files are small);
+        NexusDataReader reads only the datasets asked for"""
+        cls._check_shallow_keys(keys)
+        filepath = Path(filepath)
+        reader = cls(filepath)
+        environment = {f.name for f in fields(SampleEnvironment)}
+        values = {}
+        for key in keys:
+            if key == 'name':
+                values[key] = filepath.name
+            elif key == 'fileLocation':
+                values[key] = str(filepath.parent)
+            elif key == 'twoTheta':
+                values[key] = reader.twotheta
+            elif key in environment:
+                values[key] = getattr(reader.environment, key)
+            elif key in cls._shallow_attributes:
+                values[key] = getattr(reader, key, None)
+            else:
+                values[key] = reader._metadata.get(key)
+        return values
 
     @classmethod
     def can_read(cls, filepath: Path) -> bool:

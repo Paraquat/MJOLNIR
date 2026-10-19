@@ -57,10 +57,12 @@ work is the open items in the sections further down; tick both.
 
 ### Decide what to port
 - [ ] Answer the scope questions of the refactoring log: which old methods must keep working
-      and for how long (questions 3 and 6), whether broken or unused features go (29-35:
-      combined `h/k/l`, `cutELine`, `plotA3A4`, `save`/`load`, `createEmptyDataFile`,
-      `shallowRead`, `saveHDF`, converted `.nxs` files, metadata-only fields). McStas files
-      are decided: dropped for now (see "Later")
+      and for how long (questions 3 and 6)
+- [x] Broken or unused features (questions 29-35), decided 2026-10-19. Dropped: combined
+      `h/k/l`, `cutELine`/`plotCutELine`, `plotA3A4`, DataSet `save`/`load`, converted
+      `.nxs` files (reading, `saveNXsqom`, saving converted files), `createEmptyDataFile`,
+      the metadata-only fields. Ported: `shallowRead`. Replaced: `saveHDF` (by
+      `CameaDataWriter`). McStas: later (see "Later"). Reasons in the refactoring log
 - [ ] Mark every open item in this file as "port" or "drop", checking each against what
       MJOLNIR-GUI uses (Milestone 3), so nothing the GUI needs is dropped
 
@@ -78,13 +80,14 @@ work is the open items in the sections further down; tick both.
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
 
 ### Port the remaining features (items further down)
-- [ ] Files: converted `.nxs` (NXsqom), `createEmptyDataFile`, `shallowRead`, error for files
-      without data. McStas is not ported here (see "Later")
+- [ ] Files: error for files without data. Done: `shallowRead`. Dropped: converted `.nxs`,
+      `createEmptyDataFile`. McStas is not ported here (see "Later")
 - [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
       scan parameters and command, `startTime`/`endTime`, `title`, `comment`, detector and
       analyser selection (`dasel`)
 - [ ] Calibration and sample: `updateCalibration`, calibration plots, `updateSampleParameters`
-- [ ] Saving: `saveNXsqom`, DataSet `save`/`load`. `saveHDF` is replaced by the writers below
+- [x] Saving: `saveHDF` is replaced by the writers below. Dropped (2026-10-19):
+      `saveNXsqom` (with converted files) and DataSet `save`/`load`
 - [x] `NexusLayout` and `CameaLayout` (`MJOLNIR/Data/NexusLayout.py`), not used by anything
       yet. Each field is a `Field(path, aliases, units, dtype)`: readers are to try `path`
       then the aliases, writers write `path` with its units and dtype; groups are
@@ -149,18 +152,20 @@ work is the open items in the sections further down; tick both.
       (in place, replaced, created, refused targets, failed save). Rewriting every
       calibration of all 20 CAMEA files leaves every dataset and attribute, with its type,
       unchanged
-- [ ] Full-file mode, only once `createEmptyDataFile` or NXsqom output is chosen for porting
-- [ ] Cuts: `cut1DE`, `cutQELine`, `cutELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
+- [x] Full-file mode: Dropped (2026-10-19). Only `createEmptyDataFile` and NXsqom output
+      needed it, and both are dropped
+- [ ] Cuts: `cut1DE`, `cutQELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
       measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`
-- [ ] Plots and axes: `plotCut1D`, `plotCut1DE`, `plotCutQELine`, `plotCutELine`,
-      `plotCutPowder`, `plotRaw1D`, `plotA3A4`, `View3D` (on `bin_3d`), `createQAxis` /
+- [ ] Plots and axes: `plotCut1D`, `plotCut1DE`, `plotCutQELine`, `plotCutPowder`,
+      `plotRaw1D`, `View3D` (on `bin_3d`), `createQAxis` /
       `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
       click handlers and `_interactiveSettings` modes
 - [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [ ] Export: `generateUFitDataset`
 - [ ] DataFile module constants the GUI and scripts read: `supportedRawFormats`,
-      `supportedConvertedFormats`, `possibleAttributes`, `detectorLimits`, `analyzerLimits`
+      `detectorLimits`, `analyzerLimits`. `possibleAttributes` is now `shallow_keys()` per
+      reader; `supportedConvertedFormats` is dropped with converted files
 
 ### Move the rest of MJOLNIR off the old API
 - [ ] `Viewer1D.py`, `Viewer3D.py`, `Viewer3DPyQtGraph.py`, `RLUAxes.py`, `DraggableShapes.py`,
@@ -208,7 +213,9 @@ runs on the new `DataSet` and readers, and every view works.
       projection vectors, Ei, A3, 2θ, magnetic field and temperature (`SampleEnvironment`),
       comment, binning, scan command, scan steps and parameters, counting time, start and end
       time, file location, instrument, possible binnings
-- [ ] Electronic log book: the same metadata for many files, from a quick read (`shallowRead`)
+- [ ] Electronic log book: the same metadata for many files, from a quick read: on
+      `DataReaderFactory().shallow_read(instrument, files, keys)`, which returns one dict
+      per file (the old one returned lists); parameter list from `shallow_keys()`
 - [ ] Raw 1D view: detector and analyser selection, `calcualteDataIndexFromDasel`, the
       binning-1 calibration, `plotRaw1D`
 
@@ -217,7 +224,8 @@ runs on the new `DataSet` and readers, and every view works.
       (`mask`, `remove_masking`), `updateCalibration`, saving the calibration with
       `CameaDataWriter` in place of `saveHDF`. The GUI wrote into the raw file itself;
       `CameaDataWriter` saves to a new file, so the GUI must choose a name (e.g. a suffix) and
-      open the new file
+      open the new file. The "Converted" filter of the add-files dialog goes (converted files
+      are dropped)
 - [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
 - [ ] Cut 1D manager: `cut_1d`, `cut1DE`, 1D plots from a stored cut, ufit export
@@ -255,25 +263,32 @@ runs on the new `DataSet` and readers, and every view works.
       old `getInstrument`, `isMultiFLEXX`, `checkNICOS`). Not used by the core: pipelines
       and `DataSet` always state the instrument. MultiFLEXX only checked against a
       synthetic file
-- [ ] Read converted `.nxs` (NXsqom) files
+- [x] Read converted `.nxs` (NXsqom) files: Dropped (2026-10-19)
 - [x] McStas simulated files: dropped for now (decided 2026-10-19), not ported from
       `DataFile`. To be added later as `McStasReader.py` (see "Later")
 - [x] Copy a reader (old copy constructor `DataFile(other)`, used by subtraction): shallow
       copies in `__sub__`
-- [ ] `createEmptyDataFile`: simulated file for planning/resolution
-- [ ] `shallowRead`: quick read of a few parameters (history tool)
+- [x] `createEmptyDataFile`: simulated file for planning/resolution. Dropped (2026-10-19)
+- [x] `shallowRead`: quick read of a few parameters (GUI log book): `shallow_read(path,
+      keys)` and `shallow_keys()` on every reader, `DataReaderFactory.shallow_read` for many
+      files. Nexus readers read only the datasets asked for, through the layout (every
+      layout field is a key, plus `name`, `fileLocation`, `twoTheta`); NICOS readers read
+      the file. Identical to the old `shallowRead` for 22 keys on all 20 CAMEA files, and to
+      the reader's values and metadata
 - [ ] Clear error for files without data
 
 ### CAMEA data not read yet
 - [ ] `MonitorMode`, `MonitorPreset`
 - [ ] Monitor fixes: 2018 wrong monitor, extra value in files of running scans
-- [ ] `Time` (counting time per step), `absoluteTime`, `totalCounts`
+- [ ] `Time` (counting time per step), `absoluteTime`. `totalCounts`: Dropped (2026-10-19)
 - [x] `temperature`, `magneticField`, `electricField`: `SampleEnvironment` (measured and
       setpoints, units from the file), identical to the old DataFile for all CAMEA test files
 - [ ] Temperature from the NICOS log when no temperature is stored
 - [ ] Scan parameters (`getScanParameter`: parameters, values, units)
-- [ ] `scanCommand`, `protonBeam`, `singleDetector1/8`, `s2tRaw`
-- [ ] Analyser / monochromator settings
+- [ ] `scanCommand` (the GUI shows it)
+- [x] `protonBeam`, `singleDetector1/8`, `s2tRaw`, analyser / monochromator settings,
+      `totalCounts`: Dropped (2026-10-19) as reader attributes; they stay in `CameaLayout`, so
+      `shallow_read` and `getValue` still read them
 
 ### Conversion output
 - [x] Monitor spread to the shape of the data
@@ -293,7 +308,7 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `calculateCurratAxeMask`: spurion masking, moved to `Mask.py` (works for every reader)
 
 ### Saving
-- [ ] `saveNXsqom`: save converted data
+- [x] `saveNXsqom`: save converted data. Dropped (2026-10-19) with converted files
 - [x] `saveHDF`: write a raw HDF file. Not ported: replaced by `CameaDataWriter`, which keeps
       the whole file and writes only the calibration. Still needs `updateCalibration`
       (reading `.calib` files into an `InstrumentCalibration`) to replace the GUI's use
@@ -317,10 +332,11 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `AxisView`: clear `ValueError` when built from no arrays
 
 ### Files and setup
-- [ ] Normalisation and calibration files as inputs; converted files as inputs
+- [ ] Normalisation and calibration files as inputs. Converted files as inputs: Dropped
+      (2026-10-19)
 - [ ] `settings` dict and extra keyword arguments
-- [ ] Save converted files (`convertDataFile` with `saveFile`, `saveLocation`,
-      `deleteOnConvert`)
+- [x] Save converted files (`convertDataFile` with `saveFile`, `saveLocation`,
+      `deleteOnConvert`): Dropped (2026-10-19) with converted files
 - [ ] `updateCalibration`, `updateSampleParameters` for the whole set
 
 ### Combined data
@@ -368,7 +384,7 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] Cut options not ported yet: measurement errors (`I_err`),
       `cutQE` smoothing and scaled energy, `ufit` output, `plotCoverage`
 - [ ] `cutQELine`
-- [ ] `cutELine`
+- [x] `cutELine`: Dropped (2026-10-19)
 - [ ] `cutPowder`
 - [x] `binData3D` (`Cuts.bin_3d`, `ds.bin_3d`, `CutResult.grid`; `calculateBins` and
       `calculateGrid3D` reduced to `Cuts.grid_edges`, one edge array per axis). Identical
@@ -383,12 +399,12 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] `plotCut1DE`
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [ ] `plotCutQELine`
-- [ ] `plotCutELine`
+- [x] `plotCutELine`: Dropped (2026-10-19)
 - [ ] `plotCutPowder`
 - [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
       polar binning, `enlargen`, 3D axes, `scaleFunction`)
 - [ ] `plotRaw1D`
-- [ ] `plotA3A4` (with `boundaryQ`, `convexHullPoints`)
+- [x] `plotA3A4` (with `boundaryQ`, `convexHullPoints`): Dropped (2026-10-19)
 - [ ] `View3D`
 - [ ] `createQAxis` / `createQEAxes`, `generate1DAxis(E)`
 - [ ] CSV export from figures, click and hover handlers (Q-E plots: CSV export and hover
@@ -401,15 +417,16 @@ runs on the new `DataSet` and readers, and every view works.
 
 ### Export and saving
 - [ ] `generateUFitDataset` (ufit)
-- [ ] `save` / `load`
+- [x] `save` / `load`: Dropped (2026-10-19)
 
 ## Bugs in the old code to fix, not port
 Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHDF` items.
-- [ ] Combined `h/k/l` point at attributes `H/K/L`
-- [ ] `cutELine` parameter misspelt `EMn`; `plotCutELine` always fails
-- [ ] `plotA3A4` calls the missing `voronoiTessellation`
+- [x] Combined `h/k/l` point at attributes `H/K/L`: Dropped (2026-10-19);
+      `gather(ArrayType.H)` etc. replace them
+- [x] `cutELine` parameter misspelt `EMn`; `plotCutELine` always fails: Dropped (2026-10-19)
+- [x] `plotA3A4` calls the missing `voronoiTessellation`: Dropped (2026-10-19)
 - [x] `removeMasking` fails unless a `Mask` object was applied (new `remove_masking` works)
-- [ ] `save` cannot pickle the data set
+- [x] `save` cannot pickle the data set: Dropped (2026-10-19)
 - [ ] `saveHDF` crashes on every NICOS-written CAMEA file (2023 and 2024 data): sample
       `x`/`y` are absent, read as `array(None, dtype=object)`, and h5py cannot store them
 - [ ] `saveHDF` opens its target with mode `'w'`, so the crash leaves a truncated file; the

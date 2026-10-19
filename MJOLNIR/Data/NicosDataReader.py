@@ -144,6 +144,10 @@ class NICOSDataReader(DataReader):
             cell, q1, q2, A3Offset=self.get_header_value('Sample_psi0'),
             name=self.parameters['Sample_samplename'])
 
+    @classmethod
+    def metadata_keys(cls) -> list[str]:
+        return ['startTime', *cls.nicos_meta_keys]
+
     def get_metadata(self, first_line: str):
         # Format for starting time is 2021-11-26 10:45:05
         match = re.search(r'([0-9]+)-([0-9]+)-([0-9]+)\s([0-9]+):([0-9]+):([0-9]+)', first_line)

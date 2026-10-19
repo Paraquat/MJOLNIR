@@ -35,6 +35,14 @@ class DataReaderFactory:
     def create(cls, name: InstrumentName, path: Path) -> DataReader:
         return cls.get_reader_type(name)(path)
 
+    @classmethod
+    def shallow_read(cls, name: InstrumentName, files: list[Path], keys: list[str]) -> list[dict]:
+        """A few values from each of many files, without converting their data (the old
+        DataFile.shallowRead); see DataReader.shallow_read and shallow_keys"""
+        reader = cls.get_reader_type(name)
+        reader._check_shallow_keys(keys) # Also when there are no files
+        return [reader.shallow_read(Path(file), keys) for file in files]
+
     def __init__(self):
         self.register(InstrumentName.CAMEA, CameaDataReader)
         self.register(InstrumentName.BAMBUS, BAMBUSDataReader)
