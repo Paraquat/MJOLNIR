@@ -25,6 +25,7 @@ class ArrayType(StrEnum):
 
     # Derived data
     INTENSITY = "intensity"
+    INTENSITY_ERROR = "intensity_error" # None unless set (see DataReader.intensity_error)
     NORMALIZATION = "normalization"
     MONITOR = "monitor"
     MASK = "mask"

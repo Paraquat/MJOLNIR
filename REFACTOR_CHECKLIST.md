@@ -155,8 +155,9 @@ work is the open items in the sections further down; tick both.
       unchanged
 - [x] Full-file mode: Dropped (2026-10-19). Only `createEmptyDataFile` and NXsqom output
       needed it, and both are dropped
-- [ ] Cuts: `cut1DE`, `cutQELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
-      measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`
+- [ ] Cuts: `cutQELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
+      measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`.
+      Done: `cut1DE` (`cut_constant_q`)
 - [ ] Plots and axes: `plotCut1D`, `plotCut1DE`, `plotCutQELine`, `plotCutPowder`,
       `plotRaw1D`, `View3D` (on `bin_3d`), `createQAxis` /
       `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
@@ -229,7 +230,8 @@ runs on the new `DataSet` and readers, and every view works.
       are dropped)
 - [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
-- [ ] Cut 1D manager: `cut_1d`, `cut1DE`, 1D plots from a stored cut, ufit export
+- [ ] Cut 1D manager: `cut_1d`, `cut_constant_q` (was `cut1DE`; `width` is now the
+      diameter, twice the old value), 1D plots from a stored cut, ufit export
       (`Gui1DCutObject`)
 - [ ] Q-E line manager: `plot_cut_qe`, `plotCutQELine`, `calculatePosition` on the axes
 - [ ] Q plane manager: `plot_q_plane`; `DraggableShapes.extractCut` on the new axes; energy
@@ -354,7 +356,8 @@ runs on the new `DataSet` and readers, and every view works.
 ### Combined data
 - [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`
       (`gather`; boundaries are `view.offsets[1:]`)
-- [ ] `I_err`
+- [ ] `I_err`: readers have `intensity_error` (set by `ds1 - ds2`) and `cut_constant_q`
+      uses it; `cut_1d`, `cut_qe`, `cut_q_plane`, `bin_3d` do not yet
 - [x] Rotate files into the first file's frame when samples differ slightly (`rlu`):
       `gather_q`
 
@@ -391,7 +394,14 @@ runs on the new `DataSet` and readers, and every view works.
 
 ### Cuts
 - [x] `cut1D` (`Cuts.cut_1d`; identical to the old code apart from the `Int_err` fix)
-- [ ] `cut1DE`
+- [x] `cut1DE`: `Cuts.cut_constant_q`, `ds.cut_constant_q(q, width=0.04, min_pixel=0.1,
+      energy_min, energy_max, rlu, constant_bins, background_subtraction)`. Identical to the
+      old `cut1DE` (all columns, bin edges; adaptive and constant bins; 1-3 files, rlu on and
+      off) with the old width doubled. Changes, listed under "Cut bugs fixed in the port":
+      `width` is the diameter, files aligned with `rlu`, measurement errors used, `intensity`
+      keeps the counts with background. Not ported: `ufit=True` (with
+      `generateUFitDataset`), `dataFiles=`; an empty cut returns an empty result instead of
+      raising; no `BinDistance` column (as `cut_1d`)
 - [x] `cutQE` (`Cuts.cut_qe`; identical to the old code)
 - [ ] Cut options not ported yet: measurement errors (`I_err`),
       `cutQE` smoothing and scaled energy, `ufit` output, `plotCoverage`
@@ -481,6 +491,23 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       held counts, not normalised values. Now as `cut1D`: `intensity` the counts,
       `intensity_Bg`/`intensity_Fg` the counts, `Int_Bg`/`Int_Fg` normalised, `Int_err` from
       both counts. `plotQPlane` with background had no background columns at all
+- [x] `cut1DE` (now `cut_constant_q`): `width` was used as the radius of the disc around q,
+      while its docstring and `cut1D` use it as the full width; now the diameter (old width w
+      = new 2w; default 0.02 -> 0.04)
+- [x] `cut1DE` with `rlu` used each file's own qx, qy (only q was converted, with the first
+      file's UB): files with slightly different orientations were cut at different points.
+      Now rotated into the first file's frame (`gather_q`), as `cut_1d` and `cut_qe`. No
+      difference for the 2023 and 2024 test data (identical orientations)
+- [x] Measurement errors: `cut1DE` never passed `I_err` to its binning function (so errors
+      were always sqrt(counts)), and `cut1D` with `I_err` summed the squared errors without
+      the square root, so `Int_err` was a variance in counts^2. Now readers carry
+      `intensity_error` (None: counting statistics), `ds1 - ds2` sets it to
+      sqrt(e1^2 + (e2 M1/M2)^2), and `cut_constant_q` sums the variances per bin and takes
+      the root: `Int_err = sqrt(sum e^2) BinCount / (Monitor Normalization)`, with the
+      background added to the variance when subtracted. `cut_1d`, `cut_qe`, `cut_q_plane`
+      and `bin_3d` do not use `intensity_error` yet (see "Cut options not ported yet")
+- [x] `cut1DE` with background: `intensity` held counts minus background (as `cutQE`); now
+      the measured counts, as `cut1D`
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

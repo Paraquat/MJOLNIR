@@ -156,7 +156,8 @@ class DataSet:
     def __sub__(self, other: 'DataSet') -> 'DataSet':
         """Difference of two data sets with matching data files (same reader type, binning,
         number of files and data shapes). Per point, the counts of this set minus those of
-        other scaled to this set's monitor: I1 - I2 * M1/M2.
+        other scaled to this set's monitor: I1 - I2 * M1/M2, with the error
+        sqrt(e1**2 + (e2 * M1/M2)**2) in intensity_error (e = sqrt(I) for measured counts).
 
         The result holds shallow copies of this set's readers: each has its own intensity and
         masks, and shares everything else (counts, coordinates, calibration, sample) with this
@@ -180,7 +181,10 @@ class DataSet:
                                  f'"{mine.file.name}" ({mine.intensity.shape})')
             difference = copy.copy(mine) # Shares all arrays; intensity and masks replaced below
             with np.errstate(divide='ignore', invalid='ignore'):
-                difference.intensity = mine.intensity - theirs.intensity*(mine.monitor/theirs.monitor)
+                scale = mine.monitor/theirs.monitor
+                difference.intensity = mine.intensity - theirs.intensity*scale
+                difference.intensity_error = np.sqrt(mine.intensity_variance()
+                                                     + theirs.intensity_variance()*scale**2)
             difference.user_mask = mine.user_mask | theirs.mask | ~np.isfinite(difference.intensity)
             difference.frozen = True
             difference.background = None # The first set's background does not fit a difference
@@ -511,10 +515,12 @@ class DataSet:
     # Cuts and plots: gather the points and call Cuts and Plotting
 
     def _points(self, rotate: bool = True, align_to_lattice: bool = False,
-                background_subtraction: bool = False, mask=None) -> dict:
+                background_subtraction: bool = False, mask=None, errors: bool = False) -> dict:
         """The unmasked points, as the arrays Cuts takes. Qx, Qy rotated into the first file's
         frame (rotate), each file's own lattice frame (align_to_lattice), or not at all. With
-        background_subtraction, also the background counts of the points. mask as in gather"""
+        background_subtraction, also the background counts of the points. With errors, also
+        intensity_error if any file has one (sqrt(intensity) for the others). mask as in
+        gather"""
         if background_subtraction and self.background_model is None:
             raise AttributeError('No background model: call generate_background_model first')
         if rotate:
@@ -528,6 +534,12 @@ class DataSet:
                       monitor=gather(ArrayType.MONITOR))
         if background_subtraction:
             points['background'] = gather(ArrayType.BACKGROUND)
+        if errors and any(reader.intensity_error is not None for reader in self._readers):
+            masks = ([reader.mask for reader in self._readers] if mask is None
+                     else self._mask_arrays(mask, self._readers))
+            points['intensity_error'] = np.concatenate(
+                [np.sqrt(reader.intensity_variance())[~reader_mask]
+                 for reader, reader_mask in zip(self._readers, masks)])
         return points
 
     def _cut_positions(self, q1, q2, rlu: bool):
@@ -548,6 +560,24 @@ class DataSet:
         return Cuts.cut_1d(**points, q1=q1, q2=q2, width=width, min_pixel=min_pixel,
                            energy_min=energy_min, energy_max=energy_max, sample=self.sample,
                            extend=extend, constant_bins=constant_bins)
+
+    def cut_constant_q(self, q, width: float = 0.04, min_pixel: float = 0.1,
+                       energy_min: float = -np.inf, energy_max: float = np.inf,
+                       rlu: bool = True, constant_bins: bool = False,
+                       background_subtraction: bool = False) -> CutResult:
+        """Energy scan at constant Q (the old cut1DE): the points within width/2 of q (H, K, L
+        with rlu, else Qx, Qy), binned in energy. width is the diameter, as cut_1d's width is
+        the full width (the old cut1DE used it as the radius: its default 0.02 is width
+        0.04 here). With rlu, files are rotated into the first file's frame, as in cut_1d (the
+        old cut1DE did not). Errors of derived data (intensity_error, e.g. a difference of
+        data sets) are used. With background_subtraction, the background model is subtracted.
+        See Cuts.cut_constant_q"""
+        q = self.convert_to_qxqy(q) if rlu else np.asarray(q, dtype=float)
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction,
+                              errors=True)
+        return Cuts.cut_constant_q(**points, q=q, width=width, min_pixel=min_pixel,
+                                   energy_min=energy_min, energy_max=energy_max,
+                                   sample=self.sample, constant_bins=constant_bins)
 
     def cut_qe(self, q1, q2, width: float, min_pixel: float, energy_bins=None,
                energy_min=None, energy_max=None, energy_step=None, rlu: bool = True,

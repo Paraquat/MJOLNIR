@@ -97,6 +97,9 @@ class DataReader(ABC):
     # _default_mask by the instrument (default_mask()); mask combines them
     user_mask: npt.NDArray[np.bool_]
     background: npt.NDArray[np.float64] | None # Background counts per point (BackgroundModel)
+    # Standard deviation of intensity per point; None: counting statistics, sqrt(intensity).
+    # Set for derived data, e.g. a difference of data sets
+    intensity_error: npt.NDArray[np.float64] | None
     use_default_mask: bool = True
 
     # Frozen readers hold derived data (e.g. a difference of two data sets): transforming them
@@ -118,6 +121,7 @@ class DataReader(ABC):
         self.calibration_updates: dict[int, InstrumentCalibration] = {}
 
         self.intensity = None
+        self.intensity_error = None
         self.normalization = None
         self.monitor = None
         self.energy = None
@@ -297,6 +301,7 @@ class DataReader(ABC):
         shape = (
             self.counts.shape[0], self.counts.shape[1], self.n_analysers*self.binning)
         self.intensity = self.rebin(self.binning, shape, pixelEdge)
+        self.intensity_error = None # Counts: counting statistics
 
         EfMean = self.calibration.Ef.reshape(
             1, A4.shape[0], self.n_analysers*self.binning)
@@ -324,6 +329,13 @@ class DataReader(ABC):
         self.background = None # Its shape follows the binning: the DataSet computes it again
         self._default_mask = self.default_mask()
         self._report_masked_detectors()
+
+    def intensity_variance(self) -> npt.NDArray[np.float64]:
+        """Variance of intensity per point: intensity_error squared, or the counts themselves
+        (counting statistics)"""
+        if self.intensity_error is not None:
+            return np.square(self.intensity_error)
+        return np.asarray(self.intensity, dtype=float)
 
     @property
     def mask(self) -> npt.NDArray[np.bool_] | None:

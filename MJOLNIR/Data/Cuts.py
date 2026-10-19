@@ -29,7 +29,7 @@ BACKGROUND_COLUMNS = [COLUMNS[key] for key in ['BackgroundIntensity', 'Foregroun
                                                'Background', 'Foreground', 'ForegroundError',
                                                'BackgroundError']]
 
-def _subtract_background(data: pd.DataFrame, background_sum) -> pd.DataFrame:
+def _subtract_background(data: pd.DataFrame, background_sum, variance=None) -> pd.DataFrame:
     """Add the background columns to the bins of a cut, from the background counts summed
     over each bin, as the old cut1D did:
 
@@ -37,7 +37,8 @@ def _subtract_background(data: pd.DataFrame, background_sum) -> pd.DataFrame:
         - Int_Bg, Int_Fg: Both normalised like Int, with their errors Int_Bg_err, Int_Fg_err
         - Int: Int_Fg - Int_Bg, with the error Int_err from both counts
 
-    intensity keeps the measured counts."""
+    intensity keeps the measured counts. variance is the variance of the measured counts per
+    bin; without it, the counts themselves (counting statistics)."""
     scale = lambda column: column*data[COLUMNS['binCount']]/(data[COLUMNS['norm']]*data[COLUMNS['mon']])
     with warnings.catch_warnings():
         warnings.simplefilter('ignore') # Empty bins divide by zero
@@ -48,9 +49,10 @@ def _subtract_background(data: pd.DataFrame, background_sum) -> pd.DataFrame:
         data[COLUMNS['Background']] = scale(background)
         data[COLUMNS['Foreground']] = scale(foreground)
         data[COLUMNS['int']] = data[COLUMNS['Foreground']] - data[COLUMNS['Background']]
-        data[COLUMNS['ForegroundError']] = scale(np.sqrt(foreground))
+        variance = foreground if variance is None else np.asarray(variance, dtype=float)
+        data[COLUMNS['ForegroundError']] = scale(np.sqrt(variance))
         data[COLUMNS['BackgroundError']] = scale(np.sqrt(background))
-        data[COLUMNS['intError']] = scale(np.sqrt(foreground + background))
+        data[COLUMNS['intError']] = scale(np.sqrt(variance + background))
     return data
 
 def _directions(q1, q2) -> tuple[FloatArray, FloatArray, float]:
@@ -153,6 +155,79 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
         data = _subtract_background(data, sums[3])
     return CutResult(data, dict(positions=edges, orthogonal=orthogonal_positions,
                                 energy=energy_edges), parameters)
+
+def cut_constant_q(qx, qy, energy, intensity, normalization, monitor, q, width: float,
+                   min_pixel: float, energy_min: float, energy_max: float, sample=None,
+                   constant_bins: bool = False, background=None,
+                   intensity_error=None) -> CutResult:
+    """Energy scan at constant Q: the points within width/2 of q (a disc of diameter width,
+    as cut_1d's width is the full width across its line) with energy_min <= E <= energy_max,
+    binned in energy (the old DataSet.cut1DE, whose width was the radius).
+
+    Energy bins are at least min_pixel wide, and merged where energies are sparser
+    (constant_bins: all exactly min_pixel, from the lowest energy). With background, Int is
+    background subtracted. intensity_error is the standard deviation of each point's
+    intensity (e.g. of a difference of data sets); without it, counting statistics. Its
+    squares are summed per bin, so Int_err = sqrt(sum of variances) * BinCount /
+    (Monitor * Normalization).
+
+    bins: 'energy' (bin edges), 'q' (the point, Qx, Qy).
+    """
+    q = np.asarray(q, dtype=float).flatten()
+    if q.shape != (2,):
+        raise ValueError(f'q must be a point in Qx, Qy; got {q.size} values (H, K, L are '
+                         'converted by DataSet.cut_constant_q with rlu=True)')
+    parameters = dict(q=q, width=width, min_pixel=min_pixel, energy_min=energy_min,
+                      energy_max=energy_max, constant_bins=constant_bins)
+    hkl = _to_hkl(sample, q.reshape(1, 2))[0]
+
+    inside = np.logical_and.reduce([np.hypot(qx - q[0], qy - q[1]) < width/2.0,
+                                    energy >= energy_min, energy <= energy_max])
+    energies = energy[inside]
+    if constant_bins and energies.size > 0:
+        start, end = _tools.minMax(energies)
+        energy_edges = np.arange(start, end + 0.5*min_pixel, min_pixel)
+    else:
+        energy_edges = np.array(_tools.binEdges(energies, tolerance=min_pixel))
+
+    columns = [COLUMNS[key] for key in ['qx', 'qy', 'h', 'k', 'l', 'e', 'intensity', 'mon',
+                                        'norm', 'binCount', 'int', 'intError']]
+    if background is not None:
+        columns += BACKGROUND_COLUMNS
+    if len(energy_edges) < 2:
+        return CutResult(pd.DataFrame([], columns=columns), dict(energy=energy_edges, q=q),
+                         parameters)
+
+    weights = [intensity[inside], monitor[inside], normalization[inside]]
+    weights.append(np.asarray(intensity_error)[inside]**2 if intensity_error is not None
+                   else intensity[inside]) # Variance of the counts
+    if background is not None:
+        weights.append(background[inside])
+    sums = [np.asarray(x).flatten() for x in _tools.histogramdd(
+        energies, bins=[energy_edges], weights=[weight.flatten() for weight in weights],
+        returnCounts=True)]
+    counts, monitor_sum, normalization_sum, variance = sums[:4]
+    bin_count = sums[-1]
+
+    centres = 0.5*(energy_edges[1:] + energy_edges[:-1])
+    ones = np.ones_like(centres)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore') # Empty bins divide by zero
+        denominator = normalization_sum*monitor_sum # Operation order as the old code
+        data = pd.DataFrame({
+            COLUMNS['qx']: q[0]*ones, COLUMNS['qy']: q[1]*ones,
+            COLUMNS['h']: hkl[0]*ones, COLUMNS['k']: hkl[1]*ones, COLUMNS['l']: hkl[2]*ones,
+            COLUMNS['e']: centres,
+            COLUMNS['intensity']: counts.astype(float),
+            COLUMNS['mon']: monitor_sum.astype(float),
+            COLUMNS['norm']: normalization_sum.astype(float),
+            COLUMNS['binCount']: bin_count.astype(int),
+            COLUMNS['int']: counts*bin_count/denominator,
+            COLUMNS['intError']: np.sqrt(variance)*bin_count/denominator,
+        })
+    if background is not None:
+        data = _subtract_background(data, sums[4], variance)
+    return CutResult(data, dict(energy=energy_edges, q=q), parameters)
 
 def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: float,
            min_pixel: float, energy_bins=None, energy_min=None, energy_max=None,
