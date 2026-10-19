@@ -128,13 +128,27 @@ work is the open items in the sections further down; tick both.
       `InstrumentCalibration`). The files store no units for it, so none are written
 - [x] Reader tests pass on the layouts (only the `nexus_keys['instrument']` checks became
       `layout.group('instrument').path`)
-- [ ] `DataWriter` ABC (beside `DataReader`); `NexusWriter` on a layout; `CameaWriter`.
-      NICOS text formats (Bambus, MultiFLEXX) get no writer
-- [ ] Update-a-copy mode, the default: copy the source file, open the copy `'r+'`, replace
-      only changed datasets, so fields MJOLNIR does not read survive. Never writes over the
-      source file
-- [ ] Save a new calibration with the update-a-copy mode (what the GUI uses `saveHDF` for)
-- [ ] Round-trip test per writer: write, read back with the same instrument's reader, compare
+- [x] `DataWriter` ABC (`DataWriter.py`: `save(path, overwrite=False)`, refuses the
+      reader's own file and, without `overwrite`, an existing file); `NexusDataWriter`
+      (`NexusDataWriter.py`) on the reader's layout; `CameaDataWriter`
+      (`CameaDataWriter.py`). Named like the readers. NICOS text formats (Bambus,
+      MultiFLEXX) get no writer
+- [x] Update-a-copy mode: copy the source file to a temporary file beside the target, open
+      it `'r+'`, write the changes, move it into place (a failed save leaves no file).
+      `NexusDataWriter.set(key, value)` writes any layout field. A dataset of the same shape
+      and dtype is overwritten in place (keeps attributes and NICOS's `entry/data/*` hard
+      links); otherwise replaced, keeping its attributes with their stored HDF5 types.
+      Missing groups get their `NX_class` from the layout; `units` written only when
+      missing or different
+- [x] Save a new calibration: `CameaDataWriter(reader, {binning: calibration}).save(path)`
+      (default: the reader's current calibration). Shapes checked against detectors x
+      analysers x binning; binnings the file lacks are added (`calibN`, `NXcollection`)
+- [x] Round-trip tests (`test/test_CameaDataWriter.py`): a changed calibration reads back, all
+      other calibrations and data unchanged, no path added or dropped, hard link kept; a new
+      binning; wrong shapes refused with no file left; `NexusDataWriter` on a synthetic layout
+      (in place, replaced, created, refused targets, failed save). Rewriting every
+      calibration of all 20 CAMEA files leaves every dataset and attribute, with its type,
+      unchanged
 - [ ] Full-file mode, only once `createEmptyDataFile` or NXsqom output is chosen for porting
 - [ ] Cuts: `cut1DE`, `cutQELine`, `cutELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
       measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`
@@ -201,7 +215,9 @@ runs on the new `DataSet` and readers, and every view works.
 ### GUI views on the new API
 - [ ] Data set manager: open files, binning (`set_binning`), sorting (`auto_sort`), masks
       (`mask`, `remove_masking`), `updateCalibration`, saving the calibration with
-      `CameaWriter` in place of `saveHDF`
+      `CameaDataWriter` in place of `saveHDF`. The GUI wrote into the raw file itself;
+      `CameaDataWriter` saves to a new file, so the GUI must choose a name (e.g. a suffix) and
+      open the new file
 - [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
 - [ ] Cut 1D manager: `cut_1d`, `cut1DE`, 1D plots from a stored cut, ufit export
@@ -278,8 +294,9 @@ runs on the new `DataSet` and readers, and every view works.
 
 ### Saving
 - [ ] `saveNXsqom`: save converted data
-- [ ] `saveHDF`: write a raw HDF file. Replaced by `NexusWriter` (Milestone 2, "Port the
-      remaining features"); not ported
+- [x] `saveHDF`: write a raw HDF file. Not ported: replaced by `CameaDataWriter`, which keeps
+      the whole file and writes only the calibration. Still needs `updateCalibration`
+      (reading `.calib` files into an `InstrumentCalibration`) to replace the GUI's use
 
 ### Utilities
 - [ ] Compare files (`__eq__`, `difference`)
