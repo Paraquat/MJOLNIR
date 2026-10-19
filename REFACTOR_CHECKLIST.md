@@ -48,6 +48,126 @@ plots match the reference images next to it. Several items repeat ones further d
       The old plots' font came from importing `ufit`, which changes matplotlib's font on
       import; the new code does not import it, so its plots use matplotlib's default font
 
+## Milestone 2: remove the old DataFile.py and DataSet_old.py
+
+Reached when `MJOLNIR/Data/DataFile.py`, `MJOLNIR/Data/DataSet_old.py` and
+`MJOLNIR/Data/BackgroundModel_old.py` are deleted, nothing in the repository imports them, and
+the test suite passes. Every old feature is either ported or dropped on purpose. The porting
+work is the open items in the sections further down; tick both.
+
+### Decide what to port
+- [ ] Answer the scope questions of the refactoring log: which old methods must keep working
+      and for how long (questions 3 and 6), whether broken or unused features go (29-35:
+      combined `h/k/l`, `cutELine`, `plotA3A4`, `save`/`load`, `createEmptyDataFile`,
+      `shallowRead`, `saveHDF`, McStas files, converted `.nxs` files, metadata-only fields)
+- [ ] Mark every open item in this file as "port" or "drop", checking each against what
+      MJOLNIR-GUI uses (Milestone 3), so nothing the GUI needs is dropped
+
+### Keep the comparisons with the old code
+- [ ] Save the old code's output as reference test data before deleting it: conversion arrays
+      for each instrument, `cut1D`, `cutQE`, `plotQPlane` values, `binData3D`, the powder and
+      AMBER backgrounds, the milestone plots. The parity checks then run without the old code
+- [ ] Replace `test/test_DataSetSmoke.py` (smoke tests of `DataSet_old`) with tests of the new
+      `DataSet` for every ported operation
+- [ ] Port or delete the tests pytest does not collect (`test/DataFile.py`, `test/DataSet.py`,
+      `test/Sample.py` and the other `test/*.py` not named `test_*.py`); they need camea2018
+      files that are not in `Data/` (question 37)
+- [ ] One place for test data, available in CI (question 36); remove the hard-coded paths
+      (`/home/zamaan/Projects/bambus` in `test_CameaDataReader.py` and
+      `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
+
+### Port the remaining features (items further down)
+- [ ] Files: converted `.nxs` (NXsqom), McStas, `createEmptyDataFile`, `shallowRead`, error for
+      files without data
+- [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
+      scan parameters and command, `startTime`/`endTime`, `title`, `comment`, detector and
+      analyser selection (`dasel`)
+- [ ] Calibration and sample: `updateCalibration`, calibration plots, `updateSampleParameters`
+- [ ] Saving: `saveNXsqom`, `saveHDF`, DataSet `save`/`load`
+- [ ] Cuts: `cut1DE`, `cutQELine`, `cutELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
+      measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`
+- [ ] Plots and axes: `plotCut1D`, `plotCut1DE`, `plotCutQELine`, `plotCutELine`,
+      `plotCutPowder`, `plotRaw1D`, `plotA3A4`, `View3D` (on `bin_3d`), `createQAxis` /
+      `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
+      click handlers and `_interactiveSettings` modes
+- [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
+- [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
+- [ ] Export: `generateUFitDataset`
+- [ ] DataFile module constants the GUI and scripts read: `supportedRawFormats`,
+      `supportedConvertedFormats`, `possibleAttributes`, `detectorLimits`, `analyzerLimits`
+
+### Move the rest of MJOLNIR off the old API
+- [ ] `Viewer1D.py`, `Viewer3D.py`, `Viewer3DPyQtGraph.py`, `RLUAxes.py`, `DraggableShapes.py`,
+      `_interactiveSettings.py`
+- [ ] `Statistics/CutObject.py`
+- [ ] `Geometry/Instrument.py` (reads a vanadium file with `DataFile`)
+- [ ] Command line scripts (Convert, 3DView, History, CalibrationInspector) and
+      `CommandLineScripts/_tools.py`, with an `--instrument` option; make `test_commandline`
+      run (it needs the scripts installed)
+- [ ] `_tools.PointerArray`: remove once nothing uses it
+- [ ] `Mask.py`: plotting combinations with `indexMask` or `CurratAxeMask`
+
+### Documentation and release
+- [ ] Rewrite the docs that use the old API: the 10 notebooks in `docs/notebooks`, the pages in
+      `docs/Data`, the command line script pages
+- [ ] API documentation of the new modules
+- [ ] Migration guide, old to new: `DataSet(dataFiles=...)` + `convertDataFile` → `DataSet(
+      instrument, files=...)`; `extractData()` → `gather`; `cut1D` → `cut_1d`;
+      `generateBackgroundModel` → `generate_background_model`; result columns unchanged
+- [ ] Replace `.travis.yml` with CI testing Python 3.11-3.14 (also in "Project setup")
+- [ ] New major version, as the API changes
+- [ ] Delete `DataFile.py`, `DataSet_old.py`, `BackgroundModel_old.py`; full test suite passes
+
+## Milestone 3: interface with MJOLNIR-GUI
+
+MJOLNIR-GUI (`~/projects/MJOLNIR-GUI`, MJOLNIRGui 1.0.0, requires `MJOLNIR>=1.2.1`) subclasses
+the old classes (`GuiDataSet(DataSet)`, `GuiDataFile(DataFile)` in
+`src/main/python/MJOLNIR_Data.py`) and calls the old API from its views. Reached when the GUI
+runs on the new `DataSet` and readers, and every view works.
+
+### Design
+- [ ] Decide the boundary: the GUI wraps the new `DataSet` and readers instead of subclassing
+      them, or MJOLNIR offers a small GUI-facing layer
+- [ ] Instrument detection for files opened in the GUI: a factory helper that tries each
+      reader's `can_read` (the core keeps requiring the instrument)
+- [ ] Progress reporting while files are read and transformed (the GUI advances a progress bar
+      per file): a callback in `DataSet.extend` and `set_binning`
+- [ ] What the Qt list models need from a DataSet: `insert` and `pop` at a position, a file
+      index, display names
+- [ ] Messages raised while reading (e.g. masked broken tubes) delivered through `warnings` or
+      logging, which the GUI can show (it passed a `printFunction`)
+
+### File information the GUI shows
+- [ ] Reader metadata for the file info panel and subtraction check: sample name, title,
+      projection vectors, Ei, A3, 2θ, magnetic field and temperature (`SampleEnvironment`),
+      comment, binning, scan command, scan steps and parameters, counting time, start and end
+      time, file location, instrument, possible binnings
+- [ ] Electronic log book: the same metadata for many files, from a quick read (`shallowRead`)
+- [ ] Raw 1D view: detector and analyser selection, `calcualteDataIndexFromDasel`, the
+      binning-1 calibration, `plotRaw1D`
+
+### GUI views on the new API
+- [ ] Data set manager: open files, binning (`set_binning`), sorting (`auto_sort`), masks
+      (`mask`, `remove_masking`), `updateCalibration`, `saveHDF`
+- [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
+- [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
+- [ ] Cut 1D manager: `cut_1d`, `cut1DE`, 1D plots from a stored cut, ufit export
+      (`Gui1DCutObject`)
+- [ ] Q-E line manager: `plot_cut_qe`, `plotCutQELine`, `calculatePosition` on the axes
+- [ ] Q plane manager: `plot_q_plane`; `DraggableShapes.extractCut` on the new axes; energy
+      range from `gather`
+- [ ] View 3D manager: `View3D` on `bin_3d`
+- [ ] Normalisation manager: `absoluteNormalize`
+- [ ] Prediction tool and calculators: check which sample and UB functions they use
+- [ ] `generateScripts.py`: generated scripts use the new API
+- [ ] Saved GUI states (`GuiStates.py`): store the new objects; decide whether old states load
+
+### Packaging and testing
+- [ ] MJOLNIRGui requires the new MJOLNIR version, Python 3.11 or newer and numpy 2.3 or newer
+- [ ] GUI smoke test: open the sample data and run each view's main action (e.g. pytest-qt)
+- [ ] Milestone check: the GUI loads the milestone files and shows the Q-E cut and Q plane of
+      `make_plots.py`, with the same values
+
 ## Readers and conversion
 
 ### Done
@@ -285,4 +405,4 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
       (Python 3.14) and 2.4.6 (Python 3.11)
 
 ## Finish
-- [ ] Remove `DataFile.py` and `DataSet_old.py`
+Removing `DataFile.py` and `DataSet_old.py` is Milestone 2.
