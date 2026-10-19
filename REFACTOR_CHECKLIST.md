@@ -158,10 +158,10 @@ work is the open items in the sections further down; tick both.
 - [ ] Cuts: `cutQELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
       measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`.
       Done: `cut1DE` (`cut_constant_q`)
-- [ ] Plots and axes: `plotCut1D`, `plotCut1DE`, `plotCutQELine`, `plotCutPowder`,
+- [ ] Plots and axes: `plotCut1DE`, `plotCutQELine`, `plotCutPowder`,
       `plotRaw1D`, `View3D` (on `bin_3d`), `createQAxis` /
       `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
-      click handlers and `_interactiveSettings` modes
+      click handlers and `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`)
 - [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [ ] Export: `generateUFitDataset`
@@ -417,7 +417,16 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] Pandas output columns (`pdNaming`): `CutResult.COLUMNS`
 
 ### Plotting and interactive figures
-- [ ] `plotCut1D` (cut done: `Cuts.cut_1d` / `ds.cut_1d`; no plot yet)
+- [x] `plotCut1D`: `Plotting.plot_cut_1d(result, sample, rlu, ax, counts, show_energy,
+      plot_foreground, plot_background, **errorbar options)` and `ds.plot_cut_1d(q1, q2,
+      width, min_pixel, energy_min, energy_max, ..., **plot_options)`, on the existing cut
+      axes (`_cut_axes`, the port of `generate1DAxis`). Returns the axes (`ax.Data`,
+      `ax.result`, `ax.to_csv`) instead of `(ax, Data, bins)`; axes of an earlier 1D cut
+      are reused, so cuts can share them. Drawn data, positions (`BinDistance`), labels,
+      tick labels and limits identical to the old `plotCut1D` (rlu on and off, counts True /
+      False / 'sensitivity', `show_energy`, background with foreground and background
+      curves), except the `Int_err` bars, which no longer have the old truncation (up to
+      2.8% here). Not ported: `ufit=True`, `plotCoverage`, `dataFiles=`, `outputFunction`
 - [ ] `plotCut1DE`
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [ ] `plotCutQELine`
@@ -508,6 +517,8 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       and `bin_3d` do not use `intensity_error` yet (see "Cut options not ported yet")
 - [x] `cut1DE` with background: `intensity` held counts minus background (as `cutQE`); now
       the measured counts, as `cut1D`
+- [x] `plotCut1D` with an unknown `counts` value built an `AttributeError` without raising
+      it, and plotted nothing; `plot_cut_1d` raises
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

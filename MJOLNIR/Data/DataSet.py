@@ -619,6 +619,18 @@ class DataSet:
                               background_subtraction=background_subtraction)
         return Cuts.bin_3d(**points, dx=dx, dy=dy, dz=dz, sample=sample)
 
+    def plot_cut_1d(self, q1, q2, width: float, min_pixel: float, energy_min: float,
+                    energy_max: float, rlu: bool = True, extend: bool = False,
+                    constant_bins: bool = False, background_subtraction: bool = False,
+                    **plot_options):
+        """1D cut (cut_1d) plotted with error bars along the cut (Plotting.plot_cut_1d, which
+        takes plot_options such as ax, counts, show_energy, plot_foreground, plot_background
+        and errorbar options). Returns the axes; the cut is ax.result"""
+        result = self.cut_1d(q1, q2, width, min_pixel, energy_min, energy_max, rlu=rlu,
+                             extend=extend, constant_bins=constant_bins,
+                             background_subtraction=background_subtraction)
+        return Plotting.plot_cut_1d(result, sample=self.sample, rlu=rlu, **plot_options)
+
     def plot_cut_qe(self, q1, q2, width: float = 0.1, min_pixel: float = 0.05,
                     energy_bins=None, energy_min=None, energy_max=None, energy_step=None,
                     rlu: bool = True, extend: bool = False, background_subtraction: bool = False,

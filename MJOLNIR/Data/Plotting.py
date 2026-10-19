@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 import MJOLNIR
+from MJOLNIR import _tools
 from MJOLNIR.Data import RLUAxes
 from MJOLNIR.Data.CutResult import CutResult, COLUMNS
 
@@ -79,6 +80,100 @@ def _cut_axes(start, end, rlu: bool, show_energy: bool, two_dimensional: bool, a
         return '\n'.join(ax.fmtPrecisionString.format(p) for p in positions)
     ax.xaxis.set_major_formatter(FuncFormatter(tick_label))
     ax.callbacks.connect('xlim_changed', ax.calculateXPrecision)
+    ax.get_figure().tight_layout()
+    return ax
+
+def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
+                show_energy: bool = True, plot_foreground: bool = False,
+                plot_background: bool = False, **kwargs):
+    """Plot a 1D cut (from Cuts.cut_1d) with error bars against the position along the cut
+    (the old DataSet.plotCut1D).
+
+    Args:
+
+        - result (CutResult): The cut
+
+    Kwargs:
+
+        - sample (Sample): Sample of the cut's frame, needed for rlu (default None)
+
+        - rlu (bool): Label the cut in H, K, L, else in Qx, Qy (default True)
+
+        - ax (Axes): Axes to draw on (default None: new figure). Axes of an earlier 1D cut
+          plot keep their positions, so several cuts can share them
+
+        - counts (bool or str): Plot counts with sqrt(counts) errors (True), the sensitivity
+          ('sensitivity': Normalization/BinCount) or the normalised intensity Int with Int_err
+          (False, default). With background subtraction, counts are foreground minus
+          background
+
+        - show_energy (bool): Add the cut's mean energy to the tick labels (default True)
+
+        - plot_foreground, plot_background (bool): With background subtraction, also plot the
+          foreground and the background (default False)
+
+    Other kwargs go to errorbar (default fmt '.'). The x axis runs from 0 at q1 to 1 at q2;
+    the BinDistance column of ax.Data holds each bin's position on it. The returned axes have
+    Data, result and to_csv.
+    """
+    if rlu and sample is None:
+        raise AttributeError('A sample is needed to plot the cut in H, K, L (rlu=True)')
+    if not (counts is True or counts is False or str(counts).lower() == 'sensitivity'):
+        raise AttributeError(f'Provided counts attribute not understood. Received "{counts}"')
+    if not hasattr(ax, 'calculatePositionInv'): # New axes, or axes not set up for a cut yet
+        q1, q2 = result.parameters['q1'], result.parameters['q2']
+        start, end = (_to_hkl(sample, q1), _to_hkl(sample, q2)) if rlu else (q1, q2)
+        ax = _cut_axes(start, end, rlu=rlu, show_energy=show_energy, two_dimensional=False,
+                       ax=ax)
+
+    data = result.data
+    if show_energy:
+        ax.energy = np.mean(data[COLUMNS['e']])
+    columns = [COLUMNS[key] for key in (['h', 'k', 'l'] if rlu else ['qx', 'qy'])]
+    data[COLUMNS['plotPosition']] = ax.calculatePositionInv(np.asarray(data[columns])).flatten()
+    column = lambda name: np.asarray(data[name], dtype=float)
+    position = column(COLUMNS['plotPosition'])
+    ax.set_ylabel('$I$ [arb.u.]')
+    kwargs.setdefault('fmt', '.')
+    kwargs.setdefault('label', '_Data')
+    background = COLUMNS['BackgroundIntensity'] in data
+
+    if counts is True:
+        foreground = column(COLUMNS['intensity'])
+        if background:
+            values = foreground - column(COLUMNS['BackgroundIntensity'])
+            errors = np.sqrt(foreground + column(COLUMNS['BackgroundIntensity']))
+        else:
+            values, errors = foreground, np.sqrt(foreground)
+        ax.errorbar(position, values, yerr=errors, **kwargs)
+        extra = {'Foreground': COLUMNS['ForegroundIntensity'],
+                 'Background': COLUMNS['BackgroundIntensity']}
+        extra_errors = {label: np.sqrt(column(name)) for label, name in extra.items()
+                        if name in data}
+    elif counts is False:
+        ax.errorbar(position, column(COLUMNS['int']), yerr=column(COLUMNS['intError']), **kwargs)
+        extra = {'Foreground': COLUMNS['Foreground'], 'Background': COLUMNS['Background']}
+        if background:
+            extra_errors = {'Foreground': column(COLUMNS['ForegroundError']),
+                            'Background': column(COLUMNS['BackgroundError'])}
+    else:
+        ax.errorbar(position, column(COLUMNS['norm'])/column(COLUMNS['binCount']), **kwargs)
+        extra = {}
+    for label, wanted in [('Foreground', plot_foreground), ('Background', plot_background)]:
+        if wanted and background and label in extra:
+            ax.errorbar(position, column(extra[label]), yerr=extra_errors[label],
+                        fmt=kwargs['fmt'], label=label)
+    if len(position) > 0:
+        ax.set_xlim(*_tools.minMax(position))
+    ax.Data = data
+    ax.result = result
+
+    def to_csv(file_name):
+        with open(file_name, 'w') as f:
+            f.write(f'# CSV generated from MJOLNIR {MJOLNIR.__version__}. '
+                    f'Shape of data is {(len(ax.Data),)}\n')
+        ax.Data.fillna(-1).to_csv(file_name, mode='a')
+    ax.to_csv = to_csv
     ax.get_figure().tight_layout()
     return ax
 

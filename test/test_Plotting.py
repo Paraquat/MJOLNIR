@@ -122,3 +122,64 @@ def test_plot_q_plane_options(dataset, plane):
     assert in_q.get_xlabel() == 'Qx [1/AA]'
     with pytest.raises(AttributeError): # Reciprocal lattice axes need the sample
         Plotting.plot_q_plane(plane)
+
+# 1D cuts
+
+@pytest.fixture(scope="module")
+def cut_1d(dataset):
+    return dataset.cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8)
+
+def test_plot_cut_1d(dataset, cut_1d):
+    ax = Plotting.plot_cut_1d(cut_1d, sample=dataset.sample)
+    data = ax.Data
+    x, y = ax.lines[0].get_data()
+    assert np.allclose(x, data['BinDistance']) and np.allclose(y, data['Int'], equal_nan=True)
+    assert data['BinDistance'].iloc[0] == pytest.approx(0.0, abs=0.1) # Starts near q1 (0)
+    assert data['BinDistance'].iloc[-1] == pytest.approx(1.0, abs=0.1) # Ends near q2 (1)
+    assert ax.energy == pytest.approx(-0.1) # Mean energy, shown in the tick labels
+    assert ax.get_ylabel() == '$I$ [arb.u.]'
+    ax.get_figure().canvas.draw()
+    assert len(ax.get_xticklabels()[0].get_text().split('\n')) == 4 # H, K, L and E
+    assert ax.result is cut_1d
+
+def test_plot_cut_1d_options(dataset, cut_1d, tmp_path):
+    counts = Plotting.plot_cut_1d(cut_1d, sample=dataset.sample, counts=True, show_energy=False)
+    assert np.allclose(counts.lines[0].get_ydata(), cut_1d.data['intensity'])
+    counts.get_figure().canvas.draw()
+    assert len(counts.get_xticklabels()[0].get_text().split('\n')) == 3 # No energy
+    sensitivity = Plotting.plot_cut_1d(cut_1d, sample=dataset.sample, counts='sensitivity')
+    assert np.allclose(sensitivity.lines[0].get_ydata(),
+                       cut_1d.data['Normalization']/cut_1d.data['BinCount'], equal_nan=True)
+    with pytest.raises(AttributeError, match='not understood'):
+        Plotting.plot_cut_1d(cut_1d, sample=dataset.sample, counts='unknown')
+    with pytest.raises(AttributeError, match='sample is needed'):
+        Plotting.plot_cut_1d(cut_1d)
+    qxqy = Plotting.plot_cut_1d(cut_1d, rlu=False)
+    assert 'Q_x' in qxqy.get_xlabel()
+    qxqy.to_csv(tmp_path / 'cut.csv')
+    assert len((tmp_path / 'cut.csv').read_text().splitlines()) == 2 + len(cut_1d)
+
+def test_plot_cut_1d_shared_axes(dataset, cut_1d):
+    ax = dataset.plot_cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8, fmt='o', label='first')
+    start = ax.startPoint.copy()
+    second = dataset.plot_cut_1d(HKL1, HKL2, 0.1, 0.02, 0.0, 0.8, ax=ax, label='second')
+    assert second is ax and len(ax.lines) == 2
+    assert np.array_equal(ax.startPoint, start) # Positions kept from the first cut
+    assert [c.get_label() for c in ax.containers] == ['first', 'second']
+
+def test_plot_cut_1d_background(dataset):
+    dataset.generate_background_model()
+    try:
+        ax = dataset.plot_cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8, background_subtraction=True,
+                                 plot_foreground=True, plot_background=True)
+        data = ax.Data
+        assert [c.get_label() for c in ax.containers] == ['_Data', 'Foreground', 'Background']
+        assert np.allclose(ax.lines[0].get_ydata(), data['Int'], equal_nan=True)
+        assert np.allclose(ax.lines[1].get_ydata(), data['Int_Fg'], equal_nan=True)
+        assert np.allclose(ax.lines[2].get_ydata(), data['Int_Bg'], equal_nan=True)
+        counts = dataset.plot_cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8, counts=True,
+                                     background_subtraction=True)
+        assert np.allclose(counts.lines[0].get_ydata(),
+                           counts.Data['intensity_Fg'] - counts.Data['intensity_Bg'])
+    finally:
+        dataset.remove_background_model()
