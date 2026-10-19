@@ -4,6 +4,9 @@ Each function takes the data points as 1-D arrays (in Qx, Qy and energy, all in 
 frame) and returns a CutResult. They do not know about DataSet: a DataSet gathers the
 unmasked, rotated points (DataSet.gather_q, DataSet.gather) and passes them in. Cut positions
 q1, q2 are in Qx, Qy [1/AA]; with a sample, bin positions are also given in H, K, L.
+
+With background (the background counts of each point, e.g. from a background model), it is
+summed over each bin like the counts, and subtracted: see _subtract_background.
 """
 import warnings
 import numpy as np
@@ -22,6 +25,34 @@ def _to_hkl(sample, qxqy: FloatArray) -> FloatArray:
         return np.full((len(qxqy), 3), np.nan)
     return convert_to_hkl(sample, qxqy)
 
+BACKGROUND_COLUMNS = [COLUMNS[key] for key in ['BackgroundIntensity', 'ForegroundIntensity',
+                                               'Background', 'Foreground', 'ForegroundError',
+                                               'BackgroundError']]
+
+def _subtract_background(data: pd.DataFrame, background_sum) -> pd.DataFrame:
+    """Add the background columns to the bins of a cut, from the background counts summed
+    over each bin, as the old cut1D did:
+
+        - intensity_Bg, intensity_Fg: Background and measured counts in the bin
+        - Int_Bg, Int_Fg: Both normalised like Int, with their errors Int_Bg_err, Int_Fg_err
+        - Int: Int_Fg - Int_Bg, with the error Int_err from both counts
+
+    intensity keeps the measured counts."""
+    scale = lambda column: column*data[COLUMNS['binCount']]/(data[COLUMNS['norm']]*data[COLUMNS['mon']])
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore') # Empty bins divide by zero
+        data[COLUMNS['BackgroundIntensity']] = np.asarray(background_sum, dtype=float).flatten()
+        data[COLUMNS['ForegroundIntensity']] = data[COLUMNS['intensity']]
+        foreground = data[COLUMNS['ForegroundIntensity']]
+        background = data[COLUMNS['BackgroundIntensity']]
+        data[COLUMNS['Background']] = scale(background)
+        data[COLUMNS['Foreground']] = scale(foreground)
+        data[COLUMNS['int']] = data[COLUMNS['Foreground']] - data[COLUMNS['Background']]
+        data[COLUMNS['ForegroundError']] = scale(np.sqrt(foreground))
+        data[COLUMNS['BackgroundError']] = scale(np.sqrt(background))
+        data[COLUMNS['intError']] = scale(np.sqrt(foreground + background))
+    return data
+
 def _directions(q1, q2) -> tuple[FloatArray, FloatArray, float]:
     """Unit vector along the cut, unit vector orthogonal to it, and the cut length"""
     direction = np.asarray(q2, dtype=float) - np.asarray(q1, dtype=float)
@@ -33,13 +64,13 @@ def _directions(q1, q2) -> tuple[FloatArray, FloatArray, float]:
 
 def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: float,
            min_pixel: float, energy_min: float, energy_max: float, sample=None,
-           extend: bool = False, constant_bins: bool = False) -> CutResult:
+           extend: bool = False, constant_bins: bool = False, background=None) -> CutResult:
     """1D cut through Q from q1 to q2, of full width width, summed over energies between
     energy_min and energy_max (the old DataSet.cut1D).
 
     Bins along the cut are at least min_pixel long, and merged where points are sparser
     (constant_bins: all exactly min_pixel). Without extend, only points between q1 and q2
-    (with a 5% margin) are used.
+    (with a 5% margin) are used. With background, Int is background subtracted.
 
     bins: 'positions' (bin edges as Qx, Qy, E, shape (n+1, 3)), 'orthogonal' (the two edges
     across the cut, shape (2, 2)) and 'energy' (energy_min, energy_max).
@@ -57,6 +88,8 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
     def empty(positions):
         columns = [COLUMNS[key] for key in ['qx', 'qy', 'h', 'k', 'l', 'e', 'intensity',
                                             'intError', 'mon', 'norm', 'binCount', 'int']]
+        if background is not None:
+            columns += BACKGROUND_COLUMNS
         return CutResult(pd.DataFrame([], columns=columns),
                          dict(positions=positions, orthogonal=orthogonal_positions,
                               energy=energy_edges), parameters)
@@ -68,6 +101,8 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
     points = np.array([qx[inside_energy], qy[inside_energy]])
     projected = np.dot(projection, points - q1.reshape(2, 1))
     weights = [intensity[inside_energy], monitor[inside_energy], normalization[inside_energy]]
+    if background is not None:
+        weights.append(background[inside_energy])
     if not extend: # Only points between q1 and q2
         if constant_bins:
             inside_q = np.logical_and(projected[0] > 0.0, projected[0] < length)
@@ -87,11 +122,11 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
     if len(length_edges) == 0:
         return empty(np.array([]))
 
-    counts, monitor_sum, normalization_sum, bin_count = _tools.histogramdd(
+    sums = [np.asarray(x).flatten() for x in _tools.histogramdd(
         projected.T, bins=[length_edges, orthogonal_edges],
-        weights=[weight.flatten() for weight in weights], returnCounts=True)
-    counts, monitor_sum, normalization_sum, bin_count = (
-        np.asarray(x).flatten() for x in [counts, monitor_sum, normalization_sum, bin_count])
+        weights=[weight.flatten() for weight in weights], returnCounts=True)]
+    counts, monitor_sum, normalization_sum = sums[:3]
+    bin_count = sums[-1]
 
     edges_qxqy = np.outer(length_edges, direction) + q1
     edges = np.concatenate([edges_qxqy, np.full((len(edges_qxqy), 1), 0.5*(energy_min + energy_max))],
@@ -114,19 +149,22 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
             COLUMNS['intError']: np.sqrt(counts)*bin_count/denominator,
             COLUMNS['int']: counts*bin_count/denominator,
         })
+    if background is not None:
+        data = _subtract_background(data, sums[3])
     return CutResult(data, dict(positions=edges, orthogonal=orthogonal_positions,
                                 energy=energy_edges), parameters)
 
 def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: float,
            min_pixel: float, energy_bins=None, energy_min=None, energy_max=None,
-           energy_step=None, sample=None, extend: bool = False) -> CutResult:
+           energy_step=None, sample=None, extend: bool = False, background=None) -> CutResult:
     """2D cut in Q and energy: Q along the line q1 to q2 (full width width, bins of
     min_pixel), energy in energy_bins (or from energy_min to energy_max in steps of
     energy_step). The old DataSet.cutQE.
 
-    Without extend, only points between q1 and q2 are used. Rows are ordered by energy bin,
+    Without extend, only points between q1 and q2 are used. Points above energy_max are left
+    out, even where the last energy bin extends beyond it. Rows are ordered by energy bin,
     then Q bin. As in the old cutQE, the Energy column holds the lower edge of each energy
-    bin.
+    bin. With background, Int is background subtracted.
 
     bins: 'distance' (edges along the cut, from q1) and 'energy' (energy edges);
     'orthogonal_extent' the Qx, Qy of the data's extent across the cut, at its two ends.
@@ -137,8 +175,11 @@ def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
                                  f'energy_step must be given. Received: energy_min={energy_min}, '
                                  f'energy_max={energy_max}, and energy_step={energy_step}')
         energy_bins = np.arange(energy_min, energy_max + energy_step, energy_step)
+        # As in the old cutQE, points above energy_max are left out, even where the last bin
+        # reaches beyond it
+    else:
+        energy_min, energy_max = np.asarray(energy_bins, dtype=float)[[0, -1]]
     energy_bins = np.asarray(energy_bins, dtype=float)
-    energy_min, energy_max = energy_bins[[0, -1]]
     q1 = np.asarray(q1, dtype=float)
     parameters = dict(q1=q1, q2=np.asarray(q2, dtype=float), width=width, min_pixel=min_pixel,
                       energy_bins=energy_bins, extend=extend)
@@ -166,10 +207,15 @@ def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
     else:
         distance_edges = np.arange(np.min(distance), np.max(distance), min_pixel)
 
-    counts, monitor_sum, normalization_sum, bin_count = _tools.histogramdd(
-        np.array([distance, energy[inside]]).T, bins=[distance_edges, energy_bins],
-        weights=[intensity[inside].flatten(), monitor[inside].flatten(),
-                 normalization[inside].flatten()], returnCounts=True)
+    weights = [intensity[inside].flatten(), monitor[inside].flatten(),
+               normalization[inside].flatten()]
+    if background is not None:
+        weights.append(background[inside].flatten())
+    sums = _tools.histogramdd(np.array([distance, energy[inside]]).T,
+                              bins=[distance_edges, energy_bins], weights=weights,
+                              returnCounts=True)
+    counts, monitor_sum, normalization_sum = sums[:3]
+    bin_count = sums[-1]
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore') # Empty bins divide by zero
@@ -193,18 +239,21 @@ def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
             COLUMNS['norm']: normalization_sum[:, column].astype(float),
             COLUMNS['binCount']: bin_count[:, column].astype(int),
         }))
+        if background is not None:
+            frames[-1] = _subtract_background(frames[-1], sums[3][:, column])
     return CutResult(pd.concat(frames), dict(distance=distance_edges, energy=energy_bins,
                                              orthogonal_extent=orthogonal_extent), parameters)
 
 def cut_q_plane(qx, qy, energy, intensity, normalization, monitor, energy_bins=None,
                 energy_min=None, energy_max=None, x_bin_tolerance: float = 0.05,
-                y_bin_tolerance: float = 0.05, sample=None) -> CutResult:
+                y_bin_tolerance: float = 0.05, sample=None, background=None) -> CutResult:
     """Constant-energy planes: the points with energy_min < E <= energy_max (or within each
     pair of energy_bins), binned in Qx and Qy (the binning of the old DataSet.plotQPlane).
 
     Each energy range is binned on its own, from the smallest to the largest Qx (Qy) of its
     points in steps of x_bin_tolerance (y_bin_tolerance). Rows are ordered by energy range,
-    then Qx bin, then Qy bin; Energy is the middle of the range.
+    then Qx bin, then Qy bin; Energy is the middle of the range. With background, Int is
+    background subtracted.
 
     bins: 'energy' (the energy edges), 'qx' and 'qy' (a list with the Qx, Qy edges of each
     energy range; ranges without points are left out).
@@ -260,6 +309,8 @@ def cut_q_plane(qx, qy, energy, intensity, normalization, monitor, energy_bins=N
             COLUMNS['int']: normalised.flatten(),
             COLUMNS['intError']: normalised_error.flatten(),
         }))
+        if background is not None:
+            frames[-1] = _subtract_background(frames[-1], histogram(background[inside]).flatten())
         qx_edges.append(x_edges)
         qy_edges.append(y_edges)
     data = pd.concat(frames) if frames else pd.DataFrame()

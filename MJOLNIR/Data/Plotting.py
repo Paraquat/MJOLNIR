@@ -249,3 +249,16 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
         data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
     return ax
+
+def plot_powder_background(model, ax=None):
+    """Plot a powder-average background model (BackgroundModel.PowderBackground) as a colour
+    map in |Q| and energy (the old plotPowderAverage). The axes have set_clim"""
+    if ax is None:
+        _, ax = plt.subplots()
+    X, Y = np.meshgrid(model.q_bins, model.energy_bins)
+    ax.p = ax.pcolormesh(X, Y, model.intensity.T)
+    ax.set_xlabel('|Q| [1/A]')
+    ax.set_ylabel('E [meV]')
+    ax.get_figure().colorbar(ax.p)
+    ax.set_clim = lambda vmin, vmax: ax.p.set_clim(vmin, vmax)
+    return ax

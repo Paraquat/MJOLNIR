@@ -131,3 +131,49 @@ def test_cut_q_plane_energy_bins(aligned_points):
         Cuts.cut_q_plane(**aligned_points, energy_min=0.2, energy_max=-0.2)
     with pytest.raises(AttributeError):
         Cuts.cut_q_plane(**aligned_points)
+
+# Background subtraction (checked against the old cut1D, cutQE and plotQPlane with
+# backgroundSubtraction: identical for cut1D; for cutQE and plotQPlane equal to 1e-16, apart
+# from the columns below, which now follow cut1D)
+
+def test_background_columns(points, q1q2):
+    common = dict(**points, q1=q1q2[0], q2=q1q2[1], width=0.1, min_pixel=0.02)
+    half = 0.5*points['intensity'] # Half the counts as background
+    cuts = [lambda **kwargs: Cuts.cut_1d(**common, energy_min=-1.0, energy_max=0.8, **kwargs),
+            lambda **kwargs: Cuts.cut_qe(**common, energy_min=-1.0, energy_max=0.8,
+                                         energy_step=0.1, **kwargs),
+            lambda **kwargs: Cuts.cut_q_plane(**points, energy_min=-0.2, energy_max=0.2,
+                                              **kwargs)]
+    for cut in cuts:
+        plain, subtracted = cut().data, cut(background=half).data
+        assert list(subtracted.columns) == list(plain.columns) + [COLUMNS[key] for key in [
+            'BackgroundIntensity', 'ForegroundIntensity', 'Background', 'Foreground',
+            'ForegroundError', 'BackgroundError']]
+        # The counts are kept; the background is summed like them
+        assert np.array_equal(subtracted['intensity'], plain['intensity'])
+        assert np.array_equal(subtracted['intensity_Fg'], plain['intensity'])
+        assert np.allclose(subtracted['intensity_Bg'], 0.5*plain['intensity'])
+        assert np.allclose(subtracted['Int_Fg'], plain['Int'], equal_nan=True)
+        assert np.allclose(subtracted['Int'], 0.5*plain['Int'], equal_nan=True)
+        scale = plain['BinCount']/(plain['Normalization']*plain['Monitor'])
+        assert np.allclose(subtracted['Int_err'], np.sqrt(1.5*plain['intensity'])*scale,
+                           equal_nan=True)
+        assert np.allclose(subtracted['Int_Bg_err'], np.sqrt(0.5*plain['intensity'])*scale,
+                           equal_nan=True)
+
+def test_background_empty_cut(points, q1q2):
+    empty = Cuts.cut_1d(**points, q1=q1q2[0], q2=q1q2[1], width=0.1, min_pixel=0.02,
+                        energy_min=50, energy_max=60, background=points['intensity'])
+    assert len(empty) == 0
+    assert 'Int_Bg' in empty.data.columns
+
+def test_cut_qe_energy_max(points, q1q2):
+    # As in the old cutQE: points above energy_max are left out of the last bin, which
+    # reaches beyond it
+    common = dict(**points, q1=q1q2[0], q2=q1q2[1], width=0.1, min_pixel=0.02,
+                  energy_min=-1.0, energy_step=0.3)
+    cut = Cuts.cut_qe(**common, energy_max=0.0)
+    assert cut.bins['energy'][-1] == pytest.approx(0.2)
+    last = cut.data[cut.data['Energy'] == cut.bins['energy'][-2]]
+    full = Cuts.cut_qe(**common, energy_max=0.2).data
+    assert last['BinCount'].sum() < full[full['Energy'] == cut.bins['energy'][-2]]['BinCount'].sum()

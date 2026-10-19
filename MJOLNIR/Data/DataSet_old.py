@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection,PolyCollection
 import matplotlib.ticker as ticker
 from matplotlib.patches import Polygon
-from MJOLNIR.Data import Viewer3D,RLUAxes, Mask, BackgroundModel
+from MJOLNIR.Data import Viewer3D,RLUAxes, Mask
+from MJOLNIR.Data import BackgroundModel_old as BackgroundModel
 from MJOLNIR import _interactiveSettings
 import MJOLNIR.Data.DataFile
 import MJOLNIR.Data.Sample

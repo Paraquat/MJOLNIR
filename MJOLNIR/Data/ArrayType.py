@@ -28,6 +28,7 @@ class ArrayType(StrEnum):
     NORMALIZATION = "normalization"
     MONITOR = "monitor"
     MASK = "mask"
+    BACKGROUND = "background"
 
     # Sample environment, one value per scan step
     TEMPERATURE = "environment.temperature"

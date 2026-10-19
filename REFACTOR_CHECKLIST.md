@@ -146,8 +146,16 @@ plots match the reference images next to it. Several items repeat ones further d
       for files added later
 
 ### Background
-- [ ] `backgroundModel`, `backgroundIntensities`, `generateBackgroundModel`
-- [ ] `backgroundSubtraction` in cuts
+- [x] `backgroundModel`, `backgroundIntensities`, `generateBackgroundModel`:
+      `ds.generate_background_model` fits `BackgroundModel.PowderBackground` from the
+      gathered points (`gather(..., mask=...)`) and stores each file's background counts in
+      `reader.background` (`ArrayType.BACKGROUND`); refitted after `set_binning` (mask
+      objects), applied to appended files, dropped by a difference. Identical to the old code
+      on the milestone data; `Plotting.plot_powder_background` plots the model
+- [x] `backgroundSubtraction` in cuts: `background` in `Cuts.cut_1d`/`cut_qe`/`cut_q_plane`,
+      `background_subtraction` in the `DataSet` cut and plot methods. One column scheme for
+      all cuts (the old `cut1D` one)
+- [ ] `AMBERBackground` (needs `binData3D`)
 
 ### Arithmetic and normalisation
 - [x] Monitor-scaled subtraction (`__sub__`): by measured monitor per point, not preset
@@ -161,7 +169,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] `cut1D` (`Cuts.cut_1d`; identical to the old code apart from the `Int_err` fix)
 - [ ] `cut1DE`
 - [x] `cutQE` (`Cuts.cut_qe`; identical to the old code)
-- [ ] Cut options not ported yet: background subtraction, measurement errors (`I_err`),
+- [ ] Cut options not ported yet: measurement errors (`I_err`),
       `cutQE` smoothing and scaled energy, `ufit` output, `plotCoverage`
 - [ ] `cutQELine`
 - [ ] `cutELine`
@@ -179,7 +187,7 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `plotCutELine`
 - [ ] `plotCutPowder`
 - [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
-      polar binning, `enlargen`, 3D axes, background subtraction, `scaleFunction`)
+      polar binning, `enlargen`, 3D axes, `scaleFunction`)
 - [ ] `plotRaw1D`
 - [ ] `plotA3A4` (with `boundaryQ`, `convexHullPoints`)
 - [ ] `View3D`
@@ -223,13 +231,21 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [x] `cut1D` truncated `Int_err` to whole counts (column types one place out of line), and
       stored `BinCount` as float
 - [x] `plotCutQE` ignored its `counts` option (the values were overwritten with `Int`)
+- [x] Background model: points below the first |Q| or energy bin edge took their background
+      from the last bin (index -1); they now get 0, like points above the range
+- [x] `cutQE` with background: `intensity` held counts minus background, `Int_err` was the
+      root of that difference (NaN where the background is larger), and `Int_Bg`/`Int_Fg`
+      held counts, not normalised values. Now as `cut1D`: `intensity` the counts,
+      `intensity_Bg`/`intensity_Fg` the counts, `Int_Bg`/`Int_Fg` normalised, `Int_err` from
+      both counts. `plotQPlane` with background had no background columns at all
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
       `h/k/l`, `energy`, `A3` work); metaclass replaced by `ABC`; coordinates accept
       `ArrayType` or strings. `CurratAxeMask` works on readers; masks apply through
       `DataSet.mask`. Still to do: the bugs listed under "Mask.py bugs"
-- [ ] `BackgroundModel.py`
+- [x] `BackgroundModel.py`: the powder model is the new `BackgroundModel.py`; the old file
+      is kept as `BackgroundModel_old.py` for `DataSet_old`
 - [ ] `Viewer1D.py`, `Viewer3D.py`, `RLUAxes.py`, `DraggableShapes.py`
 - [ ] `_interactiveSettings.py`
 - [ ] `Statistics/CutObject.py`

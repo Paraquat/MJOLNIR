@@ -73,6 +73,7 @@ class DataReader(ABC):
     # Masks, shape of intensity, True = point excluded: user_mask is set by the user,
     # _default_mask by the instrument (default_mask()); mask combines them
     user_mask: npt.NDArray[np.bool_]
+    background: npt.NDArray[np.float64] | None # Background counts per point (BackgroundModel)
     use_default_mask: bool = True
 
     # Frozen readers hold derived data (e.g. a difference of two data sets): transforming them
@@ -103,6 +104,7 @@ class DataReader(ABC):
         self.user_mask = None
         self._default_mask = None
         self.masked_detectors = [] # Detectors excluded by the default mask
+        self.background = None
         self.environment = SampleEnvironment()
 
     @classmethod
@@ -219,6 +221,7 @@ class DataReader(ABC):
         self.sample.B = TasUBlib.calculateBMatrix(self.sample.cell)
         # Masks follow the binning, so a new transform rebuilds them
         self.user_mask = np.zeros(self.intensity.shape, dtype=bool)
+        self.background = None # Its shape follows the binning: the DataSet computes it again
         self._default_mask = self.default_mask()
         self._report_masked_detectors()
 

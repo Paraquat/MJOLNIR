@@ -10,6 +10,7 @@ from MJOLNIR.Data.AxisView import AxisView
 from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl, align_to_lattice
 from MJOLNIR.Data import Cuts, Plotting
 from MJOLNIR.Data.CutResult import CutResult
+from MJOLNIR.Data.BackgroundModel import PowderBackground
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
@@ -47,6 +48,8 @@ class DataSet:
         self._mask_reproducible = True
         self._use_default_mask = True
         self.frozen = False # A difference of data sets: cannot be rebinned or extended
+        self.background_model = None
+        self._background_settings = None # Arguments of generate_background_model, to refit
         if files is not None:
             self.extend(files)
 
@@ -63,6 +66,8 @@ class DataSet:
             self._mask_reproducible = True
         elif self._mask_object is not None:
             self.mask = self._mask_object
+        if self.background_model is not None:
+            self._refit_background()
 
     # Adding data files
 
@@ -88,6 +93,8 @@ class DataSet:
         reader.use_default_mask = self._use_default_mask
         if self._mask_object is not None and self._mask_reproducible:
             reader.mask = self._mask_arrays(self._mask_object, [reader])[0]
+        if self.background_model is not None: # From the existing model
+            self._apply_background(reader)
         self._readers.append(reader)
 
     def extend(self, items: DataFileLike | Iterable[DataFileLike]):
@@ -153,6 +160,7 @@ class DataSet:
                 difference.intensity = mine.intensity - theirs.intensity*(mine.monitor/theirs.monitor)
             difference.user_mask = mine.user_mask | theirs.mask | ~np.isfinite(difference.intensity)
             difference.frozen = True
+            difference.background = None # The first set's background does not fit a difference
             readers.append(difference)
         result = DataSet(instrument=self.instrument)
         result.reader_type = self.reader_type
@@ -176,6 +184,8 @@ class DataSet:
             subset._mask_reproducible = self._mask_reproducible
             subset._use_default_mask = self._use_default_mask
             subset.frozen = self.frozen
+            subset.background_model = self.background_model
+            subset._background_settings = self._background_settings
             return subset
         try:
             return self._readers[index]
@@ -338,39 +348,118 @@ class DataSet:
             raise AttributeError(f'{arr_type.value} is not available in every data file')
         return AxisView([np.atleast_1d(array) for array in arrays], axis = self._axis)
 
-    def gather(self, arr_type: ArrayType | str) -> AxisView:
+    def gather(self, arr_type: ArrayType | str, mask=None) -> AxisView:
         """The unmasked points of one quantity of all data files: per file, the points where
         its mask is False, flattened. view.arrays gives them per file, np.asarray(view) joined,
-        and view.offsets[1:] the boundaries between files"""
+        and view.offsets[1:] the boundaries between files.
+
+        mask replaces the files' masks for this call only (in any form ds.mask takes: arrays,
+        one array per file, or a mask object); the DataSet is not changed"""
         arr_type = ArrayType(arr_type)
         if len(self) == 0:
             raise ValueError('DataSet contains no data files')
         get = attrgetter(arr_type.value)
+        masks = ([reader.mask for reader in self._readers] if mask is None
+                 else self._mask_arrays(mask, self._readers))
         arrays = []
-        for reader in self._readers:
+        for reader, reader_mask in zip(self._readers, masks):
             array = get(reader)
             if array is None:
                 raise AttributeError(f'{arr_type.value} is not available in every data file')
-            if np.shape(array) != reader.mask.shape:
+            if np.shape(array) != reader_mask.shape:
                 raise ValueError(f'{arr_type.value} does not have the shape of the data '
-                                 f'{reader.mask.shape}, so it cannot be masked; use get_view')
-            arrays.append(np.asarray(array)[~reader.mask])
+                                 f'{reader_mask.shape}, so it cannot be masked; use get_view')
+            arrays.append(np.asarray(array)[~reader_mask])
         return AxisView(arrays, axis = 0)
+
+    # Background
+
+    def generate_background_model(self, background_mask=None, dQ: float = 0.025,
+                                  dE: float = 0.05, combine_foreground_mask: bool = False):
+        """Fit a powder-average background (BackgroundModel.PowderBackground) and give every
+        data file its background counts per point (ArrayType.BACKGROUND), as the old
+        generateBackgroundModel did.
+
+        Kwargs:
+
+            - background_mask: Points to leave out of the fit, i.e. the signal (a mask object,
+              arrays, ...: as ds.mask takes). It replaces the DataSet's mask for the fit; None
+              uses the DataSet's mask (default None)
+
+            - dQ, dE (float): Bin sizes of the powder average (default 0.025 1/AA, 0.05 meV)
+
+            - combine_foreground_mask (bool): Also leave out the points masked in the DataSet,
+              e.g. spurions or broken detectors (default False)
+
+        The model is fitted again when the binning changes, unless background_mask was given
+        as arrays. Returns the model (also ds.background_model)"""
+        self._check_not_frozen('fit a background to')
+        masks = self._background_masks(background_mask, combine_foreground_mask)
+        qx, qy = self.gather(ArrayType.QX, mask=masks), self.gather(ArrayType.QY, mask=masks)
+        gather = lambda arr_type: np.asarray(self.gather(arr_type, mask=masks))
+        self.background_model = PowderBackground(dQ, dE).fit(
+            np.linalg.norm([np.asarray(qx), np.asarray(qy)], axis=0), gather(ArrayType.ENERGY),
+            gather(ArrayType.INTENSITY), gather(ArrayType.NORMALIZATION),
+            gather(ArrayType.MONITOR))
+        self._background_settings = dict(background_mask=background_mask, dQ=dQ, dE=dE,
+                                         combine_foreground_mask=combine_foreground_mask)
+        for reader in self._readers:
+            self._apply_background(reader)
+        return self.background_model
+
+    def remove_background_model(self):
+        self.background_model = None
+        self._background_settings = None
+        for reader in self._readers:
+            reader.background = None
+
+    def _background_masks(self, background_mask, combine_foreground_mask: bool) -> list:
+        if background_mask is None:
+            return self.mask
+        masks = self._mask_arrays(background_mask, self._readers)
+        if combine_foreground_mask:
+            masks = [np.logical_or(new, old) for new, old in zip(masks, self.mask)]
+        return masks
+
+    def _apply_background(self, reader):
+        """Background counts at every point of a reader, from the background model"""
+        q_length = np.linalg.norm([reader.qx.flatten(), reader.qy.flatten()], axis=0)
+        reader.background = self.background_model.sample(
+            q_length, reader.energy.flatten(), normalization=reader.normalization.flatten(),
+            monitor=reader.monitor.flatten()).reshape(reader.intensity.shape)
+
+    def _refit_background(self):
+        """After a change of binning: fit the model again, if its mask can be evaluated again"""
+        settings = self._background_settings
+        mask = settings['background_mask']
+        if mask is None or self._is_mask_object(mask):
+            self.generate_background_model(**settings)
+        else:
+            warnings.warn('The background model was fitted with a mask given as arrays, which do '
+                          'not fit the new binning: it was removed')
+            self.remove_background_model()
 
     # Cuts and plots: gather the points and call Cuts and Plotting
 
-    def _points(self, rotate: bool = True, align_to_lattice: bool = False) -> dict:
+    def _points(self, rotate: bool = True, align_to_lattice: bool = False,
+                background_subtraction: bool = False) -> dict:
         """The unmasked points, as the arrays Cuts takes. Qx, Qy rotated into the first file's
-        frame (rotate), each file's own lattice frame (align_to_lattice), or not at all"""
+        frame (rotate), each file's own lattice frame (align_to_lattice), or not at all. With
+        background_subtraction, also the background counts of the points"""
+        if background_subtraction and self.background_model is None:
+            raise AttributeError('No background model: call generate_background_model first')
         if rotate:
             qx, qy = self.gather_q(align_to_lattice=align_to_lattice)
         else:
             qx, qy = self.gather(ArrayType.QX), self.gather(ArrayType.QY)
         gather = lambda arr_type: np.asarray(self.gather(arr_type))
-        return dict(qx=np.asarray(qx), qy=np.asarray(qy), energy=gather(ArrayType.ENERGY),
-                    intensity=gather(ArrayType.INTENSITY),
-                    normalization=gather(ArrayType.NORMALIZATION),
-                    monitor=gather(ArrayType.MONITOR))
+        points = dict(qx=np.asarray(qx), qy=np.asarray(qy), energy=gather(ArrayType.ENERGY),
+                      intensity=gather(ArrayType.INTENSITY),
+                      normalization=gather(ArrayType.NORMALIZATION),
+                      monitor=gather(ArrayType.MONITOR))
+        if background_subtraction:
+            points['background'] = gather(ArrayType.BACKGROUND)
+        return points
 
     def _cut_positions(self, q1, q2, rlu: bool):
         """q1, q2 in Qx, Qy: converted from H, K, L with rlu"""
@@ -380,59 +469,69 @@ class DataSet:
 
     def cut_1d(self, q1, q2, width: float, min_pixel: float, energy_min: float,
                energy_max: float, rlu: bool = True, extend: bool = False,
-               constant_bins: bool = False) -> CutResult:
+               constant_bins: bool = False, background_subtraction: bool = False) -> CutResult:
         """1D cut from q1 to q2 (H, K, L with rlu, else Qx, Qy), summed over energy_min to
         energy_max. As in the old cut1D, files are rotated into the first file's frame only
-        with rlu. See Cuts.cut_1d"""
+        with rlu. With background_subtraction, the background model is subtracted. See
+        Cuts.cut_1d"""
         q1, q2 = self._cut_positions(q1, q2, rlu)
-        return Cuts.cut_1d(**self._points(rotate=rlu), q1=q1, q2=q2, width=width, min_pixel=min_pixel,
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction)
+        return Cuts.cut_1d(**points, q1=q1, q2=q2, width=width, min_pixel=min_pixel,
                            energy_min=energy_min, energy_max=energy_max, sample=self.sample,
                            extend=extend, constant_bins=constant_bins)
 
     def cut_qe(self, q1, q2, width: float, min_pixel: float, energy_bins=None,
                energy_min=None, energy_max=None, energy_step=None, rlu: bool = True,
-               extend: bool = False) -> CutResult:
+               extend: bool = False, background_subtraction: bool = False) -> CutResult:
         """Q-E cut from q1 to q2 (H, K, L with rlu, else Qx, Qy), in energy_bins or from
         energy_min to energy_max in steps of energy_step. As in the old cutQE, files are rotated
-        into the first file's frame only with rlu. See Cuts.cut_qe"""
+        into the first file's frame only with rlu. With background_subtraction, the background
+        model is subtracted. See Cuts.cut_qe"""
         q1, q2 = self._cut_positions(q1, q2, rlu)
-        return Cuts.cut_qe(**self._points(rotate=rlu), q1=q1, q2=q2, width=width, min_pixel=min_pixel,
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction)
+        return Cuts.cut_qe(**points, q1=q1, q2=q2, width=width, min_pixel=min_pixel,
                            energy_bins=energy_bins, energy_min=energy_min,
                            energy_max=energy_max, energy_step=energy_step,
                            sample=self.sample, extend=extend)
 
     def cut_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
                     x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,
-                    rlu: bool = True) -> CutResult:
+                    rlu: bool = True, background_subtraction: bool = False) -> CutResult:
         """Constant-energy planes binned in Qx, Qy. With rlu, the points are aligned to the
         reciprocal lattice (for RLU axes), else left in each file's frame, as the old
-        plotQPlane did. See Cuts.cut_q_plane"""
+        plotQPlane did. With background_subtraction, the background model is subtracted. See
+        Cuts.cut_q_plane"""
         sample = align_to_lattice(self.sample) if rlu else self.sample
-        return Cuts.cut_q_plane(**self._points(rotate=rlu, align_to_lattice=True),
+        points = self._points(rotate=rlu, align_to_lattice=True,
+                              background_subtraction=background_subtraction)
+        return Cuts.cut_q_plane(**points,
                                 energy_bins=energy_bins, energy_min=energy_min,
                                 energy_max=energy_max, x_bin_tolerance=x_bin_tolerance,
                                 y_bin_tolerance=y_bin_tolerance, sample=sample)
 
     def plot_cut_qe(self, q1, q2, width: float = 0.1, min_pixel: float = 0.05,
                     energy_bins=None, energy_min=None, energy_max=None, energy_step=None,
-                    rlu: bool = True, extend: bool = False, **plot_options):
+                    rlu: bool = True, extend: bool = False, background_subtraction: bool = False,
+                    **plot_options):
         """Q-E cut (cut_qe) plotted as a colour map (Plotting.plot_cut_qe, which takes
         plot_options such as ax, colorbar, vmin, vmax, log). Returns the axes; the cut is
         ax.result"""
         result = self.cut_qe(q1, q2, width, min_pixel, energy_bins=energy_bins,
                              energy_min=energy_min, energy_max=energy_max,
-                             energy_step=energy_step, rlu=rlu, extend=extend)
+                             energy_step=energy_step, rlu=rlu, extend=extend,
+                             background_subtraction=background_subtraction)
         return Plotting.plot_cut_qe(result, sample=self.sample, rlu=rlu, **plot_options)
 
     def plot_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
                      x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,
-                     rlu: bool = True, **plot_options):
+                     rlu: bool = True, background_subtraction: bool = False, **plot_options):
         """Constant-energy planes (cut_q_plane) plotted on reciprocal lattice axes
         (Plotting.plot_q_plane, which takes plot_options such as ax, colorbar, vmin, vmax,
         log). Returns the axes; the cut is ax.result"""
         result = self.cut_q_plane(energy_min=energy_min, energy_max=energy_max,
                                   energy_bins=energy_bins, x_bin_tolerance=x_bin_tolerance,
-                                  y_bin_tolerance=y_bin_tolerance, rlu=rlu)
+                                  y_bin_tolerance=y_bin_tolerance, rlu=rlu,
+                                  background_subtraction=background_subtraction)
         return Plotting.plot_q_plane(result, sample=self.sample, rlu=rlu, **plot_options)
 
     # Sorting
