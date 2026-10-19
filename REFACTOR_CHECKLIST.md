@@ -59,7 +59,8 @@ work is the open items in the sections further down; tick both.
 - [ ] Answer the scope questions of the refactoring log: which old methods must keep working
       and for how long (questions 3 and 6), whether broken or unused features go (29-35:
       combined `h/k/l`, `cutELine`, `plotA3A4`, `save`/`load`, `createEmptyDataFile`,
-      `shallowRead`, `saveHDF`, McStas files, converted `.nxs` files, metadata-only fields)
+      `shallowRead`, `saveHDF`, converted `.nxs` files, metadata-only fields). McStas files
+      are decided: dropped for now (see "Later")
 - [ ] Mark every open item in this file as "port" or "drop", checking each against what
       MJOLNIR-GUI uses (Milestone 3), so nothing the GUI needs is dropped
 
@@ -77,13 +78,33 @@ work is the open items in the sections further down; tick both.
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
 
 ### Port the remaining features (items further down)
-- [ ] Files: converted `.nxs` (NXsqom), McStas, `createEmptyDataFile`, `shallowRead`, error for
-      files without data
+- [ ] Files: converted `.nxs` (NXsqom), `createEmptyDataFile`, `shallowRead`, error for files
+      without data. McStas is not ported here (see "Later")
 - [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
       scan parameters and command, `startTime`/`endTime`, `title`, `comment`, detector and
       analyser selection (`dasel`)
 - [ ] Calibration and sample: `updateCalibration`, calibration plots, `updateSampleParameters`
-- [ ] Saving: `saveNXsqom`, `saveHDF`, DataSet `save`/`load`
+- [ ] Saving: `saveNXsqom`, DataSet `save`/`load`. `saveHDF` is replaced by the writers below
+- [ ] Shared file layouts: move the HDF5 paths out of the readers into `NexusLayout` and
+      one subclass per instrument (`CameaLayout`, `FlatconeLayout`, `MarmotLayout`). Each
+      field is a `Field(path, aliases, units, dtype)`: readers try `path` then the aliases,
+      writers write `path` with its units and dtype; group `NX_class` values in `groups`.
+      `{entry}`/`{instrument}` filled in once (CAMEA's keys now hard-code `entry/`)
+- [ ] Merge the per-field lists of `environment_keys` into the aliases; old CAMEA
+      `detector/counts` becomes an alias of `detector/data`
+- [ ] Remove duplicate and group keys from the key tables (`hdfMonitor`, `monitor_1` and
+      `monitor1` all name `entry/control/data`; `instrument`, `sample` are groups)
+- [ ] Calibration sub-layout (`calibN`: a4offset, amplitude, background, boundaries,
+      final_energy, width, with units) shared by `get_instrument_calibration` and the writer
+- [ ] Reader tests pass unchanged on the layouts
+- [ ] `DataWriter` ABC (beside `DataReader`); `NexusWriter` on a layout; `CameaWriter`.
+      NICOS text formats (Bambus, MultiFLEXX) get no writer
+- [ ] Update-a-copy mode, the default: copy the source file, open the copy `'r+'`, replace
+      only changed datasets, so fields MJOLNIR does not read survive. Never writes over the
+      source file
+- [ ] Save a new calibration with the update-a-copy mode (what the GUI uses `saveHDF` for)
+- [ ] Round-trip test per writer: write, read back with the same instrument's reader, compare
+- [ ] Full-file mode, only once `createEmptyDataFile` or NXsqom output is chosen for porting
 - [ ] Cuts: `cut1DE`, `cutQELine`, `cutELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
       measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`
 - [ ] Plots and axes: `plotCut1D`, `plotCut1DE`, `plotCutQELine`, `plotCutELine`,
@@ -148,7 +169,8 @@ runs on the new `DataSet` and readers, and every view works.
 
 ### GUI views on the new API
 - [ ] Data set manager: open files, binning (`set_binning`), sorting (`auto_sort`), masks
-      (`mask`, `remove_masking`), `updateCalibration`, `saveHDF`
+      (`mask`, `remove_masking`), `updateCalibration`, saving the calibration with
+      `CameaWriter` in place of `saveHDF`
 - [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
 - [ ] Cut 1D manager: `cut_1d`, `cut1DE`, 1D plots from a stored cut, ufit export
@@ -187,7 +209,8 @@ runs on the new `DataSet` and readers, and every view works.
       and `DataSet` always state the instrument. MultiFLEXX only checked against a
       synthetic file
 - [ ] Read converted `.nxs` (NXsqom) files
-- [ ] McStas simulated files
+- [x] McStas simulated files: dropped for now (decided 2026-10-19), not ported from
+      `DataFile`. To be added later as `McStasReader.py` (see "Later")
 - [x] Copy a reader (old copy constructor `DataFile(other)`, used by subtraction): shallow
       copies in `__sub__`
 - [ ] `createEmptyDataFile`: simulated file for planning/resolution
@@ -224,7 +247,8 @@ runs on the new `DataSet` and readers, and every view works.
 
 ### Saving
 - [ ] `saveNXsqom`: save converted data
-- [ ] `saveHDF`: write a raw HDF file
+- [ ] `saveHDF`: write a raw HDF file. Replaced by `NexusWriter` (Milestone 2, "Port the
+      remaining features"); not ported
 
 ### Utilities
 - [ ] Compare files (`__eq__`, `difference`)
@@ -332,12 +356,20 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] `save` / `load`
 
 ## Bugs in the old code to fix, not port
-Recorded as expected failures in `test/test_DataSetSmoke.py`.
+Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHDF` items.
 - [ ] Combined `h/k/l` point at attributes `H/K/L`
 - [ ] `cutELine` parameter misspelt `EMn`; `plotCutELine` always fails
 - [ ] `plotA3A4` calls the missing `voronoiTessellation`
 - [x] `removeMasking` fails unless a `Mask` object was applied (new `remove_masking` works)
 - [ ] `save` cannot pickle the data set
+- [ ] `saveHDF` crashes on every NICOS-written CAMEA file (2023 and 2024 data): sample
+      `x`/`y` are absent, read as `array(None, dtype=object)`, and h5py cannot store them
+- [ ] `saveHDF` opens its target with mode `'w'`, so the crash leaves a truncated file; the
+      GUI calibration update writes over the original raw file (`d.saveHDF(d.fileLocation)`),
+      destroying it (1.6 MB file left as a 0.56 MB stub without counts, checked on a copy)
+- [ ] `saveHDF` rebuilds the file from what `DataFile` read, in the pre-NICOS layout: drops
+      `detector/data`, `total_counts`, `monitor_2`, the temperature and field logs and
+      `qh/qk/ql`; adds fields the source lacks; `CameaDataReader` cannot read the result
 
 ## Mask.py bugs
 - [x] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
@@ -403,6 +435,12 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
       (NEP 50 promotion; ~5e-7 degrees in the sample misalignment), so a point on a bin
       edge can change bin; the old code changes identically. Tested with numpy 2.5.4
       (Python 3.14) and 2.4.6 (Python 3.11)
+
+## Later (after Milestone 3)
+- [ ] McStas simulated files: `MJOLNIR/Data/McStasReader.py`, a `McStasReader` derived from
+      `DataReader`, registered in `DataReaderFactory`. Written new rather than ported: the
+      old `DataFile` code can serve as a reference for the file layout until it is deleted
+      (Milestone 2), and from git history after that
 
 ## Finish
 Removing `DataFile.py` and `DataSet_old.py` is Milestone 2.
