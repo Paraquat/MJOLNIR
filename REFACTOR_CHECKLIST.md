@@ -164,7 +164,7 @@ work is the open items in the sections further down; tick both.
       `plotCutQELine` (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`)
 - [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
-- [ ] Export: `generateUFitDataset`
+- [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
 - [ ] DataFile module constants the GUI and scripts read: `supportedRawFormats`,
       `detectorLimits`, `analyzerLimits`. `possibleAttributes` is now `shallow_keys()` per
       reader; `supportedConvertedFormats` is dropped with converted files
@@ -238,7 +238,8 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
 - [ ] Cut 1D manager: `cut_1d`, `cut_constant_q` (was `cut1DE`; `width` is now the
       diameter, twice the old value), 1D plots from a stored cut, ufit export
-      (`Gui1DCutObject`)
+      (`Gui1DCutObject`: `ds.generate_ufit_dataset(result)` in place of
+      `generateUFitDataset(pdData, q1, q2, ...)`)
 - [ ] Q-E line manager: `plot_cut_qe`, `plot_cut_qe_line` (was `plotCutQELine`; returns the
       axes only, cuts in `ax.result`), `calculatePosition` on the axes
 - [ ] Q plane manager: `plot_q_plane`; `DraggableShapes.extractCut` on the new axes; energy
@@ -411,12 +412,13 @@ runs on the new `DataSet` and readers, and every view works.
       old `cut1DE` (all columns, bin edges; adaptive and constant bins; 1-3 files, rlu on and
       off) with the old width doubled. Changes, listed under "Cut bugs fixed in the port":
       `width` is the diameter, files aligned with `rlu`, measurement errors used, `intensity`
-      keeps the counts with background. Not ported: `ufit=True` (with
-      `generateUFitDataset`), `dataFiles=`; an empty cut returns an empty result instead of
-      raising; no `BinDistance` column (as `cut_1d`)
+      keeps the counts with background. Not ported: `ufit=True` (use
+      `ds.generate_ufit_dataset(result)`), `dataFiles=`; an empty cut returns an empty
+      result instead of raising; no `BinDistance` column (as `cut_1d`)
 - [x] `cutQE` (`Cuts.cut_qe`; identical to the old code)
 - [ ] Cut options not ported yet: measurement errors (`I_err`),
-      `cutQE` smoothing and scaled energy, `ufit` output, `plotCoverage`
+      `cutQE` smoothing and scaled energy, `plotCoverage`. ufit output: no `ufit=True`
+      option; `ds.generate_ufit_dataset(result)` exports any 1D cut
 - [x] `cutQELine`: `Cuts.cut_qe_line`, `ds.cut_qe_line(q_points, energy_bins, width=0.1,
       min_pixel=0.01, rlu, background_subtraction)`: one `cut_qe` per segment, in one
       `CutResult` (`qCut`, `BinDistance` from the segment start; bins `q_points`, `offsets`,
@@ -443,7 +445,8 @@ runs on the new `DataSet` and readers, and every view works.
       tick labels and limits identical to the old `plotCut1D` (rlu on and off, counts True /
       False / 'sensitivity', `show_energy`, background with foreground and background
       curves), except the `Int_err` bars, which no longer have the old truncation (up to
-      2.8% here). Not ported: `ufit=True`, `plotCoverage`, `dataFiles=`, `outputFunction`
+      2.8% here). Not ported: `ufit=True` (use `ds.generate_ufit_dataset(ax.result)`),
+      `plotCoverage`, `dataFiles=`, `outputFunction`
 - [ ] `plotCut1DE`
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [x] `plotCutQELine`: `Plotting.plot_cut_qe_line(result, sample, rlu, ax, counts, log,
@@ -485,7 +488,14 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] `checkSecondOrderElastic`
 
 ### Export and saving
-- [ ] `generateUFitDataset` (ufit)
+- [x] `generateUFitDataset` (ufit): `Export.to_ufit(result, rlu, meta)` and
+      `ds.generate_ufit_dataset(result, rlu)` (metadata: instrument, experiment, title, file
+      names) take a `CutResult` of `cut_1d` (x along Q) or `cut_constant_q` (x = energy)
+      instead of a DataFrame plus the cut's arguments; other results are refused. ufit is
+      imported only when exporting. Labels (`xcol`), y and errors identical to the old export
+      for cuts along Q (rlu on and off), x and y along energy. Changes under "Cut bugs fixed
+      in the port"; `datafilename` holds the raw file names (the old one the converted
+      `.nxs` names)
 - [x] `save` / `load`: Dropped (2026-10-19)
 
 ## Bugs in the old code to fix, not port
@@ -574,6 +584,13 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       counts in the voxel
 - [x] `View3D(instrumentAngles=True)` computed A3, A4 with a fixed Ei = Ef = 4.95 meV
       whatever the data; not ported (needs the data's Ei and the slice's Ef to be right)
+- [x] `generateUFitDataset` along Q measured x as the unsigned distance from the second bin,
+      so the first bin came after the second (0.0117, 0, 0.0123, ...); now the signed
+      distance from the first bin, increasing along the cut
+- [x] `generateUFitDataset` computed the errors from the counts alone, ignoring a subtracted
+      background (and measurement errors); now `Int_err` of the cut
+- [x] `generateUFitDataset` along energy labelled x with the Q point and a mean energy as if
+      it were a Q cut; now 'E [meV] at (H, K, L) [RLU]'
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

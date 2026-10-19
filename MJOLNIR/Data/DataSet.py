@@ -648,6 +648,19 @@ class DataSet:
                              background_subtraction=background_subtraction)
         return Plotting.plot_cut_1d(result, sample=self.sample, rlu=rlu, **plot_options)
 
+    def generate_ufit_dataset(self, result: CutResult, rlu: bool = True):
+        """A ufit dataset of a 1D cut of this data set (from cut_1d or cut_constant_q), with
+        the instrument, experiment, title and file names as metadata (the old
+        generateUFitDataset). See Export.to_ufit"""
+        from MJOLNIR.Data.Export import to_ufit
+        metadata = [reader._metadata for reader in self._readers]
+        meta = dict(instrument=self._readers[0].instrument,
+                    experiment=', '.join(str(m.get('experimentalIdentifier', 'UNKNOWN'))
+                                         for m in metadata),
+                    title=metadata[0].get('title', ''),
+                    datafilename=', '.join(reader.file.name for reader in self._readers))
+        return to_ufit(result, rlu=rlu, meta=meta)
+
     def view_3d(self, dx: float, dy: float, dz: float, rlu: bool = True,
                 background_subtraction: bool = False, **viewer_options):
         """Interactive slices through the data binned in voxels of dx * dy * dz (bin_3d), the
