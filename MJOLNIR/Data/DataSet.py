@@ -593,6 +593,23 @@ class DataSet:
                            energy_max=energy_max, energy_step=energy_step,
                            sample=self.sample, extend=extend)
 
+    def cut_qe_line(self, q_points, energy_bins, width=0.1, min_pixel=0.01, rlu: bool = True,
+                    background_subtraction: bool = False) -> CutResult:
+        """Q-E cuts along a path of Q points (H, K, L with rlu, else Qx, Qy): one cut_qe per
+        segment (the old cutQELine). energy_bins, width and min_pixel are shared, or given per
+        segment. As in cut_qe, files are rotated into the first file's frame only with rlu.
+        See Cuts.cut_qe_line"""
+        q_points = np.atleast_2d(np.asarray(q_points, dtype=float))
+        expected = 3 if rlu else 2
+        if q_points.shape[1:] != (expected,):
+            raise ValueError(f'q_points must have shape (n, {expected}) with rlu={rlu}; got '
+                             f'{q_points.shape}')
+        if rlu:
+            q_points = np.array([self.convert_to_qxqy(q) for q in q_points])
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction)
+        return Cuts.cut_qe_line(**points, q_points=q_points, energy_bins=energy_bins,
+                                width=width, min_pixel=min_pixel, sample=self.sample)
+
     def cut_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
                     x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,
                     rlu: bool = True, background_subtraction: bool = False) -> CutResult:
@@ -643,6 +660,16 @@ class DataSet:
                              energy_step=energy_step, rlu=rlu, extend=extend,
                              background_subtraction=background_subtraction)
         return Plotting.plot_cut_qe(result, sample=self.sample, rlu=rlu, **plot_options)
+
+    def plot_cut_qe_line(self, q_points, energy_bins, width=0.1, min_pixel=0.01,
+                         rlu: bool = True, background_subtraction: bool = False,
+                         **plot_options):
+        """Q-E cuts along a path of Q points (cut_qe_line) plotted side by side
+        (Plotting.plot_cut_qe_line, which takes plot_options such as ax, vmin, vmax, log,
+        ticks, plot_separator, colorbar). Returns the axes; the cuts are ax.result"""
+        result = self.cut_qe_line(q_points, energy_bins, width=width, min_pixel=min_pixel,
+                                  rlu=rlu, background_subtraction=background_subtraction)
+        return Plotting.plot_cut_qe_line(result, sample=self.sample, rlu=rlu, **plot_options)
 
     def plot_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
                      x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,

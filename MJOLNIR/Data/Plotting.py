@@ -4,6 +4,7 @@ are given) and returns the axes; none of them computes a cut.
 Not ported yet from the old DataSet plots: printing the data at a clicked point, and the
 interactive modes of _interactiveSettings (cutting from a plot).
 """
+import warnings
 from types import SimpleNamespace
 import numpy as np
 import matplotlib.pyplot as plt
@@ -82,6 +83,24 @@ def _cut_axes(start, end, rlu: bool, show_energy: bool, two_dimensional: bool, a
     ax.callbacks.connect('xlim_changed', ax.calculateXPrecision)
     ax.get_figure().tight_layout()
     return ax
+
+def _map_values(data, counts, log: bool, shape) -> np.ma.MaskedArray:
+    """Values of a Q-E map in the shape of its bins: counts (True), the sensitivity
+    ('sensitivity': Normalization/BinCount) or the normalised intensity (False); NaN masked;
+    log10 with log"""
+    if counts is True:
+        values = data[COLUMNS['intensity']].values
+    elif counts is False:
+        values = data[COLUMNS['int']].values
+    elif str(counts).lower() == 'sensitivity':
+        values = data[COLUMNS['norm']].values/data[COLUMNS['binCount']].values
+    else:
+        raise AttributeError(f'Provided counts attribute not understood. Received "{counts}"')
+    values = np.ma.array(np.asarray(values, dtype=float).reshape(shape))
+    values.mask = np.isnan(values)
+    if log:
+        values = np.log10(values + 1e-20)
+    return values
 
 def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
                 show_energy: bool = True, plot_foreground: bool = False,
@@ -219,18 +238,7 @@ def plot_cut_qe(result: CutResult, sample=None, rlu: bool = True, ax=None, count
     data = result.data
     distance_bins, energy_bins = len(result.bins['distance']) - 1, len(result.bins['energy']) - 1
     shape = (energy_bins, distance_bins)
-    if counts is True:
-        values = data[COLUMNS['intensity']].values
-    elif counts is False:
-        values = data[COLUMNS['int']].values
-    elif str(counts).lower() == 'sensitivity':
-        values = data[COLUMNS['norm']].values/data[COLUMNS['binCount']].values
-    else:
-        raise AttributeError(f'Provided counts attribute not understood. Received "{counts}"')
-    values = np.ma.array(np.asarray(values, dtype=float).reshape(shape))
-    values.mask = np.isnan(values)
-    if log:
-        values = np.log10(values + 1e-20)
+    values = _map_values(data, counts, log, shape)
 
     columns = [COLUMNS[key] for key in (['h', 'k', 'l'] if rlu else ['qx', 'qy'])]
     position = ax.calculatePositionInv(np.asarray(data[columns])).reshape(shape)
@@ -258,6 +266,134 @@ def plot_cut_qe(result: CutResult, sample=None, rlu: bool = True, ax=None, count
                     f'Shape of data is {(len(ax.X), len(ax.Y))}\n')
         ax.Data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
+    return ax
+
+def plot_cut_qe_line(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
+                     log: bool = False, vmin=None, vmax=None, cmap=None, colorbar: bool = False,
+                     ticks: int | None = None, plot_separator: bool = False,
+                     separator_color='k', separator_width=None, grid: bool = False, **kwargs):
+    """Plot Q-E cuts along a path of Q points (from Cuts.cut_qe_line) side by side, as colour
+    maps against the distance along the path [1/AA] (the old DataSet.plotCutQELine).
+
+    Args:
+
+        - result (CutResult): The cuts
+
+    Kwargs:
+
+        - sample (Sample): Sample of the cut's frame, needed for rlu (default None)
+
+        - rlu (bool): Label positions in H, K, L, else in Qx, Qy (default True)
+
+        - ax (Axes): Axes to draw on (default None: new figure); not 3D axes
+
+        - counts, log, cmap, colorbar, grid: As plot_cut_qe
+
+        - vmin, vmax (float): Colour scale of all segments (default: the minimum and maximum
+          of all segments)
+
+        - ticks (int): About this many ticks, at least one at each Q point; 0 for none
+          (default None: matplotlib's)
+
+        - plot_separator (bool): Vertical lines at the Q points between segments (default
+          False), with separator_color (default 'k') and separator_width (line width)
+
+    Other kwargs go to pcolormesh. The returned axes have set_clim, get_clim, to_csv, the Q
+    points (QPoints in Qx, Qy; QPointsHKL) and OffSets (where each segment starts).
+    """
+    if rlu and sample is None:
+        raise AttributeError('A sample is needed to plot the cut in H, K, L (rlu=True)')
+    if ax is None:
+        _, ax = plt.subplots()
+    elif getattr(ax, 'name', None) == '3d':
+        raise ValueError('plot_cut_qe_line draws on 2D axes, not 3D axes')
+    q_points, offsets = result.bins['q_points'], result.bins['offsets']
+    ax.QPoints, ax.OffSets, ax.rlu = q_points, offsets, rlu
+    ax.QPointsHKL = _to_hkl(sample, q_points.T).T if sample is not None else None
+    ax.fmtPrecisionString = '{:.3f}'
+
+    def calculate_index(x):
+        index = np.sum(offsets.reshape(-1, 1) < np.atleast_1d(x).reshape(1, -1), axis=0) - 1
+        index[index == -1] = 0
+        return index
+
+    def calculate_position(x, rlu=None):
+        """H, K, L (rlu) or Qx, Qy of positions x along the path, shape (3 or 2, len(x))"""
+        rlu = ax.rlu if rlu is None else rlu
+        x = np.atleast_1d(np.asarray(x, dtype=float))
+        index = calculate_index(x)
+        direction = q_points[index + 1] - q_points[index]
+        direction /= np.linalg.norm(direction, axis=1).reshape(-1, 1)
+        position = (x - offsets[index]).reshape(-1, 1)*direction + q_points[index]
+        return _to_hkl(sample, position.T) if rlu else position.T
+
+    ax.calculateIndex = calculate_index
+    ax.calculatePosition = calculate_position
+
+    data = result.data
+    ax.Data = [segment for _, segment in data.groupby('qCut', sort=True)]
+    ax.pmeshs = []
+    for index, segment in enumerate(ax.Data):
+        shape = (len(result.bins['energy'][index]) - 1, len(result.bins['distance'][index]) - 1)
+        values = _map_values(segment, counts, log, shape)
+        position = (segment[COLUMNS['plotPosition']].to_numpy() + offsets[index]).reshape(shape)
+        energy = segment[COLUMNS['e']].to_numpy().reshape(shape)
+        X, Y = np.meshgrid(position[0], energy[:, 0])
+        ax.pmeshs.append(ax.pcolormesh(X, Y, values, shading='nearest', cmap=cmap, **kwargs))
+
+    # One colour scale for all segments (the old plotCutQELine computed it but never set it)
+    if vmin is None:
+        vmin = np.min([mesh.get_array().min() for mesh in ax.pmeshs])
+    if vmax is None:
+        vmax = np.max([mesh.get_array().max() for mesh in ax.pmeshs])
+    ax.set_clim = lambda vmin, vmax: [mesh.set_clim(vmin, vmax) for mesh in ax.pmeshs]
+    ax.get_clim = lambda: ax.pmeshs[0].get_clim()
+    ax.set_clim(vmin, vmax)
+
+    if plot_separator:
+        ax.vlines(offsets[1:], *ax.get_ylim(), color=separator_color, linewidth=separator_width)
+    if colorbar:
+        ax.colorbar = ax.get_figure().colorbar(ax.pmeshs[0])
+    labels = ['H [RLU]', 'K [RLU]', 'L [RLU]'] if rlu else ['Qx [1/AA], Qy [1/AA]']
+    ax.set_xlabel('[' + ', '.join(labels) + ']')
+    ax.set_ylabel('E [meV]')
+
+    if ticks == 0:
+        ax.xaxis.set_ticks([])
+    elif ticks is not None: # Spread over the segments by length, one at each Q point
+        stops = np.asarray(list(offsets) + [np.round(ax.get_xlim(), 3)[1]])
+        if ticks < len(stops):
+            warnings.warn(f'Using {len(stops)} ticks instead of the wanted {ticks}')
+            ticks = len(stops)
+        wanted = np.diff(stops)*(ticks - len(stops))/stops[-1]
+        optimal = np.floor(wanted).astype(int)
+        optimal[np.argsort(wanted - optimal)[:ticks - optimal.sum() - len(stops)]] += 1
+        positions = [np.linspace(start, stop, n + 1, endpoint=False)
+                     for start, stop, n in zip(stops[:-1], stops[1:], optimal)]
+        ax.xaxis.set_ticks(np.concatenate([*positions, [stops[-1]]]))
+
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: '\n'.join(
+        ax.fmtPrecisionString.format(p) for p in calculate_position(x).flatten())))
+
+    def format_coord(x, y): # pragma: no cover
+        names = ['H', 'K', 'L'] if ax.rlu else ['Qx', 'Qy']
+        position = ', '.join(f'{name} = {ax.fmtPrecisionString.format(value)}'
+                             for name, value in zip(names, calculate_position(x).flatten()))
+        return f'{position}, E = {ax.fmtPrecisionString.format(y)}'
+    ax.format_coord = format_coord
+
+    ax.result = result
+    ax.dE = np.diff(result.bins['energy'][0]).mean()
+    ax.type = 'QELine'
+    ax.grid(grid)
+
+    def to_csv(file_name):
+        with open(file_name, 'w') as f:
+            f.write(f'# CSV generated from MJOLNIR {MJOLNIR.__version__}. '
+                    f'{len(ax.Data)} segments (qCut)\n')
+        data.fillna(-1).to_csv(file_name, mode='a')
+    ax.to_csv = to_csv
+    ax.get_figure().tight_layout()
     return ax
 
 def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log: bool = False,

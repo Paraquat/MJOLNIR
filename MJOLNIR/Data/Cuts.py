@@ -319,6 +319,59 @@ def cut_qe(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
     return CutResult(pd.concat(frames), dict(distance=distance_edges, energy=energy_bins,
                                              orthogonal_extent=orthogonal_extent), parameters)
 
+def _per_segment(value, n_segments: int, name: str) -> list:
+    """One value per segment: a single value is repeated"""
+    if not isinstance(value, (list, tuple, np.ndarray)):
+        return [value]*n_segments
+    if len(value) != n_segments:
+        raise ValueError(f'{name} has {len(value)} values for {n_segments} segments')
+    return list(value)
+
+def cut_qe_line(qx, qy, energy, intensity, normalization, monitor, q_points, energy_bins,
+                width=0.1, min_pixel=0.01, sample=None, background=None) -> CutResult:
+    """Q-E cuts along a path of Q points (Qx, Qy, shape (n, 2), n >= 2): one cut_qe from each
+    point to the next, without extend (the old DataSet.cutQELine). energy_bins, width and
+    min_pixel are shared by all segments, or given per segment (a list of energy bin arrays,
+    of widths, of pixel sizes).
+
+    data holds the rows of all segments, with qCut the segment index and BinDistance the
+    distance of the bin from the segment's start [1/AA]. bins: 'q_points', 'offsets' (the
+    distance along the path where each segment starts), and per segment 'distance' and
+    'energy' (lists of the cut_qe bins).
+    """
+    q_points = np.asarray(q_points, dtype=float)
+    if q_points.ndim != 2 or q_points.shape[1] != 2 or len(q_points) < 2:
+        raise ValueError(f'q_points must be at least 2 points in Qx, Qy, shape (n, 2); got '
+                         f'shape {q_points.shape}')
+    n_segments = len(q_points) - 1
+    if np.ndim(energy_bins[0]) == 0: # One array of edges for all segments
+        energy_bins = [np.asarray(energy_bins, dtype=float)]*n_segments
+    else:
+        energy_bins = [np.asarray(edges, dtype=float)
+                       for edges in _per_segment(energy_bins, n_segments, 'energy_bins')]
+    widths = _per_segment(width, n_segments, 'width')
+    min_pixels = _per_segment(min_pixel, n_segments, 'min_pixel')
+
+    frames, distance_bins, energy_edges = [], [], []
+    for index in range(n_segments):
+        segment = cut_qe(qx, qy, energy, intensity, normalization, monitor, q_points[index],
+                         q_points[index + 1], widths[index], min_pixels[index],
+                         energy_bins=energy_bins[index], sample=sample, background=background)
+        data = segment.data.copy()
+        data['qCut'] = index
+        data[COLUMNS['plotPosition']] = np.linalg.norm(
+            data[[COLUMNS['qx'], COLUMNS['qy']]].to_numpy() - q_points[index], axis=1)
+        frames.append(data)
+        distance_bins.append(segment.bins['distance'])
+        energy_edges.append(segment.bins['energy'])
+    lengths = np.linalg.norm(np.diff(q_points, axis=0), axis=1)
+    offsets = np.concatenate([[0.0], np.cumsum(lengths)[:-1]])
+    parameters = dict(q_points=q_points, width=widths, min_pixel=min_pixels,
+                      energy_bins=energy_bins)
+    return CutResult(pd.concat(frames, ignore_index=True),
+                     dict(q_points=q_points, offsets=offsets, distance=distance_bins,
+                          energy=energy_edges), parameters)
+
 def cut_q_plane(qx, qy, energy, intensity, normalization, monitor, energy_bins=None,
                 energy_min=None, energy_max=None, x_bin_tolerance: float = 0.05,
                 y_bin_tolerance: float = 0.05, sample=None, background=None) -> CutResult:

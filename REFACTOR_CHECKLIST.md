@@ -155,13 +155,13 @@ work is the open items in the sections further down; tick both.
       unchanged
 - [x] Full-file mode: Dropped (2026-10-19). Only `createEmptyDataFile` and NXsqom output
       needed it, and both are dropped
-- [ ] Cuts: `cutQELine`, `cutPowder`, `cutRaw1D`, raw `extractData`,
-      measurement errors (`I_err`), `cutQE` smoothing and scaled energy, `plotCoverage`.
-      Done: `cut1DE` (`cut_constant_q`)
-- [ ] Plots and axes: `plotCut1DE`, `plotCutQELine`, `plotCutPowder`,
-      `plotRaw1D`, `View3D` (on `bin_3d`), `createQAxis` /
-      `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
-      click handlers and `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`)
+- [ ] Cuts: `cutPowder`, `cutRaw1D`, raw `extractData`, measurement errors (`I_err`),
+      `cutQE` smoothing and scaled energy, `plotCoverage`. Done: `cut1DE`
+      (`cut_constant_q`), `cutQELine` (`cut_qe_line`)
+- [ ] Plots and axes: `plotCut1DE`, `plotCutPowder`, `plotRaw1D`, `View3D` (on `bin_3d`),
+      `createQAxis` / `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in
+      `plotQPlane`, click handlers and `_interactiveSettings` modes. Done: `plotCut1D`
+      (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`)
 - [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [ ] Export: `generateUFitDataset`
@@ -233,7 +233,8 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] Cut 1D manager: `cut_1d`, `cut_constant_q` (was `cut1DE`; `width` is now the
       diameter, twice the old value), 1D plots from a stored cut, ufit export
       (`Gui1DCutObject`)
-- [ ] Q-E line manager: `plot_cut_qe`, `plotCutQELine`, `calculatePosition` on the axes
+- [ ] Q-E line manager: `plot_cut_qe`, `plot_cut_qe_line` (was `plotCutQELine`; returns the
+      axes only, cuts in `ax.result`), `calculatePosition` on the axes
 - [ ] Q plane manager: `plot_q_plane`; `DraggableShapes.extractCut` on the new axes; energy
       range from `gather`
 - [ ] View 3D manager: `View3D` on `bin_3d`
@@ -405,7 +406,12 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `cutQE` (`Cuts.cut_qe`; identical to the old code)
 - [ ] Cut options not ported yet: measurement errors (`I_err`),
       `cutQE` smoothing and scaled energy, `ufit` output, `plotCoverage`
-- [ ] `cutQELine`
+- [x] `cutQELine`: `Cuts.cut_qe_line`, `ds.cut_qe_line(q_points, energy_bins, width=0.1,
+      min_pixel=0.01, rlu, background_subtraction)`: one `cut_qe` per segment, in one
+      `CutResult` (`qCut`, `BinDistance` from the segment start; bins `q_points`, `offsets`,
+      per-segment `distance` and `energy`) instead of lists. `energy_bins`, `width`,
+      `min_pixel` shared or per segment. The old `constantBins` (default True) did nothing:
+      `cutQE` only used it in a branch that never ran (`if False:`); not ported
 - [x] `cutELine`: Dropped (2026-10-19)
 - [ ] `cutPowder`
 - [x] `binData3D` (`Cuts.bin_3d`, `ds.bin_3d`, `CutResult.grid`; `calculateBins` and
@@ -429,7 +435,15 @@ runs on the new `DataSet` and readers, and every view works.
       2.8% here). Not ported: `ufit=True`, `plotCoverage`, `dataFiles=`, `outputFunction`
 - [ ] `plotCut1DE`
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
-- [ ] `plotCutQELine`
+- [x] `plotCutQELine`: `Plotting.plot_cut_qe_line(result, sample, rlu, ax, counts, log,
+      vmin, vmax, cmap, colorbar, ticks, plot_separator, separator_color, separator_width,
+      grid)`, `ds.plot_cut_qe_line(...)`. Returns the axes (`pmeshs`, `set_clim`/`get_clim`,
+      `QPoints`, `QPointsHKL`, `OffSets`, `calculatePosition`, `calculateIndex`, `Data` per
+      segment, `result`, `to_csv`, `type = 'QELine'`). Mesh positions and values, offsets,
+      labels, tick labels (also with `ticks`) and limits identical to the old plot; `counts`
+      added as in `plot_cut_qe`. Changes under "Cut bugs fixed in the port". Not ported:
+      `dataList=` (pass a `cut_qe_line` result to `Plotting.plot_cut_qe_line`), `dataFiles=`,
+      `outputFunction`, the click handler and `_interactiveSettings` modes
 - [x] `plotCutELine`: Dropped (2026-10-19)
 - [ ] `plotCutPowder`
 - [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
@@ -519,6 +533,18 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       the measured counts, as `cut1D`
 - [x] `plotCut1D` with an unknown `counts` value built an `AttributeError` without raising
       it, and plotted nothing; `plot_cut_1d` raises
+- [x] `plotCutQELine` colour scale: `vmin`/`vmax` were refused by its keyword check, and the
+      common scale it computed was never applied, so every segment had its own scale (0-46,
+      0-4.2 and 0-0.39 on the test path: one colour, intensities 100x apart). Now one scale
+      for all segments, from `vmin`/`vmax` or the minimum and maximum of all segments
+- [x] `plotCutQELine` with `rlu=False` failed: the Q points were converted from H, K, L
+      regardless; now taken as Qx, Qy
+- [x] `plotCutQELine` separators were drawn at offset minus a width that was always 0
+      (`OffSetWidth`); dropped, the lines are at the Q points
+- [x] `plotCutQELine` on 3D axes drew nothing; `plot_cut_qe_line` raises. `ticks=0` set
+      ticks anyway (after a warning); now no ticks
+- [x] `plotCutQELine` returned `(ax, dataList)`, not the documented `(ax, DataList,
+      BinList)`
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

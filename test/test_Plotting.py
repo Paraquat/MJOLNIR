@@ -183,3 +183,80 @@ def test_plot_cut_1d_background(dataset):
                            counts.Data['intensity_Fg'] - counts.Data['intensity_Bg'])
     finally:
         dataset.remove_background_model()
+
+# Q-E cuts along a path of Q points
+
+Q_POINTS = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.5, 0.5, 0.0]])
+ENERGY_BINS = np.arange(-1.0, 0.81, 0.1)
+
+@pytest.fixture(scope="module")
+def qe_line(dataset):
+    return dataset.cut_qe_line(Q_POINTS, ENERGY_BINS, width=0.1, min_pixel=0.02)
+
+def test_cut_qe_line(dataset, qe_line):
+    qxqy = np.array([dataset.convert_to_qxqy(q) for q in Q_POINTS])
+    assert np.allclose(qe_line.bins['q_points'], qxqy)
+    lengths = np.linalg.norm(np.diff(qxqy, axis=0), axis=1)
+    assert np.allclose(qe_line.bins['offsets'], [0.0, lengths[0]])
+    assert sorted(qe_line.data['qCut'].unique()) == [0, 1]
+    # Each segment is the cut_qe between its two points
+    second = dataset.cut_qe(Q_POINTS[1], Q_POINTS[2], 0.1, 0.02, energy_bins=ENERGY_BINS)
+    segment = qe_line.data[qe_line.data['qCut'] == 1]
+    assert np.array_equal(segment['Int'].to_numpy(), second.data['Int'].to_numpy(), equal_nan=True)
+    assert np.allclose(segment['BinDistance'],
+                       np.linalg.norm(segment[['Qx', 'Qy']].to_numpy() - qxqy[1], axis=1))
+
+def test_cut_qe_line_per_segment_and_errors(dataset):
+    result = dataset.cut_qe_line(Q_POINTS, [ENERGY_BINS, ENERGY_BINS[::2]], width=[0.1, 0.2],
+                                 min_pixel=0.02)
+    assert [len(edges) for edges in result.bins['energy']] == [len(ENERGY_BINS),
+                                                               len(ENERGY_BINS[::2])]
+    assert result.parameters['width'] == [0.1, 0.2]
+    with pytest.raises(ValueError, match='2 segments'):
+        dataset.cut_qe_line(Q_POINTS, ENERGY_BINS, width=[0.1, 0.2, 0.3])
+    with pytest.raises(ValueError, match='shape'):
+        dataset.cut_qe_line(Q_POINTS[:1], ENERGY_BINS)
+    with pytest.raises(ValueError, match=r'\(n, 2\)'):
+        dataset.cut_qe_line(Q_POINTS, ENERGY_BINS, rlu=False) # H, K, L given as Qx, Qy
+
+def test_plot_cut_qe_line(dataset, qe_line):
+    ax = Plotting.plot_cut_qe_line(qe_line, sample=dataset.sample, colorbar=True)
+    assert len(ax.pmeshs) == 2 and ax.type == 'QELine'
+    # One colour scale for all segments
+    values = np.concatenate([mesh.get_array().compressed() for mesh in ax.pmeshs])
+    assert {mesh.get_clim() for mesh in ax.pmeshs} == {(values.min(), values.max())}
+    # The second segment starts where the first ends
+    first, second = (mesh.get_coordinates()[0, :, 0] for mesh in ax.pmeshs)
+    assert second.min() > first.max() - 0.05
+    assert np.allclose(ax.calculatePosition(ax.OffSets[1]).flatten(), Q_POINTS[1])
+    assert np.allclose(ax.calculatePosition(0.0).flatten(), Q_POINTS[0])
+    ax.get_figure().canvas.draw()
+    assert len(ax.get_xticklabels()[0].get_text().split('\n')) == 3
+    assert ax.get_xlabel() == '[H [RLU], K [RLU], L [RLU]]'
+
+def test_plot_cut_qe_line_options(dataset, qe_line, tmp_path):
+    ax = Plotting.plot_cut_qe_line(qe_line, sample=dataset.sample, vmin=0, vmax=1e-3,
+                                   ticks=6, plot_separator=True, separator_color='r')
+    assert {mesh.get_clim() for mesh in ax.pmeshs} == {(0, 1e-3)}
+    assert len(ax.xaxis.get_ticklocs()) == 6
+    assert np.isclose(ax.xaxis.get_ticklocs(), ax.OffSets[1]).any() # A tick at each Q point
+    separators = ax.collections[-1]
+    assert np.allclose(separators.get_segments()[0][:, 0], ax.OffSets[1])
+    none = Plotting.plot_cut_qe_line(qe_line, sample=dataset.sample, ticks=0)
+    assert len(none.xaxis.get_ticklocs()) == 0
+    qxqy = Plotting.plot_cut_qe_line(qe_line, rlu=False)
+    assert qxqy.get_xlabel() == '[Qx [1/AA], Qy [1/AA]]'
+    assert np.allclose(qxqy.calculatePosition(qxqy.OffSets[1]).flatten(), qe_line.bins['q_points'][1])
+    ax.to_csv(tmp_path / 'line.csv')
+    assert len((tmp_path / 'line.csv').read_text().splitlines()) == 2 + len(qe_line)
+    with pytest.raises(ValueError, match='3D'):
+        Plotting.plot_cut_qe_line(qe_line, sample=dataset.sample,
+                                  ax=plt.figure().add_subplot(projection='3d'))
+
+def test_plot_cut_qe_line_rlu_false(dataset, qe_line):
+    qxqy = np.array([dataset.convert_to_qxqy(q) for q in Q_POINTS])
+    ax = dataset.plot_cut_qe_line(qxqy, ENERGY_BINS, width=0.1, min_pixel=0.02, rlu=False)
+    reference = Plotting.plot_cut_qe_line(qe_line, sample=dataset.sample)
+    for mesh, expected in zip(ax.pmeshs, reference.pmeshs): # Same points: one file orientation
+        assert np.array_equal(np.ma.filled(mesh.get_array(), np.nan),
+                              np.ma.filled(expected.get_array(), np.nan), equal_nan=True)
