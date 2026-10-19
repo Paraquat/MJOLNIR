@@ -30,7 +30,7 @@ class FittingFunction(object):
     def function(self,function):
         self._function = function
         self.parameterLength = self.function.__code__.co_argcount-2
-        self.parameters = np.array([np.NaN]*self.parameterLength)
+        self.parameters = np.array([np.nan]*self.parameterLength)
         self.parameterNames = np.array(self._function.__code__.co_varnames[2:])
 
     

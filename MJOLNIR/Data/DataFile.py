@@ -1307,7 +1307,7 @@ class DataFile(object):
         steps = Data.shape[0]
         
         if self.type in ['MultiFLEXX','Flatcone','Bambus']:
-            Data.shape = (Data.shape[0],Data.shape[1],-1)
+            Data = Data.reshape((Data.shape[0],Data.shape[1],-1))
 
         A4Zero = self.A4Off#file.get('entry/sample/polar_angle_zero')
 
@@ -1345,7 +1345,7 @@ class DataFile(object):
         EfNormalization = EfNormalization[:,0]#.reshape(1,A4.shape[0],EPrDetector*binning)#
         #EfNormalization = EfNormalization[:,0]*(np.sqrt(2*np.pi)*EfNormalization[:,2])
         
-        EfNormalization.shape = (1,A4.shape[0],self.EPrDetector*binning)
+        EfNormalization = EfNormalization.reshape((1,A4.shape[0],self.EPrDetector*binning))
         A3 = np.deg2rad(np.array(self.A3).copy())+A3Zero #file.get('/entry/sample/rotation_angle/')
         if A3.shape[0]==1:
             A3 = A3*np.ones((steps))
@@ -1550,9 +1550,9 @@ class DataFile(object):
             binning = binning[0]
         self._binning = binning
 
-        self.instrumentCalibrationEf.shape = (-1,4)
-        self.instrumentCalibrationA4.shape = (-1)
-        self.instrumentCalibrationEdges.shape = (-1,2)
+        self.instrumentCalibrationEf = self.instrumentCalibrationEf.reshape((-1,4))
+        self.instrumentCalibrationA4 = self.instrumentCalibrationA4.reshape((-1))
+        self.instrumentCalibrationEdges = self.instrumentCalibrationEdges.reshape((-1,2))
         
 
 
@@ -1597,23 +1597,23 @@ class DataFile(object):
                 
                 fs.copy('/entry', group_id, name="/entry")
                 
-                definition = fd.create_dataset('entry/definition',(1,),dtype='S70',data=np.string_('NXsqom'))
+                definition = fd.create_dataset('entry/definition',(1,),dtype='S70',data=np.bytes_('NXsqom'))
                 definition.attrs['NX_class'] = 'NX_CHAR'
                 
                 process = fd.create_group('entry/reduction')
                 process.attrs['NX_class']=b'NXprocess'
                 proc = process.create_group('MJOLNIR_algorithm_convert')
                 proc.attrs['NX_class']=b'NXprocess'
-                author= proc.create_dataset('author',shape=(1,),dtype='S70',data=np.string_('Jakob Lass'))
+                author= proc.create_dataset('author',shape=(1,),dtype='S70',data=np.bytes_('Jakob Lass'))
                 author.attrs['NX_class']=b'NX_CHAR'
                 
-                date= proc.create_dataset('date',shape=(1,),dtype='S70',data=np.string_(datetime.datetime.now()))
+                date= proc.create_dataset('date',shape=(1,),dtype='S70',data=np.bytes_(datetime.datetime.now()))
                 date.attrs['NX_class']=b'NX_CHAR'
                 
-                description = proc.create_dataset('description',shape=(1,),dtype='S70',data=np.string_('Conversion from pixel to Qx,Qy,E in reference system of instrument.'))
+                description = proc.create_dataset('description',shape=(1,),dtype='S70',data=np.bytes_('Conversion from pixel to Qx,Qy,E in reference system of instrument.'))
                 description.attrs['NX_class']=b'NX_CHAR'
                 
-                rawdata = proc.create_dataset('rawdata',shape=(1,),dtype='S200',data=np.string_(os.path.realpath(datafile)))
+                rawdata = proc.create_dataset('rawdata',shape=(1,),dtype='S200',data=np.bytes_(os.path.realpath(datafile)))
                 rawdata.attrs['NX_class']=b'NX_CHAR'
 
                 normalizationString = proc.create_dataset('binning',shape=(1,),dtype='int32',data=binning)
@@ -1801,7 +1801,6 @@ class DataFile(object):
                 for localMonoQx,localMonoQy in zip(monoQx,monoQy):
                     if monoInside is None:
                         monoInside = np.linalg.norm([qx-localMonoQx,(qy-localMonoQy)*factor],axis=0)<dqx
-                        monoInside.dtype = bool
                     else:
                         monoInside += np.linalg.norm([qx-localMonoQx,(qy-localMonoQy)*factor],axis=0)<dqx
             
@@ -1812,7 +1811,6 @@ class DataFile(object):
                 for localAnaQx,localAnaQy in zip(anaQx,anaQy):
                     if anaInside is None:
                         anaInside = np.linalg.norm([qx-localAnaQx,(qy-localAnaQy)*factor],axis=0)<dqx
-                        anaInside.dtype = bool
                     else:
                         anaInside += np.linalg.norm([qx-localAnaQx,(qy-localAnaQy)*factor],axis=0)<dqx
             
@@ -1834,7 +1832,6 @@ class DataFile(object):
                 for localMonoH,localMonoK,localMonoL in zip(monoH,monoK,monoL):
                     if monoInside is None:
                         monoInside = np.linalg.norm(np.array([H-localMonoH,K-localMonoK,L-localMonoL])*factor,axis=0)<dH
-                        monoInside.dtype = bool
                     else:
                         monoInside += np.linalg.norm(np.array([H-localMonoH,K-localMonoK,L-localMonoL])*factor,axis=0)<dH
 
@@ -1848,7 +1845,6 @@ class DataFile(object):
                 for localAnaH,localAnaK,localAnaL in zip(anaH,anaK,anaL):
                     if anaInside is None:
                         anaInside = np.linalg.norm(np.asarray([H-localAnaH,K-localAnaK,L-localAnaL])*factor,axis=0)<dH
-                        anaInside.dtype = bool
                     else:
                         anaInside += np.linalg.norm(np.asarray([H-localAnaH,K-localAnaK,L-localAnaL])*factor,axis=0)<dH
 
@@ -1874,10 +1870,10 @@ class DataFile(object):
         
         def addMetaData(self,entry):
             dset = entry.create_dataset('start_time',(1,),dtype='<S70')
-            dset[0] = np.string_(self.startTime)
+            dset[0] = np.bytes_(self.startTime)
 
             dset = entry.create_dataset('end_time',(1,),dtype='<S70')
-            dset[0] = np.string_(self.endTime)
+            dset[0] = np.bytes_(self.endTime)
             
             dset = entry.create_dataset('experiment_identifier',(1,),dtype='<S70')
             dset[0] = self.experimentIdentifier.encode('utf8')
@@ -1885,35 +1881,35 @@ class DataFile(object):
             dset = entry.create_dataset('instrument',(1,),dtype='<S70')
             dset[0] = self.instrument.title().upper().encode('utf8')
 
-            dset = entry.create_dataset('comment',(1,),data=np.string_(self.comment))
+            dset = entry.create_dataset('comment',(1,),data=np.bytes_(self.comment))
 
-            dset = entry.create_dataset('title',(1,),data=np.string_(self.title))
+            dset = entry.create_dataset('title',(1,),data=np.bytes_(self.title))
 
-            dset = entry.create_dataset('proposal_id',(1,),data=np.string_(self.proposalId))
+            dset = entry.create_dataset('proposal_id',(1,),data=np.bytes_(self.proposalId))
 
-            dset = entry.create_dataset('proposal_title',(1,),data=np.string_(self.proposalTitle))
+            dset = entry.create_dataset('proposal_title',(1,),data=np.bytes_(self.proposalTitle))
 
             cont = entry.create_group('local_contact')
-            cont.attrs['NX_class'] = np.string_('NXuser')
-            dset = cont.create_dataset('name',(1,),data=np.string_(self.localContactName))
+            cont.attrs['NX_class'] = np.bytes_('NXuser')
+            dset = cont.create_dataset('name',(1,),data=np.bytes_(self.localContactName))
 
             us = entry.create_group('proposal_user')
-            us.attrs['NX_class'] = np.string_('NXuser')
-            dset = us.create_dataset('name',(1,),data=np.string_(self.proposalUserName))
-            dset = us.create_dataset('email',(1,),data=np.string_(self.proposalUserEmail))
+            us.attrs['NX_class'] = np.bytes_('NXuser')
+            dset = us.create_dataset('name',(1,),data=np.bytes_(self.proposalUserName))
+            dset = us.create_dataset('email',(1,),data=np.bytes_(self.proposalUserEmail))
 
             pus = entry.create_group('user')
-            pus.attrs['NX_class'] = np.string_('NXuser')
-            dset = pus.create_dataset('name',(1,),data=np.string_(self.userName))
-            dset = pus.create_dataset('email',(1,),data=np.string_(self.userEmail))
-            dset = pus.create_dataset('address',(1,),data=np.string_(self.userAddress))
-            dset = pus.create_dataset('affiliation',(1,),data=np.string_(self.userAffiliation))
+            pus.attrs['NX_class'] = np.bytes_('NXuser')
+            dset = pus.create_dataset('name',(1,),data=np.bytes_(self.userName))
+            dset = pus.create_dataset('email',(1,),data=np.bytes_(self.userEmail))
+            dset = pus.create_dataset('address',(1,),data=np.bytes_(self.userAddress))
+            dset = pus.create_dataset('affiliation',(1,),data=np.bytes_(self.userAffiliation))
 
             
 
         def addMono(self,inst):
             mono = inst.create_group('monochromator')
-            mono.attrs['NX_class'] = np.string_('NXmonochromator')
+            mono.attrs['NX_class'] = np.bytes_('NXmonochromator')
             
                 
             dset = mono.create_dataset('type',(1,),dtype='S70')
@@ -1938,7 +1934,7 @@ class DataFile(object):
 
 
             monoSlit = inst.create_group('monochromator_slit')
-            monoSlit.attrs['NX_class'] = np.string_('NXmonochromatorslit')
+            monoSlit.attrs['NX_class'] = np.bytes_('NXmonochromatorslit')
 
 
             attributes = [x+zero for x in ['bottom','left','right','top'] for zero in ['','_zero']]
@@ -1952,12 +1948,12 @@ class DataFile(object):
                 if not val.dtype == 'O':
                     dset = monoSlit.create_dataset(att,(1,),'float32')
                     dset[0] = val
-                    dset.attrs['units'] = np.string_('mm')
+                    dset.attrs['units'] = np.bytes_('mm')
 
         
         def addAna(self,inst):
             ana = inst.create_group('analyzer')
-            ana.attrs['NX_class'] = np.string_('NXcrystal')
+            ana.attrs['NX_class'] = np.bytes_('NXcrystal')
             
             attributes = ['d_spacing','nominal_energy','polar_angle','polar_angle_offset']+self.fromNICOS*['polar_angle_raw']
             values = ['analyzer'+x.replace('_',' ').title().replace(' ','') for x in attributes]
@@ -1969,22 +1965,22 @@ class DataFile(object):
                 dset = ana.create_dataset(att,(len(data),),'float32')
                 dset[:len(data)] = data
                 if not unit is None:
-                    dset.attrs['units'] = np.string_(unit)
+                    dset.attrs['units'] = np.bytes_(unit)
                 
-            dset = ana.create_dataset('type',data = np.array([np.string_(self.analyzerType)]))
+            dset = ana.create_dataset('type',data = np.array([np.bytes_(self.analyzerType)]))
             dset = ana.create_dataset('analyzer_selection',(1,),'int32',data=self.analyzerSelection)
             
 
 
         def addDetector(inst):
             det = inst.create_group('detector')
-            det.attrs['NX_class'] = np.string_('NXdetector')
+            det.attrs['NX_class'] = np.bytes_('NXdetector')
 
             
         def addSample(self,entry):
             sam = entry.create_group('sample')
-            sam.attrs['NX_class'] = np.string_('NXsample')
-            dset = sam.create_dataset('name',(1,),data=np.string_(self.sample.name))
+            sam.attrs['NX_class'] = np.bytes_('NXsample')
+            dset = sam.create_dataset('name',(1,),data=np.bytes_(self.sample.name))
 
             ub = self.sample.orientationMatrix/(2*np.pi) # 2pi is for change in convention
             
@@ -1999,32 +1995,32 @@ class DataFile(object):
             dset = sam.create_dataset('unit_cell',data=cell)
 
             dset = sam.create_dataset('azimuthal_angle',data=self.sample.azimuthalAngle)
-            dset.attrs['units']=np.string_('degree')
+            dset.attrs['units']=np.bytes_('degree')
             dset = sam.create_dataset('x',data=self.sample.x)
-            dset.attrs['units']=np.string_('degree')
+            dset.attrs['units']=np.bytes_('degree')
             dset = sam.create_dataset('y',data=self.sample.y)
-            dset.attrs['units']=np.string_('degree')
+            dset.attrs['units']=np.bytes_('degree')
 
             if hasattr(self,'temperature'):
                 if not self.temperature is None:
                     dset = sam.create_dataset('temperature',data=self.temperature,dtype='float32')
-                    dset.attrs['units'] = np.string_('K')
+                    dset.attrs['units'] = np.bytes_('K')
 
             if hasattr(self,'magneticField'):
                 if not self.magneticField is None:
                     dset = sam.create_dataset('magnetic_field',data=self.magneticField,dtype='float32')
-                    dset.attrs['units'] = np.string_('T')
+                    dset.attrs['units'] = np.bytes_('T')
 
             if hasattr(self,'electricField'):
                 if not self.electricField is None:
                     dset = sam.create_dataset('electric_field',data=self.electricField,dtype='float32')
-                    dset.attrs['units'] = np.string_('V') # TODO: Check if this unit is correct.
+                    dset.attrs['units'] = np.bytes_('V') # TODO: Check if this unit is correct.
 
             for attr,value in zip(['sgu','sgl'],['sgu','sgl']):
                 dset = sam.create_dataset(attr,(1,),data=getattr(self.sample,value))
-                dset.attrs['units']=np.string_('degree')
+                dset.attrs['units']=np.bytes_('degree')
                 dset = sam.create_dataset(attr+'_zero',(1,),data=getattr(self.sample,value+'Zero'))
-                dset.attrs['units']=np.string_('degree')
+                dset.attrs['units']=np.bytes_('degree')
             
         def makeTheta(self):
             
@@ -2037,17 +2033,17 @@ class DataFile(object):
             
         def storeScanData(self,entry):
             nxdata = entry.create_group('data')
-            nxdata.attrs['NX_class'] = np.string_('NXdata')
+            nxdata.attrs['NX_class'] = np.bytes_('NXdata')
             
             det = entry['CAMEA/detector']
             dset = det.create_dataset('counts',data=self.I.swapaxes(1,2), compression="gzip", compression_opts=6)
-            dset.attrs['target'] = np.string_('/entry/CAMEA/detector/counts')
+            dset.attrs['target'] = np.bytes_('/entry/CAMEA/detector/counts')
             nxdata['counts'] = dset
             
             dset = det.create_dataset('detector_selection',(1,),'int32',data=self.detectorSelection)
             
             dset = det.create_dataset('summed_counts',data=np.sum(self.I,axis=(1,2)))
-            dset.attrs['target'] = np.string_('/entry/CAMEA/detector/summed_counts')
+            dset.attrs['target'] = np.bytes_('/entry/CAMEA/detector/summed_counts')
             nxdata['summed_counts'] = dset
             
             sam = entry['sample']
@@ -2055,35 +2051,35 @@ class DataFile(object):
             dset = sam.create_dataset('rotation_angle',data=self.A3,dtype='float32')
             dset_zero = sam.create_dataset('rotation_angle_zero',data=self.A3Off,dtype='float32')
 
-            dset.attrs['units'] = np.string_('degree')
-            dset_zero.attrs['units'] = np.string_('degree')
+            dset.attrs['units'] = np.bytes_('degree')
+            dset_zero.attrs['units'] = np.bytes_('degree')
             
             dset = sam.create_dataset('polar_angle',data=self.A4,dtype='float32')
             dset_zero = sam.create_dataset('polar_angle_zero',data=self.A4Off,dtype='float32')
 
-            dset.attrs['units'] = np.string_('degree')
-            dset_zero.attrs['units'] = np.string_('degree')
-            dset.attrs['units'] = np.string_('degree')
-            dset_zero.attrs['units'] = np.string_('degree')
+            dset.attrs['units'] = np.bytes_('degree')
+            dset_zero.attrs['units'] = np.bytes_('degree')
+            dset.attrs['units'] = np.bytes_('degree')
+            dset_zero.attrs['units'] = np.bytes_('degree')
             
 
             mono = entry['CAMEA/monochromator']
             
             dset = mono.create_dataset('energy',data=self.Ei,dtype='float32')
-            dset.attrs['units'] = np.string_('mev')
+            dset.attrs['units'] = np.bytes_('mev')
 
             dset = mono.create_dataset('rotation_angle',data=self.monochromatorRotationAngle,dtype='float32')
-            dset.attrs['units'] = np.string_('degree')
+            dset.attrs['units'] = np.bytes_('degree')
             if hasattr(self,'monochromatorRotationAngleZero'):
                 v = self.monochromatorRotationAngleZero
             else:
                 v = 0.0
             dset = mono.create_dataset('rotation_angle_zero',data=v,dtype='float32')
-            dset.attrs['units'] = np.string_('degree')
+            dset.attrs['units'] = np.bytes_('degree')
 
 
-            entry.create_dataset('scancommand',(1,),data=np.string_(self.scanCommand))
-            entry.create_dataset('scanvars',data=np.string_([x.encode('utf8') for x in self.scanParameters]))
+            entry.create_dataset('scancommand',(1,),data=np.bytes_(self.scanCommand))
+            entry.create_dataset('scanvars',data=np.bytes_([x.encode('utf8') for x in self.scanParameters]))
             
             # save the correct scan variables 
 
@@ -2091,54 +2087,54 @@ class DataFile(object):
                 positionRelativeEntry = '/'.join([x for x in pos.split('/')[2:]])
                 original = entry.get(positionRelativeEntry)
                 nxdata[variable] = original
-                nxdata[variable].attrs['target'] = np.string_('/entry/'+positionRelativeEntry)
+                nxdata[variable].attrs['target'] = np.bytes_('/entry/'+positionRelativeEntry)
 
 
             control = entry.create_group('control')
-            control.attrs['NX_class'] = np.string_('NXmonitor')
+            control.attrs['NX_class'] = np.bytes_('NXmonitor')
             mons = self.Monitor
             control.create_dataset('data',data=mons,dtype='int32')
             dset = control.create_dataset('preset',(1,),dtype='int32')
             dset[0] = self.MonitorPreset
-            dset = control.create_dataset('mode',(1,),data=np.string_(self.MonitorMode))
+            dset = control.create_dataset('mode',(1,),data=np.bytes_(self.MonitorMode))
             time = self.Time
             dset = control.create_dataset('time',data=time,dtype='float32')
-            dset.attrs['units'] = np.string_('seconds')
+            dset.attrs['units'] = np.bytes_('seconds')
 
             time =  self.absoluteTime
             if time[0] == np.array(None):
                 time = [0.0]
             dset = control.create_dataset('absolute_time',data=time,dtype='float32')
-            dset.attrs['units'] = np.string_('seconds')
+            dset.attrs['units'] = np.bytes_('seconds')
             
             pb = entry.create_group('proton_beam')
-            pb.attrs['NX_class'] = np.string_('NXmonitor')
+            pb.attrs['NX_class'] = np.bytes_('NXmonitor')
             vals = self.protonBeam
             dset = pb.create_dataset('data',data=vals,dtype='int32')
 
         with hdf.File(saveFileName,'w') as f:
             
-            f.attrs['file_name'] = np.string_(saveFileName)
+            f.attrs['file_name'] = np.bytes_(saveFileName)
             
             
             import datetime,time
             cT = datetime.datetime.now()
             
-            f.attrs['file_time'] = np.string_('{}-{}-{}T{}:{}:{}{:+02.0f}:00'.format(cT.year,cT.month,cT.day,cT.hour,cT.minute,cT.second,-time.timezone/(60*60)))
+            f.attrs['file_time'] = np.bytes_('{}-{}-{}T{}:{}:{}{:+02.0f}:00'.format(cT.year,cT.month,cT.day,cT.hour,cT.minute,cT.second,-time.timezone/(60*60)))
             
             entry = f.create_group('entry')
-            entry.attrs['NX_class'] = np.string_('NXentry')
+            entry.attrs['NX_class'] = np.bytes_('NXentry')
         
             
             #------------ Instrument
             inst = entry.create_group(b'CAMEA')
-            inst.attrs['NX_class'] = np.string_('NXinstrument')
+            inst.attrs['NX_class'] = np.bytes_('NXinstrument')
 
             if hasattr(self,'singleDetector1'): # If the single detectors have been loaded
                 for idx in ['1','8']:
                     segment = inst.create_group('segment_'+idx)
                     dset = segment.create_dataset('data',data=getattr(self,'singleDetector'+idx),dtype='int32')
-                    dset.attrs['units']=np.string_('counts')
+                    dset.attrs['units']=np.bytes_('counts')
             
             
         
@@ -2155,7 +2151,7 @@ class DataFile(object):
                 for att,value,dtype,unit in zip(attribute,values,dtypes,units):
                     dset = pixelCalib.create_dataset(att,data=value,dtype=dtype)
                     if not unit is None:
-                        dset.attrs['units']=np.string_(unit)
+                        dset.attrs['units']=np.bytes_(unit)
                 
             
             addMetaData(self,entry)

@@ -315,3 +315,71 @@ def cut_q_plane(qx, qy, energy, intensity, normalization, monitor, energy_bins=N
         qy_edges.append(y_edges)
     data = pd.concat(frames) if frames else pd.DataFrame()
     return CutResult(data, dict(energy=energy_bins, qx=qx_edges, qy=qy_edges), parameters)
+
+def grid_edges(step: float, positions) -> FloatArray:
+    """Bin edges covering positions, in steps close to step: the range of the positions
+    divided evenly, with the first and last bin centred on the smallest and largest position
+    (the old calculateBins and calculateGrid3D, along one axis)"""
+    positions = np.asarray(positions)
+    low, high = np.min(positions), np.max(positions)
+    centres = np.linspace(low, high, np.round(np.abs(high - low)/step).astype(int) + 1)
+    if len(centres) < 2:
+        raise AttributeError(f'The positions span less than half a step of {step}: at least '
+                             'two bins are needed along each axis')
+    widths = np.diff(centres)
+    edges = np.empty(len(centres) + 1)
+    edges[:-1] = centres - 0.5*np.append(widths, widths[-1]) # Operation order as the old code
+    edges[-1] = edges[-2] + widths[-1]
+    return edges
+
+def bin_3d(qx, qy, energy, intensity, normalization, monitor, dx: float = None,
+           dy: float = None, dz: float = None, bins=None, sample=None,
+           background=None) -> CutResult:
+    """Bin the points in voxels of Qx, Qy and energy, about dx * dy * dz in size (the old
+    DataSet.binData3D). The steps are adjusted to divide the range of the points evenly (see
+    grid_edges); bins (the edges along Qx, Qy and energy) replaces them.
+
+    One row per voxel, in the order of a C-ordered (Qx, Qy, energy) array: result.grid(column)
+    gives a column in that shape. Qx, Qy, Energy (and H, K, L with a sample) are the centres
+    of the voxels. With background, Int is background subtracted.
+
+    bins: 'qx', 'qy' and 'energy' (the edges along each axis).
+    """
+    if bins is None:
+        if any(step is None for step in [dx, dy, dz]):
+            raise AttributeError('Either dx, dy and dz, or bins, are to be given. Received: '
+                                 f'dx={dx}, dy={dy}, dz={dz}')
+        bins = [grid_edges(step, positions) for step, positions in zip([dx, dy, dz],
+                                                                       [qx, qy, energy])]
+    bins = [np.asarray(edges, dtype=float) for edges in bins]
+    parameters = dict(dx=dx, dy=dy, dz=dz, grid=('qx', 'qy', 'energy'))
+
+    weights = [np.asarray(intensity).flatten(), np.asarray(monitor).flatten(),
+               np.asarray(normalization).flatten()]
+    if background is not None:
+        weights.append(np.asarray(background).flatten())
+    sums = _tools.histogramdd(np.array([qx, qy, energy]).T, bins=bins, weights=weights,
+                              returnCounts=True)
+    counts, monitor_sum, normalization_sum = (np.asarray(x).flatten() for x in sums[:3])
+    bin_count = np.asarray(sums[-1]).flatten()
+
+    centres = [0.5*(edges[:-1] + edges[1:]) for edges in bins]
+    x, y, z = (axis.flatten() for axis in np.meshgrid(*centres, indexing='ij'))
+    hkl = _to_hkl(sample, np.array([x, y]).T)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore') # Empty voxels divide by zero
+        denominator = monitor_sum*normalization_sum
+        data = pd.DataFrame({
+            COLUMNS['qx']: x, COLUMNS['qy']: y,
+            COLUMNS['h']: hkl[:, 0], COLUMNS['k']: hkl[:, 1], COLUMNS['l']: hkl[:, 2],
+            COLUMNS['e']: z,
+            COLUMNS['intensity']: counts.astype(float),
+            COLUMNS['mon']: monitor_sum.astype(float),
+            COLUMNS['norm']: normalization_sum.astype(float),
+            COLUMNS['binCount']: bin_count.astype(int),
+            COLUMNS['int']: np.divide(counts*bin_count, denominator),
+            COLUMNS['intError']: np.divide(np.sqrt(counts)*bin_count, denominator),
+        })
+    if background is not None:
+        data = _subtract_background(data, np.asarray(sums[3]).flatten())
+    return CutResult(data, dict(qx=bins[0], qy=bins[1], energy=bins[2]), parameters)

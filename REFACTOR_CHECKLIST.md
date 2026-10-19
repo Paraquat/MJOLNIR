@@ -155,7 +155,11 @@ plots match the reference images next to it. Several items repeat ones further d
 - [x] `backgroundSubtraction` in cuts: `background` in `Cuts.cut_1d`/`cut_qe`/`cut_q_plane`,
       `background_subtraction` in the `DataSet` cut and plot methods. One column scheme for
       all cuts (the old `cut1D` one)
-- [ ] `AMBERBackground` (needs `binData3D`)
+- [x] `AMBERBackground`: `BackgroundModel.AMBERBackground` fitted on `Cuts.bin_3d` voxels,
+      `ds.generate_amber_background` (refitted on rebinning like the powder model),
+      `cross_validation`. Needs the optional AMBER-ds4ms package (`MJOLNIR[AMBER]`, which
+      pulls in torch). Same voxel intensities as the old model, and the same AMBER result
+      with the old conventions; the fixes are listed under "Cut bugs fixed in the port"
 
 ### Arithmetic and normalisation
 - [x] Monitor-scaled subtraction (`__sub__`): by measured monitor per point, not preset
@@ -174,7 +178,10 @@ plots match the reference images next to it. Several items repeat ones further d
 - [ ] `cutQELine`
 - [ ] `cutELine`
 - [ ] `cutPowder`
-- [ ] `binData3D` (with `calculateGrid3D`, `calculateBins`)
+- [x] `binData3D` (`Cuts.bin_3d`, `ds.bin_3d`, `CutResult.grid`; `calculateBins` and
+      `calculateGrid3D` reduced to `Cuts.grid_edges`, one edge array per axis). Identical
+      to the old code. Not ported: `noApproximation` (returned 2 arrays instead of 4) and the
+      debug branch `backgroundSubtraction == 2`
 - [ ] `cutRaw1D`
 - [ ] `extractData` (raw selection by A4 / Ef)
 - [x] Pandas output columns (`pdNaming`): `CutResult.COLUMNS`
@@ -231,6 +238,13 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
 - [x] `cut1D` truncated `Int_err` to whole counts (column types one place out of line), and
       stored `BinCount` as float
 - [x] `plotCutQE` ignored its `counts` option (the values were overwritten with `Int`)
+- [x] `binData3D` with background multiplied the background counts by normalization and
+      monitor a second time; now subtracted like the other cuts, with the same columns
+- [x] `AMBERBackground` ignored its `backgroundMask`; gave AMBER the lower voxel edges
+      instead of the centres (each voxel moved outwards in |Q|); used `n_bins` |Q| edges for
+      AMBER's `n_bins` bins (spacing off, last bin unused) and the lower energy edges only
+      (last energy bin unused); overwrote `l` and `mu` with the estimates, so a refit kept
+      stale ones
 - [x] Background model: points below the first |Q| or energy bin edge took their background
       from the last bin (index -1); they now get 0, like points above the range
 - [x] `cutQE` with background: `intensity` held counts minus background, `Int_err` was the
@@ -258,7 +272,17 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`.
       new code tested on Python 3.11, 3.12, 3.13 and 3.14. Needed `StrEnum`; the
       `np.NDArray` annotations (only working on 3.14) replaced by `numpy.typing.NDArray`
 - [ ] `.travis.yml` still tests Python 3.5-3.9 on Travis CI: replace or remove
-- [ ] `setup.cfg` pins numpy below 2: decide whether to allow numpy 2
+- [x] numpy 2.3 or newer required (`setup.cfg`, `requirements.txt`, docs/Introduction.rst);
+      the old `numpy<2.0` pin let Python 3.14 run with numpy 1.26, which does not support
+      it and computes wrong results there (`b -= 0.5*a` inside a function also changed `a`
+      for arrays over 256 kB; the old `calculateGrid3D` gave wrong edges because of it).
+      Code changes: removed names `np.string_` → `np.bytes_` and `np.NaN` → `np.nan`;
+      `boxMask` rotation angle made a scalar; `array.shape = ...` (deprecated in numpy 2.5)
+      replaced by `reshape` throughout, and no-op `array.dtype = bool` removed. With numpy
+      2, angles derived from the files' single-precision values round slightly differently
+      (NEP 50 promotion; ~5e-7 degrees in the sample misalignment), so a point on a bin
+      edge can change bin; the old code changes identically. Tested with numpy 2.5.4
+      (Python 3.14) and 2.4.6 (Python 3.11)
 
 ## Finish
 - [ ] Remove `DataFile.py` and `DataSet_old.py`

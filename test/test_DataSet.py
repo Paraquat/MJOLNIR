@@ -490,3 +490,11 @@ def test_plot_methods():
     assert ax.type == 'QPlane' and len(ax.pmeshs) == 1
     assert ax.get_xlabel().endswith('[RLU]')
     plt.close('all')
+
+def test_bin_3d():
+    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    result = dataset.bin_3d(0.1, 0.1, 0.5)
+    assert result.data['BinCount'].sum() == len(dataset.gather(ArrayType.QX))
+    unrotated = dataset.bin_3d(0.1, 0.1, 0.5, rlu=False) # Each file's own frame
+    assert not np.array_equal(unrotated.bins['qx'], result.bins['qx'])
+    assert unrotated.data['BinCount'].sum() == result.data['BinCount'].sum()

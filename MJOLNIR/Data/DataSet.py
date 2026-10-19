@@ -10,7 +10,7 @@ from MJOLNIR.Data.AxisView import AxisView
 from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl, align_to_lattice
 from MJOLNIR.Data import Cuts, Plotting
 from MJOLNIR.Data.CutResult import CutResult
-from MJOLNIR.Data.BackgroundModel import PowderBackground
+from MJOLNIR.Data.BackgroundModel import PowderBackground, AMBERBackground
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
@@ -49,7 +49,7 @@ class DataSet:
         self._use_default_mask = True
         self.frozen = False # A difference of data sets: cannot be rebinned or extended
         self.background_model = None
-        self._background_settings = None # Arguments of generate_background_model, to refit
+        self._background_settings = None # Method and arguments that fitted the model, to refit
         if files is not None:
             self.extend(files)
 
@@ -236,14 +236,14 @@ class DataSet:
         first = self.sample.RotMat
         return [np.dot(first.T, sample.RotMat) for sample in self.samples]
 
-    def gather_q(self, align_to_lattice: bool = False) -> tuple[AxisView, AxisView]:
+    def gather_q(self, align_to_lattice: bool = False, mask=None) -> tuple[AxisView, AxisView]:
         """Qx and Qy of the unmasked points (as gather), with each data file rotated into the
         frame of the first, so that the same HKL has the same Qx, Qy in every file.
 
         With align_to_lattice, each file is instead rotated by its own sample's RotMat, into
         the frame in which Qx, Qy follow the reciprocal lattice (as the old plotQPlane did;
-        see Coordinates.align_to_lattice for the matching sample)"""
-        qx, qy = self.gather(ArrayType.QX), self.gather(ArrayType.QY)
+        see Coordinates.align_to_lattice for the matching sample). mask as in gather"""
+        qx, qy = self.gather(ArrayType.QX, mask=mask), self.gather(ArrayType.QY, mask=mask)
         rotations = ([sample.RotMat for sample in self.samples] if align_to_lattice
                      else self.rotations())
         rotated = [np.einsum('ij,j...->i...', rotation, np.array([x, y]))
@@ -401,8 +401,54 @@ class DataSet:
             np.linalg.norm([np.asarray(qx), np.asarray(qy)], axis=0), gather(ArrayType.ENERGY),
             gather(ArrayType.INTENSITY), gather(ArrayType.NORMALIZATION),
             gather(ArrayType.MONITOR))
-        self._background_settings = dict(background_mask=background_mask, dQ=dQ, dE=dE,
-                                         combine_foreground_mask=combine_foreground_mask)
+        self._background_settings = ('generate_background_model', dict(
+            background_mask=background_mask, dQ=dQ, dE=dE,
+            combine_foreground_mask=combine_foreground_mask))
+        for reader in self._readers:
+            self._apply_background(reader)
+        return self.background_model
+
+    def generate_amber_background(self, dQx: float = 0.03, dQy: float = 0.03, dE: float = 0.05,
+                                  background_mask=None, combine_foreground_mask: bool = False,
+                                  l: float | None = None, mu: float | None = None,
+                                  beta: float = 1.0, max_radius: float | None = None,
+                                  n_bins: int | None = None, n_epochs: int = 20,
+                                  verbose: bool = True):
+        """Fit a background with AMBER (BackgroundModel.AMBERBackground; needs the AMBER-ds4ms
+        package) and give every data file its background counts per point
+        (ArrayType.BACKGROUND), as the old AMBERBackground with applyAMBER did.
+
+        The points are binned in voxels of about dQx * dQy * dE (Cuts.bin_3d, aligned to the
+        reciprocal lattice, as the old model did); AMBER separates the signal from a background
+        depending on |Q| and energy.
+
+        Kwargs:
+
+            - dQx, dQy, dE (float): Voxel size (default 0.03 1/AA, 0.03 1/AA, 0.05 meV)
+
+            - background_mask, combine_foreground_mask: Points to leave out of the voxels, as
+              for generate_background_model (default: the DataSet's mask). The old model
+              accepted a mask, but did not use it
+
+            - l, mu, beta, max_radius, n_bins: See AMBERBackground
+
+            - n_epochs (int): Largest number of AMBER iterations (default 20)
+
+            - verbose (bool): Print the loss of each iteration (default True)
+
+        Refitted when the binning changes, as generate_background_model. Returns the model
+        (also ds.background_model)"""
+        self._check_not_frozen('fit a background to')
+        masks = self._background_masks(background_mask, combine_foreground_mask)
+        binned = Cuts.bin_3d(**self._points(align_to_lattice=True, mask=masks),
+                             dx=dQx, dy=dQy, dz=dE)
+        self.background_model = AMBERBackground(l=l, mu=mu, beta=beta, max_radius=max_radius,
+                                                n_bins=n_bins).fit(binned, n_epochs=n_epochs,
+                                                                   verbose=verbose)
+        self._background_settings = ('generate_amber_background', dict(
+            dQx=dQx, dQy=dQy, dE=dE, background_mask=background_mask,
+            combine_foreground_mask=combine_foreground_mask, l=l, mu=mu, beta=beta,
+            max_radius=max_radius, n_bins=n_bins, n_epochs=n_epochs, verbose=verbose))
         for reader in self._readers:
             self._apply_background(reader)
         return self.background_model
@@ -430,10 +476,10 @@ class DataSet:
 
     def _refit_background(self):
         """After a change of binning: fit the model again, if its mask can be evaluated again"""
-        settings = self._background_settings
+        method, settings = self._background_settings
         mask = settings['background_mask']
         if mask is None or self._is_mask_object(mask):
-            self.generate_background_model(**settings)
+            getattr(self, method)(**settings)
         else:
             warnings.warn('The background model was fitted with a mask given as arrays, which do '
                           'not fit the new binning: it was removed')
@@ -442,17 +488,17 @@ class DataSet:
     # Cuts and plots: gather the points and call Cuts and Plotting
 
     def _points(self, rotate: bool = True, align_to_lattice: bool = False,
-                background_subtraction: bool = False) -> dict:
+                background_subtraction: bool = False, mask=None) -> dict:
         """The unmasked points, as the arrays Cuts takes. Qx, Qy rotated into the first file's
         frame (rotate), each file's own lattice frame (align_to_lattice), or not at all. With
-        background_subtraction, also the background counts of the points"""
+        background_subtraction, also the background counts of the points. mask as in gather"""
         if background_subtraction and self.background_model is None:
             raise AttributeError('No background model: call generate_background_model first')
         if rotate:
-            qx, qy = self.gather_q(align_to_lattice=align_to_lattice)
+            qx, qy = self.gather_q(align_to_lattice=align_to_lattice, mask=mask)
         else:
-            qx, qy = self.gather(ArrayType.QX), self.gather(ArrayType.QY)
-        gather = lambda arr_type: np.asarray(self.gather(arr_type))
+            qx, qy = self.gather(ArrayType.QX, mask=mask), self.gather(ArrayType.QY, mask=mask)
+        gather = lambda arr_type: np.asarray(self.gather(arr_type, mask=mask))
         points = dict(qx=np.asarray(qx), qy=np.asarray(qy), energy=gather(ArrayType.ENERGY),
                       intensity=gather(ArrayType.INTENSITY),
                       normalization=gather(ArrayType.NORMALIZATION),
@@ -508,6 +554,17 @@ class DataSet:
                                 energy_bins=energy_bins, energy_min=energy_min,
                                 energy_max=energy_max, x_bin_tolerance=x_bin_tolerance,
                                 y_bin_tolerance=y_bin_tolerance, sample=sample)
+
+    def bin_3d(self, dx: float, dy: float, dz: float, rlu: bool = True,
+               background_subtraction: bool = False) -> CutResult:
+        """Bin the points in voxels of Qx, Qy and energy, about dx * dy * dz in size. With rlu,
+        the points are aligned to the reciprocal lattice, else left in each file's frame, as
+        the old binData3D did. With background_subtraction, the background model is
+        subtracted. result.grid(column) gives a column as a 3D array. See Cuts.bin_3d"""
+        sample = align_to_lattice(self.sample) if rlu else self.sample
+        points = self._points(rotate=rlu, align_to_lattice=True,
+                              background_subtraction=background_subtraction)
+        return Cuts.bin_3d(**points, dx=dx, dy=dy, dz=dz, sample=sample)
 
     def plot_cut_qe(self, q1, q2, width: float = 0.1, min_pixel: float = 0.05,
                     energy_bins=None, energy_min=None, energy_max=None, energy_step=None,

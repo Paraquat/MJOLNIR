@@ -434,10 +434,10 @@ class rectangleMask(MaskingObject):
         # calculate mask by rotating all points so rectangle is along coordinate axes
         # This makes the logical checks easy
         pointShape = points.shape[1:]
-        points.shape = (2,-1)
+        points = points.reshape((2,-1))
 
         rotatedPoints = np.einsum('ij,jk->ik',self.rotationMatrix,np.array(points)-self.center)
-        rotatedPoints.shape = np.concatenate([[2],pointShape])
+        rotatedPoints = rotatedPoints.reshape(np.concatenate([[2],pointShape]))
         logic = np.array([np.logical_and(x>-0.5*edge,x<0.5*edge) for x,edge in zip(rotatedPoints,[self.height,self.length])])
 
         mask = np.all(logic,axis=0)
@@ -549,7 +549,7 @@ class boxMask(MaskingObject):
         c1r1,c2r1,c3r1,c4r1,c5r1,c6r1,c7r1,c8r1 = [np.dot(rot1,(x-self.center).T) for x in [c1,c2,c3,c4,c5,c6,c7,c8]]
 
         # rotate around y into plane using edge 1 (c2-c1)
-        edge = c2r1-c1r1
+        edge = (c2r1-c1r1).flatten() # A single angle: numpy 2 does not convert a 1-element array
         theta = np.arctan2(edge[2],edge[0])
 
         rot2 = RotationMatrix3D(theta,n=[0,1,0],deg=False)
@@ -599,10 +599,10 @@ class boxMask(MaskingObject):
         # This makes the logical checks easy
         pointShape = points.shape[1:]
 
-        points.shape = (3,-1)
+        points = points.reshape((3,-1))
 
         rotatedPoints = np.einsum('ij,jk->ik',self.rotationMatrix,np.array(points)-self.center.T)
-        rotatedPoints.shape = np.concatenate([[3],pointShape]).astype(int)
+        rotatedPoints = rotatedPoints.reshape(np.concatenate([[3],pointShape]).astype(int))
         logic = np.array([np.logical_and(x>=-0.5*edge,x<=0.5*edge) for x,edge in zip(rotatedPoints,[self.length,self.height,self.width])])
 
         mask = np.all(logic,axis=0)
@@ -702,10 +702,10 @@ class circleMask(MaskingObject):
                     points = np.array([x,y,z])
 
         pointShape = points.shape[1:]
-        points.shape = (points.shape[0],-1)
+        points = points.reshape((points.shape[0],-1))
 
         mask = np.linalg.norm(points-self.center,axis=0)<=self.radius
-        mask.shape = pointShape
+        mask = mask.reshape(pointShape)
 
         if not self.maskInside:
             mask = np.logical_not(mask)

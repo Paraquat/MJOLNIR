@@ -49,3 +49,12 @@ class CutResult:
 
     def __len__(self) -> int:
         return len(self.data)
+
+    def grid(self, column: str) -> np.ndarray:
+        """Values of a column (e.g. 'Int') in the shape of the bins, for a result binned on a
+        regular grid (Cuts.bin_3d): one axis per name in parameters['grid'], whose edges are in
+        bins"""
+        if 'grid' not in self.parameters:
+            raise ValueError('This result is not binned on a regular grid')
+        shape = tuple(len(self.bins[axis]) - 1 for axis in self.parameters['grid'])
+        return self.data[column].to_numpy().reshape(shape)

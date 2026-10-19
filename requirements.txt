@@ -3,7 +3,7 @@ pycodestyle
 pytest-cov
 python-coveralls
 matplotlib
-numpy
+numpy>=2.3
 h5py
 scipy
 datetime

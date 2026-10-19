@@ -7,7 +7,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from MJOLNIR.Data import Mask, Plotting
-from MJOLNIR.Data.BackgroundModel import PowderBackground
+from MJOLNIR.Data.BackgroundModel import PowderBackground, AMBERBackground
 from MJOLNIR.Data.DataSet import DataSet, ArrayType
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
@@ -155,3 +155,68 @@ def test_cut_subtraction(dataset):
                              energy_step=0.1, background_subtraction=True)
     assert 'Int_Bg' in ax.result.data.columns
     plt.close(ax.get_figure())
+
+def test_bin_3d_subtraction(dataset):
+    dataset.generate_background_model(background_mask=signal)
+    result = dataset.bin_3d(0.1, 0.1, 0.5, background_subtraction=True)
+    assert np.nansum(result.data['intensity_Bg']) > 0
+    assert np.allclose(result.data['Int'], result.data['Int_Fg'] - result.data['Int_Bg'],
+                       equal_nan=True)
+
+# AMBER (the optional AMBER-ds4ms package)
+
+def test_amber_missing(monkeypatch, dataset):
+    import sys
+    monkeypatch.setitem(sys.modules, 'AMBER', None) # As if not installed
+    with pytest.raises(ModuleNotFoundError, match='MJOLNIR\\[AMBER\\]'):
+        dataset.generate_amber_background(n_epochs=1, verbose=False)
+
+@pytest.fixture
+def amber_dataset():
+    pytest.importorskip('AMBER')
+    return DataSet(InstrumentName.CAMEA, files=files[:1])
+
+def test_amber(amber_dataset):
+    binned = amber_dataset.bin_3d(0.1, 0.1, 0.2)
+    model = AMBERBackground().fit(binned, n_epochs=3, verbose=False)
+    parameters = model.fitted_parameters
+    # Radial bins from 0, about as wide as the voxels, covering every voxel with data
+    assert model.q_bins[0] == 0.0
+    assert len(model.q_bins) == parameters['n_bins'] + 1
+    assert model.q_bins[-1] == pytest.approx(parameters['max_radius'])
+    assert np.diff(model.q_bins)[0] == pytest.approx(0.1, rel=0.1)
+    q_length = np.linalg.norm([amber_dataset.gather(ArrayType.QX),
+                               amber_dataset.gather(ArrayType.QY)], axis=0)
+    assert q_length.max() <= model.q_bins[-1] # Aligning to the lattice keeps |Q|
+    assert np.array_equal(model.energy_bins, binned.bins['energy'])
+    assert model.intensity.shape == (len(model.q_bins) - 1, len(model.energy_bins) - 1)
+    assert (model.intensity >= 0).all()
+    assert model.amber.X.shape == model.amber.Ygrid.shape # The signal
+    # Given parameters are used, and the model keeps them as given
+    model = AMBERBackground(l=0.01, n_bins=10).fit(binned, n_epochs=2, verbose=False)
+    assert model.fitted_parameters['l'] == 0.01
+    assert len(model.q_bins) == 11
+    assert model.l == 0.01 and model.mu is None
+
+def test_amber_in_dataset(amber_dataset):
+    model = amber_dataset.generate_amber_background(dQx=0.1, dQy=0.1, dE=0.2, n_epochs=2,
+                                                    verbose=False)
+    assert isinstance(amber_dataset.background_model, AMBERBackground)
+    reader = amber_dataset[0]
+    assert reader.background.shape == reader.intensity.shape
+    assert np.nansum(reader.background) > 0
+    cut = amber_dataset.cut_1d([-1, 0, 0], [0, 1, 0], 0.1, 0.02, -1.0, 0.8,
+                               background_subtraction=True).data
+    assert np.nansum(cut['intensity_Bg']) > 0
+    amber_dataset.set_binning(3) # Refitted with the same settings
+    assert amber_dataset.background_model is not model
+    assert isinstance(amber_dataset.background_model, AMBERBackground)
+    assert reader.background.shape == (reader.intensity.shape)
+
+def test_amber_cross_validation(amber_dataset):
+    binned = amber_dataset.bin_3d(0.1, 0.1, 0.2)
+    model = AMBERBackground()
+    rmse = model.cross_validation(binned, beta=[0.5, 2.0], n_epochs=2, verbose=False)
+    assert rmse.shape == (2,)
+    assert np.all(np.isfinite(rmse))
+    assert model.q_bins is None # Not fitted

@@ -116,7 +116,9 @@ def test_cut_q_plane(dataset, aligned_points):
     assert len(result) == 49 * 43
     assert data['intensity'].sum() == 3401023
     assert data['BinCount'].sum() == 366390
-    assert np.nansum(data['Int']) == pytest.approx(2235.266187, rel=1e-9)
+    # With numpy 2 (numpy 1.26: 2235.266187): the samples' angles, stored in single precision,
+    # round differently, which moves one point into the next bin; the old code moves the same
+    assert np.nansum(data['Int']) == pytest.approx(2235.265437, rel=1e-9)
     assert data['intensity'].dtype == aligned_points['intensity'].dtype
     assert np.allclose(data['Energy'], 0.0) # Middle of the range
     assert np.diff(result.bins['qx'][0]) == pytest.approx(0.05)
@@ -177,3 +179,50 @@ def test_cut_qe_energy_max(points, q1q2):
     last = cut.data[cut.data['Energy'] == cut.bins['energy'][-2]]
     full = Cuts.cut_qe(**common, energy_max=0.2).data
     assert last['BinCount'].sum() < full[full['Energy'] == cut.bins['energy'][-2]]['BinCount'].sum()
+
+# Voxels (bin_3d; edges and sums checked against the old binData3D: identical)
+
+def test_grid_edges():
+    edges = Cuts.grid_edges(0.25, [0.0, 0.3, 1.0])
+    assert edges == pytest.approx([-0.125, 0.125, 0.375, 0.625, 0.875, 1.125])
+    # The step is adjusted to divide the range evenly; the end bins are centred on the ends
+    edges = Cuts.grid_edges(0.3, [0.0, 1.0])
+    assert np.diff(edges) == pytest.approx([1/3]*4)
+    assert 0.5*(edges[0] + edges[1]) == pytest.approx(0.0)
+    with pytest.raises(AttributeError): # A single bin
+        Cuts.grid_edges(1.0, [0.0, 0.2])
+
+def test_bin_3d(dataset, aligned_points):
+    from MJOLNIR.Data.Coordinates import align_to_lattice
+    result = Cuts.bin_3d(**aligned_points, dx=0.1, dy=0.1, dz=0.5,
+                         sample=align_to_lattice(dataset.sample))
+    shape = tuple(len(result.bins[axis]) - 1 for axis in ['qx', 'qy', 'energy'])
+    assert len(result) == np.prod(shape)
+    assert result.grid('Int').shape == shape
+    # Every point is in a voxel
+    assert result.data['BinCount'].sum() == len(aligned_points['qx'])
+    assert result.data['intensity'].sum() == aligned_points['intensity'].sum()
+    # Rows in C order of (Qx, Qy, energy); positions are the voxel centres
+    centres = 0.5*(result.bins['energy'][:-1] + result.bins['energy'][1:])
+    assert np.allclose(result.grid('Energy')[0, 0], centres)
+    assert np.allclose(result.grid('Qx')[:, 0, 0], 0.5*(result.bins['qx'][:-1] + result.bins['qx'][1:]))
+    assert not result.data['H'].isna().any()
+    scale = result.data['BinCount']/(result.data['Normalization']*result.data['Monitor'])
+    assert np.allclose(result.data['Int'], result.data['intensity']*scale, equal_nan=True)
+    # The same edges again
+    again = Cuts.bin_3d(**aligned_points, bins=[result.bins[axis] for axis in ['qx', 'qy', 'energy']])
+    assert np.array_equal(again.data['intensity'], result.data['intensity'])
+    with pytest.raises(AttributeError):
+        Cuts.bin_3d(**aligned_points, dx=0.1, dy=0.1)
+
+def test_bin_3d_background(aligned_points):
+    plain = Cuts.bin_3d(**aligned_points, dx=0.1, dy=0.1, dz=0.5)
+    subtracted = Cuts.bin_3d(**aligned_points, dx=0.1, dy=0.1, dz=0.5,
+                             background=0.5*aligned_points['intensity'])
+    assert np.allclose(subtracted.data['Int'], 0.5*plain.data['Int'], equal_nan=True)
+    assert np.allclose(subtracted.data['intensity_Bg'], 0.5*plain.data['intensity'])
+
+def test_grid_needs_regular_bins(aligned_points):
+    plane = Cuts.cut_q_plane(**aligned_points, energy_min=-0.2, energy_max=0.2)
+    with pytest.raises(ValueError):
+        plane.grid('Int')

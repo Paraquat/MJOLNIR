@@ -70,7 +70,7 @@ class FitInitialization(State):#pragma: no cover
                   ', '.join([str(x) for x in self.parent.fitFunction.parameterNames]),', '.join([str(x) for x in self.parent.fitFunction.parameters])))
         elif event.key in ['r']:
             self.fitParameterIndex = np.mod(self.fitParameterIndex-1,self.parent.fitFunction.parameterLength)
-            self.parent.fitFunction.parameters[self.fitParameterIndex] = np.NaN
+            self.parent.fitFunction.parameters[self.fitParameterIndex] = np.nan
         
         elif event.key in ['e']: # Execute fitting
             return Execute(self.parent)
