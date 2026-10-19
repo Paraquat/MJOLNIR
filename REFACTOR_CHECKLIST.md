@@ -158,10 +158,10 @@ work is the open items in the sections further down; tick both.
 - [ ] Cuts: `cutPowder`, `cutRaw1D`, raw `extractData`, measurement errors (`I_err`),
       `cutQE` smoothing and scaled energy, `plotCoverage`. Done: `cut1DE`
       (`cut_constant_q`), `cutQELine` (`cut_qe_line`)
-- [ ] Plots and axes: `plotCut1DE`, `plotCutPowder`, `plotRaw1D`, `View3D` (on `bin_3d`),
-      `createQAxis` / `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in
-      `plotQPlane`, click handlers and `_interactiveSettings` modes. Done: `plotCut1D`
-      (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`)
+- [ ] Plots and axes: `plotCut1DE`, `plotCutPowder`, `plotRaw1D`, `createQAxis` /
+      `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
+      click handlers and `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`),
+      `plotCutQELine` (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`)
 - [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [ ] Export: `generateUFitDataset`
@@ -170,13 +170,19 @@ work is the open items in the sections further down; tick both.
       reader; `supportedConvertedFormats` is dropped with converted files
 
 ### Move the rest of MJOLNIR off the old API
-- [ ] `Viewer1D.py`, `Viewer3D.py`, `Viewer3DPyQtGraph.py`, `RLUAxes.py`, `DraggableShapes.py`,
-      `_interactiveSettings.py`
+- [ ] `Viewer1D.py`, `RLUAxes.py`, `DraggableShapes.py`, `_interactiveSettings.py`
+- [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions): delete
+      `Viewer3D.py` with the old code (replaced by `SliceViewer.py`); move
+      `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails with pyqtgraph
+      0.13: `QtGui.QWidget` and `QtGui.QMainWindow` moved to `QtWidgets`)
+- [ ] `_interactiveSettings.py` imports PyQt5 at import only to choose mouse cursors; use
+      matplotlib's `canvas.set_cursor` (any backend) so MJOLNIR does not need Qt (PyQt5 is not
+      in `install_requires`)
 - [ ] `Statistics/CutObject.py`
 - [ ] `Geometry/Instrument.py` (reads a vanadium file with `DataFile`)
 - [ ] Command line scripts (Convert, 3DView, History, CalibrationInspector) and
       `CommandLineScripts/_tools.py`, with an `--instrument` option; make `test_commandline`
-      run (it needs the scripts installed)
+      run (it needs the scripts installed). 3DView: `ds.view_3d`; History: `shallow_read`
 - [ ] `_tools.PointerArray`: remove once nothing uses it
 - [ ] `Mask.py`: plotting combinations with `indexMask` or `CurratAxeMask`
 
@@ -237,7 +243,12 @@ runs on the new `DataSet` and readers, and every view works.
       axes only, cuts in `ax.result`), `calculatePosition` on the axes
 - [ ] Q plane manager: `plot_q_plane`; `DraggableShapes.extractCut` on the new axes; energy
       range from `gather`
-- [ ] View 3D manager: `View3D` on `bin_3d`
+- [ ] View 3D manager on `ds.view_3d`: pass one `on_cut(kind, parameters)` that opens drawn
+      cuts in the GUI's cut managers (replaces the ten `cut1DFunction...`/`cut2DFunction...`
+      arguments of `View3D`); embed `viewer.figure` in the Qt window; slice saving through
+      `save_slices` (replaces `saveToFile(..., gui=...)`)
+- [ ] If kept, the PyQtGraph free-plane slicer (`customSlicer=True`) lives in the GUI, on a
+      `bin_3d` result, ported to `QtWidgets`
 - [ ] Normalisation manager: `absoluteNormalize`
 - [ ] Prediction tool and calculators: check which sample and UB functions they use
 - [ ] `generateScripts.py`: generated scripts use the new API
@@ -450,7 +461,20 @@ runs on the new `DataSet` and readers, and every view works.
       polar binning, `enlargen`, 3D axes, `scaleFunction`)
 - [ ] `plotRaw1D`
 - [x] `plotA3A4` (with `boundaryQ`, `convexHullPoints`): Dropped (2026-10-19)
-- [ ] `View3D`
+- [x] `View3D`: `ds.view_3d(dx, dy, dz, rlu, background_subtraction, **viewer options)`,
+      `SliceViewer.SliceViewer(result of bin_3d, sample, rlu, axis, counts, log, vmin, vmax,
+      cmap, grid, adjustable, on_cut, dataset, cut_width, cut_min_pixel, spurion_peaks, Ei,
+      ef_limits)`. Plain matplotlib: slices along Qx, Qy or energy (constant-energy slices on
+      `RLUAxes.createQAxis` with rlu; Q-E slices on plain axes, tick labels in H, K, L), a
+      slider, keys (arrows, scroll, 0/1/2, c for cutting), colour sliders, `set_clim`,
+      read-out of H, K, L, E and value, Currat-Axe markers, `to_csv` (current slice),
+      `save_slices`. Cuts drawn: drag on an energy slice -> '1d' (`cut_1d`), click on a Q-E
+      slice -> 'constant_q' (`cut_constant_q`), drag on a Q-E slice -> 'qe' (`cut_qe`), passed
+      to `on_cut(kind, parameters)` or plotted by the data set (`SliceViewer.default_cut`).
+      Slice values and edges identical to the old `Viewer3D` (rlu on and off); H, K, L of
+      positions equal the readers' H, K, L; elastic spurions on their Bragg peaks. Changes
+      under "Cut bugs fixed in the port". Not ported: `instrumentAngles`, `grid` as a zorder,
+      `customSlicer` (see the 3D viewer split), the old `_interactiveSettings` modes
 - [ ] `createQAxis` / `createQEAxes`, `generate1DAxis(E)`
 - [ ] CSV export from figures, click and hover handlers (Q-E plots: CSV export and hover
       done; printing the data at a clicked point and the `_interactiveSettings` modes not yet)
@@ -545,6 +569,11 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       ticks anyway (after a warning); now no ticks
 - [x] `plotCutQELine` returned `(ax, dataList)`, not the documented `(ax, DataList,
       BinList)`
+- [x] `View3D(counts=True)` showed counts divided by the number of points in the voxel,
+      though documented as the number of neutrons; `SliceViewer(counts=True)` shows the
+      counts in the voxel
+- [x] `View3D(instrumentAngles=True)` computed A3, A4 with a fixed Ei = Ef = 4.95 meV
+      whatever the data; not ported (needs the data's Ei and the slice's Ef to be right)
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

@@ -648,6 +648,21 @@ class DataSet:
                              background_subtraction=background_subtraction)
         return Plotting.plot_cut_1d(result, sample=self.sample, rlu=rlu, **plot_options)
 
+    def view_3d(self, dx: float, dy: float, dz: float, rlu: bool = True,
+                background_subtraction: bool = False, **viewer_options):
+        """Interactive slices through the data binned in voxels of dx * dy * dz (bin_3d), the
+        old View3D. viewer_options go to SliceViewer.SliceViewer (axis, counts, log, vmin, vmax,
+        cmap, adjustable, on_cut, cut_width, cut_min_pixel, spurion_peaks, ...). Cuts drawn in
+        the viewer are made on this data set unless on_cut is given. Returns the viewer"""
+        from MJOLNIR.Data.SliceViewer import SliceViewer
+        result = self.bin_3d(dx, dy, dz, rlu=rlu, background_subtraction=background_subtraction)
+        Ef = np.concatenate([np.ravel(reader.calibration.Ef) for reader in self._readers])
+        Ef = Ef[np.isfinite(Ef) & ~np.isclose(Ef, 0.0)]
+        viewer_options.setdefault('Ei', np.unique(np.concatenate(
+            [np.ravel(reader.Ei) for reader in self._readers])))
+        viewer_options.setdefault('ef_limits', (Ef.min(), Ef.max()) if Ef.size else None)
+        return SliceViewer(result, sample=self.sample, rlu=rlu, dataset=self, **viewer_options)
+
     def plot_cut_qe(self, q1, q2, width: float = 0.1, min_pixel: float = 0.05,
                     energy_bins=None, energy_min=None, energy_max=None, energy_step=None,
                     rlu: bool = True, extend: bool = False, background_subtraction: bool = False,
