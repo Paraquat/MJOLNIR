@@ -85,7 +85,8 @@ work is the open items in the sections further down; tick both.
 - [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
       scan parameters and command, `startTime`/`endTime`, `title`, `comment`, detector and
       analyser selection (`dasel`)
-- [ ] Calibration and sample: `updateCalibration`, calibration plots, `updateSampleParameters`
+- [ ] Calibration and sample: calibration plots, `updateSampleParameters`. Done:
+      `updateCalibration`
 - [x] Saving: `saveHDF` is replaced by the writers below. Dropped (2026-10-19):
       `saveNXsqom` (with converted files) and DataSet `save`/`load`
 - [x] `NexusLayout` and `CameaLayout` (`MJOLNIR/Data/NexusLayout.py`), not used by anything
@@ -302,7 +303,16 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `DataSet` default binning = the reader type's default binning
 
 ### Calibration and sample
-- [ ] `updateCalibration`: external normalisation tables, several binnings, `overwrite`
+- [x] `updateCalibration`: external normalisation tables, several binnings, `overwrite`.
+      `DataReader.update_calibration(files, overwrite=False)` reads `.calib` files
+      (`read_calibration_file`, sharing `calibration_from_table` with the CSV tables of the
+      other readers) into `calibration_updates`, used by `set_instrument_calibration` in
+      place of the file's; new binnings join `possible_binnings`; the row count is checked.
+      `DataSet.update_calibration` applies them to every file, also files added later, and
+      transforms again if the current binning changed. `CameaDataWriter` saves the updated
+      calibrations by default. Calibrations and converted data (I, normalization, monitor,
+      energy, qx, qy) identical to the old code with the 2024 tables in `Data/`, binnings 1,
+      3, 5 and 8 / 8 and 3. Fixed: the old method took a single path as a list of characters
 - [ ] Calibration plots: `plotA4`, `plotEf`, `plotEfOverview`, `plotNormalization`
 - [ ] `updateSampleParameters`: new unit cell, recalculate UB
 - [x] `calculateCurratAxeMask`: spurion masking, moved to `Mask.py` (works for every reader)
@@ -310,8 +320,9 @@ runs on the new `DataSet` and readers, and every view works.
 ### Saving
 - [x] `saveNXsqom`: save converted data. Dropped (2026-10-19) with converted files
 - [x] `saveHDF`: write a raw HDF file. Not ported: replaced by `CameaDataWriter`, which keeps
-      the whole file and writes only the calibration. Still needs `updateCalibration`
-      (reading `.calib` files into an `InstrumentCalibration`) to replace the GUI's use
+      the whole file and writes only the calibration. With `update_calibration` this
+      replaces the GUI's use: `ds.update_calibration(files, overwrite=True)`, then
+      `CameaDataWriter(reader).save(new_path)` per file
 
 ### Utilities
 - [ ] Compare files (`__eq__`, `difference`)
@@ -337,7 +348,8 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] `settings` dict and extra keyword arguments
 - [x] Save converted files (`convertDataFile` with `saveFile`, `saveLocation`,
       `deleteOnConvert`): Dropped (2026-10-19) with converted files
-- [ ] `updateCalibration`, `updateSampleParameters` for the whole set
+- [ ] `updateSampleParameters` for the whole set. Done: `updateCalibration`
+      (`DataSet.update_calibration`)
 
 ### Combined data
 - [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`

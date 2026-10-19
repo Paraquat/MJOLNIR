@@ -50,6 +50,7 @@ class DataSet:
         self.frozen = False # A difference of data sets: cannot be rebinned or extended
         self.background_model = None
         self._background_settings = None # Method and arguments that fitted the model, to refit
+        self._calibration_updates = [] # (calibration files, overwrite), also for later files
         if files is not None:
             self.extend(files)
 
@@ -69,6 +70,24 @@ class DataSet:
         if self.background_model is not None:
             self._refit_background()
 
+    def update_calibration(self, calibration_files: Path | str | list[Path | str],
+                           overwrite: bool = False) -> list[int]:
+        """Use calibrations from .calib files (Geometry.Instrument.generateCalibration) for
+        all data files, also those added later (see DataReader.update_calibration). If the
+        current binning is updated, the files are transformed again. Nothing is saved: use
+        CameaDataWriter per file. Returns the binnings updated"""
+        self._check_not_frozen('recalibrate')
+        if isinstance(calibration_files, (str, Path)):
+            calibration_files = [calibration_files]
+        calibration_files = [Path(path) for path in calibration_files]
+        updated = set()
+        for reader in self._readers:
+            updated.update(reader.update_calibration(calibration_files, overwrite))
+        self._calibration_updates.append((calibration_files, overwrite))
+        if self._binning in updated and len(self) > 0:
+            self.set_binning(self._binning)
+        return sorted(updated)
+
     # Adding data files
 
     def append(self, item: DataFileLike):
@@ -87,7 +106,11 @@ class DataSet:
             self.instrument = self._reader_factory.get_instrument(self.reader_type)
         if self._binning is None:
             self._binning = self.reader_type.default_binning
-        if reader.calibration is None or reader.binning != self._binning:
+        updated = set()
+        for calibration_files, overwrite in self._calibration_updates:
+            updated.update(reader.update_calibration(calibration_files, overwrite))
+        if reader.calibration is None or reader.binning != self._binning \
+                or self._binning in updated:
             reader.set_instrument_calibration(self._binning)
             reader.transform()
         reader.use_default_mask = self._use_default_mask

@@ -7,15 +7,18 @@ from MJOLNIR.Data.NexusDataWriter import NexusDataWriter
 
 class CameaDataWriter(NexusDataWriter):
     """Save a CAMEA file with new instrument calibrations; replaces the old
-    DataFile.saveHDF. Without calibrations, the reader's current calibration (for its binning)
-    is written. Calibrations for binnings the file does not have are added"""
+    DataFile.saveHDF. Without calibrations, the reader's updated calibrations
+    (update_calibration) are written, or if there are none its current calibration (for its
+    binning). Calibrations for binnings the file does not have are added"""
 
     layout = CameaLayout
 
     def __init__(self, reader: CameaDataReader,
                  calibrations: dict[int, InstrumentCalibration] | None = None):
         super().__init__(reader)
-        if calibrations is None:
+        if calibrations is None and reader.calibration_updates:
+            calibrations = reader.calibration_updates
+        elif calibrations is None:
             calibrations = {} if reader.calibration is None \
                 else {reader.binning: reader.calibration}
         self.calibrations = dict(calibrations)

@@ -1,3 +1,4 @@
+import re
 import warnings
 from pathlib import Path
 from abc import ABC
@@ -33,6 +34,27 @@ class SampleEnvironment:
     electric_field_setpoint: npt.NDArray[np.float64] | None = None
     other: dict[str, npt.NDArray[np.float64]] = field(default_factory=dict) # Other quantities
     units: dict[str, str] = field(default_factory=dict) # Quantity name -> unit
+
+def calibration_from_table(table: npt.NDArray[np.float64],
+                           A4_sign: int = 1) -> InstrumentCalibration:
+    """Calibration from a normalisation table, one row per pixel bin. Columns: detector,
+    energy, pixel, amplitude, center (Ef), width, background, lowerBin, upperBin, A4Offset"""
+    return InstrumentCalibration(Ef=table[:, 4], width=table[:, 5], bg=table[:, 6],
+                                 amp=table[:, 3], A4=A4_sign * table[:, 9],
+                                 bound=table[:, 7:9].astype(int))
+
+def read_calibration_file(path: Path, A4_sign: int = 1) -> tuple[int, InstrumentCalibration]:
+    """Binning and calibration of a .calib file, as written by
+    Geometry.Instrument.generateCalibration: a header line naming the binning ("Normalization
+    for 8 pixel(s) ..."), a date line, the column names, then the table"""
+    with open(path) as f:
+        header = f.readline()
+    match = re.search(r'(\d+)\s+pixel', header)
+    if match is None:
+        raise ValueError(f'"{Path(path).name}" is not a calibration file: its first line does '
+                         'not name the number of pixels')
+    table = np.loadtxt(path, skiprows=3, delimiter=',', ndmin=2)
+    return int(match.group(1)), calibration_from_table(table, A4_sign)
 
 class DataReader(ABC):
     """Abstract base class for all data readers (objects that parse data files)"""
@@ -92,6 +114,8 @@ class DataReader(ABC):
             self.calibration_file = calibration_file
         self._metadata = Metadata()
         self.calibration = None
+        # Calibrations from update_calibration, used instead of the file's (by binning)
+        self.calibration_updates: dict[int, InstrumentCalibration] = {}
 
         self.intensity = None
         self.normalization = None
@@ -172,17 +196,9 @@ class DataReader(ABC):
                 f'Binning {binning} not in possible binnings {self.possible_binnings}')
         if self.calibration_file is None:
             raise AttributeError(f'No calibration file given for {self.instrument}')
-        # Columns: detector, energy, pixel, amplitude, center, width, background,
-        # lowerBin, upperBin, A4Offset
         table = np.genfromtxt(self.calibration_file, skip_header=1, delimiter=',')
-        Ef = table[:, 4]
-        width = table[:, 5]
-        bg = table[:, 6]
-        amp = table[:, 3]
-        A4 = self.calibration_A4_sign * table[:, 9]
-        bound = table[:, 7:9].astype(int)
         self.binning = binning
-        return InstrumentCalibration(Ef, width, bg, amp, A4, bound)
+        return calibration_from_table(table, self.calibration_A4_sign)
 
     def _check_not_frozen(self, action: str):
         if self.frozen:
@@ -190,11 +206,44 @@ class DataReader(ABC):
                              'difference of data sets). Change the original data instead')
 
     def set_instrument_calibration(self, binning: int | None = None):
-        """Load the calibration for a binning (default: the reader's default binning)"""
+        """Load the calibration for a binning (default: the reader's default binning): one
+        given to update_calibration, otherwise the file's (get_instrument_calibration)"""
         self._check_not_frozen('recalibrate')
         if binning is None:
             binning = self.default_binning
-        self.calibration = self.get_instrument_calibration(binning)
+        if binning in self.calibration_updates:
+            self.binning = binning
+            self.calibration = self.calibration_updates[binning]
+        else:
+            self.calibration = self.get_instrument_calibration(binning)
+
+    def update_calibration(self, calibration_files: Path | str | list[Path | str],
+                           overwrite: bool = False) -> list[int]:
+        """Use calibrations from .calib files (Geometry.Instrument.generateCalibration)
+        instead of the file's, e.g. a newer vanadium normalisation. A binning the file already
+        has is replaced only with overwrite (as the old updateCalibration); new binnings are
+        added to possible_binnings. Takes effect at the next set_instrument_calibration (a
+        DataSet transforms its files again); nothing is saved (see CameaDataWriter). Returns
+        the binnings updated"""
+        self._check_not_frozen('recalibrate')
+        if isinstance(calibration_files, (str, Path)):
+            calibration_files = [calibration_files]
+        updated = []
+        for path in calibration_files:
+            binning, calibration = read_calibration_file(path, self.calibration_A4_sign)
+            if binning in self.possible_binnings and not overwrite:
+                warnings.warn(f'Binning {binning} from "{Path(path).name}" is skipped as '
+                              'overwrite is False')
+                continue
+            n_bins = self.n_detectors * self.n_analysers * binning
+            if len(calibration.Ef) != n_bins:
+                raise ValueError(f'"{Path(path).name}" has {len(calibration.Ef)} rows; '
+                                 f'{type(self).__name__} with binning {binning} needs {n_bins}')
+            self.calibration_updates[binning] = calibration
+            if binning not in self.possible_binnings:
+                self.possible_binnings = sorted([*self.possible_binnings, binning])
+            updated.append(binning)
+        return updated
 
     def rebin(self, binning: int, shape: tuple, bounds: npt.NDArray[np.int32]):
         """Sum the detector pixels between the calibration bounds of each energy bin"""
