@@ -52,6 +52,7 @@ class DataSet:
         self.background_model = None
         self._background_settings = None # Method and arguments that fitted the model, to refit
         self._calibration_updates = [] # (calibration files, overwrite), also for later files
+        self.absolute_normalization = 1.0 # Factor of absolute_normalize (1: not normalised)
         if files is not None:
             self.extend(files)
 
@@ -89,6 +90,34 @@ class DataSet:
             self.set_binning(self._binning)
         return sorted(updated)
 
+    # Absolute normalisation
+
+    def absolute_normalize(self, sample_mass: float, sample_chemical_formula: str | None = None,
+                           sample_molar_mass: float | None = None, units: str = 'magnetic',
+                           **options) -> float:
+        """Put the intensities in absolute units relative to the vanadium normalisation (the
+        old absoluteNormalize): the normalization of every file is multiplied by the factor of
+        AbsoluteNormalization.absolute_normalization_factor (options: formula_units_per_unit_cell,
+        sample_g_factor, correct_vanadium and the vanadium values). A second call replaces the
+        first. The factor is kept through set_binning, update_calibration and files added
+        later; undo_absolute_normalize removes it. Returns the factor"""
+        from MJOLNIR.Data.AbsoluteNormalization import absolute_normalization_factor
+        factor = absolute_normalization_factor(sample_mass, sample_chemical_formula,
+                                               sample_molar_mass, units=units, **options)
+        self._set_absolute_normalization(factor)
+        return factor
+
+    def undo_absolute_normalize(self):
+        """Remove the absolute normalisation: the normalization as from the calibration"""
+        self._set_absolute_normalization(1.0)
+
+    def _set_absolute_normalization(self, factor: float):
+        self.absolute_normalization = float(factor)
+        for reader in self._readers:
+            reader.set_normalization_factor(factor)
+        if self.background_model is not None: # Fitted to normalised intensities
+            self._refit_background()
+
     # Adding data files
 
     def append(self, item: DataFileLike):
@@ -112,8 +141,11 @@ class DataSet:
             updated.update(reader.update_calibration(calibration_files, overwrite))
         if reader.calibration is None or reader.binning != self._binning \
                 or self._binning in updated:
+            reader.normalization_factor = self.absolute_normalization
             reader.set_instrument_calibration(self._binning)
             reader.transform()
+        elif reader.normalization_factor != self.absolute_normalization:
+            reader.set_normalization_factor(self.absolute_normalization)
         reader.use_default_mask = self._use_default_mask
         if self._mask_object is not None and self._mask_reproducible:
             reader.mask = self._mask_arrays(self._mask_object, [reader])[0]
@@ -194,6 +226,7 @@ class DataSet:
         result.reader_type = self.reader_type
         result._binning = self._binning
         result._use_default_mask = self._use_default_mask
+        result.absolute_normalization = self.absolute_normalization # The copies carry it
         result._readers = readers
         result._mask_reproducible = False # The masks are arrays now
         result.frozen = True
@@ -207,6 +240,7 @@ class DataSet:
             subset = DataSet(instrument=self.instrument)
             subset.reader_type = self.reader_type
             subset._binning = self._binning
+            subset.absolute_normalization = self.absolute_normalization # Before the readers
             subset.extend(self._readers[index])
             subset._mask_object = self._mask_object
             subset._mask_reproducible = self._mask_reproducible

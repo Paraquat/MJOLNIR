@@ -163,7 +163,8 @@ work is the open items in the sections further down; tick both.
       click handlers and `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`),
       `plotCutQELine` (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
       (`plot_raw_1d`)
-- [ ] Normalisation: `absoluteNormalize` / `undoAbsoluteNormalize`, `symmetrize`
+- [ ] Normalisation: `symmetrize`. Done: `absoluteNormalize` / `undoAbsoluteNormalize`
+      (`absolute_normalize`, `undo_absolute_normalize`)
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
 - [ ] DataFile module constants the GUI and scripts read: `supportedRawFormats`,
@@ -252,7 +253,9 @@ runs on the new `DataSet` and readers, and every view works.
       `save_slices` (replaces `saveToFile(..., gui=...)`)
 - [ ] If kept, the PyQtGraph free-plane slicer (`customSlicer=True`) lives in the GUI, on a
       `bin_3d` result, ported to `QtWidgets`
-- [ ] Normalisation manager: `absoluteNormalize`
+- [ ] Normalisation manager: `ds.absolute_normalize(sample_mass, sample_chemical_formula or
+      sample_molar_mass, units='magnetic' or 'nuclear', ...)`; the sample mass and formula
+      (or molar mass) are now required, so the dialog must ask for them
 - [ ] Prediction tool and calculators: check which sample and UB functions they use
 - [ ] `generateScripts.py`: generated scripts use the new API
 - [ ] Saved GUI states (`GuiStates.py`): store the new objects; decide whether old states load
@@ -414,7 +417,18 @@ runs on the new `DataSet` and readers, and every view works.
 
 ### Arithmetic and normalisation
 - [x] Monitor-scaled subtraction (`__sub__`): by measured monitor per point, not preset
-- [ ] `absoluteNormalize` / `undoAbsoluteNormalize`
+- [x] `absoluteNormalize` / `undoAbsoluteNormalize`: `ds.absolute_normalize(sample_mass,
+      sample_chemical_formula=None, sample_molar_mass=None, units='magnetic', **options)`
+      (returns the factor), `ds.undo_absolute_normalize()`; the factor in
+      `AbsoluteNormalization.absolute_normalization_factor` (snake_case arguments; the old
+      `_tools.calculateAbsoluteNormalization` stays for the old code). Readers keep a
+      `normalization_factor` that `transform` applies to the normalization from the
+      calibration, so the factor survives `set_binning`, `update_calibration`, files added
+      later, slices and differences; `ds.absolute_normalization` holds it. A second call
+      replaces the first. The background model is refitted (cuts with background scale
+      as a whole). Factor identical to the old one for every option; normalised cuts
+      identical to the old `cut1D` after `absoluteNormalize`. Changes under "Cut bugs fixed
+      in the port"
 - [ ] `symmetrize`
 
 ### Coordinates
@@ -623,6 +637,18 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       non-CAMEA instrument, hard-coded CAMEA's 8 analysers and accepted negative numbers;
       `raw_counts` checks 0 <= detector < n_detectors and 0 <= analyser < n_analysers
 - [x] `plotRaw1D` read-out chose decimals from the natural logarithm of the step; now log10
+- [x] `undoAbsoluteNormalize` multiplied the normalization by the factor again instead of
+      dividing (normalization factor^2 of the original, flags saying "not normalised");
+      `undo_absolute_normalize` restores the normalization exactly
+- [x] `absoluteNormalize` scaled the converted files in place, so converting again dropped
+      it while the data set still recorded it as applied (a later call then applied only
+      the ratio); now kept through every transform
+- [x] `absoluteNormalize` without a sample mass still scaled by 16 pi/13.77 = 3.65 (mass and
+      molar mass set to 1, g = 2), though commented "No normalization to sample!"; now the
+      sample mass and formula or molar mass are required (decided 2026-10-19)
+- [x] `absoluteNormalize` always converted to magnetic units (g^2/13.77); `units='nuclear'`
+      gives barn per formula unit (4 pi m V / M). Its docstring listed `sampleDebyeWaller`
+      and `sampleFormFactor`, which were not parameters
 
 ## Code still using the old API
 - [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,

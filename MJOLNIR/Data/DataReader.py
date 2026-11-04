@@ -101,6 +101,9 @@ class DataReader(ABC):
     # Set for derived data, e.g. a difference of data sets
     intensity_error: npt.NDArray[np.float64] | None
     use_default_mask: bool = True
+    # Multiplies the normalization at every transform: absolute normalisation (set by the
+    # DataSet, see set_normalization_factor)
+    normalization_factor: float = 1.0
     # Detector and analyser monitored during the scan (the old dasel), the default of
     # raw_counts; read from CAMEA files, else 0, 0
     detector_selection: int = 0
@@ -335,8 +338,9 @@ class DataReader(ABC):
         EfMean = self.calibration.Ef.reshape(
             1, A4.shape[0], self.n_analysers*self.binning)
         # Normalization and monitor per point, like the data: (steps, detectors, energy bins)
-        self.normalization = self.calibration.amp.reshape(
-            1, A4.shape[0], self.n_analysers*self.binning) * np.ones((self.n_steps, 1, 1))
+        self.normalization = self._base_normalization()
+        if self.normalization_factor != 1.0:
+            self.normalization = self.normalization*self.normalization_factor
         monitor = np.asarray(self.scan_monitor(), dtype=float)
         if monitor.shape != (self.n_steps,):
             raise ValueError(f'"{self.file.name}" has {monitor.size} monitor values for '
@@ -365,6 +369,21 @@ class DataReader(ABC):
         if self.intensity_error is not None:
             return np.square(self.intensity_error)
         return np.asarray(self.intensity, dtype=float)
+
+    def _base_normalization(self) -> npt.NDArray[np.float64]:
+        """Normalization per point from the calibration, without normalization_factor"""
+        bins = self.n_analysers*self.binning
+        return self.calibration.amp.reshape(1, self.n_detectors, bins) * np.ones((self.n_steps, 1, 1))
+
+    def set_normalization_factor(self, factor: float):
+        """Multiply the normalization from the calibration by factor (absolute
+        normalisation), now and at every later transform. 1 undoes it. Also for frozen
+        readers (e.g. a difference of data sets): only the normalization changes"""
+        self.normalization_factor = float(factor)
+        if self.calibration is not None and self.normalization is not None:
+            self.normalization = self._base_normalization()
+            if self.normalization_factor != 1.0:
+                self.normalization = self.normalization*self.normalization_factor
 
     @property
     def mask(self) -> npt.NDArray[np.bool_] | None:
