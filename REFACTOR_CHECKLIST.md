@@ -80,7 +80,7 @@ work is the open items in the sections further down; tick both.
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
 
 ### Port the remaining features (items further down)
-- [ ] Files: error for files without data. Done: `shallowRead`. Dropped: converted `.nxs`,
+- [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
 - [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
       scan command, `startTime`/`endTime`, `title`, `comment`. Done: CAMEA scan parameters,
@@ -314,7 +314,13 @@ runs on the new `DataSet` and readers, and every view works.
       layout field is a key, plus `name`, `fileLocation`, `twoTheta`); NICOS readers read
       the file. Identical to the old `shallowRead` for 22 keys on all 20 CAMEA files, and to
       the reader's values and metadata
-- [ ] Clear error for files without data
+- [x] Clear error for files without data: `DataReader._check_has_data`, called by the Nexus
+      readers on the counts as stored and by the NICOS readers on the scan table, raises
+      `ValueError: "<file>" has no data (0 scan steps): ...` for no scan steps or a scalar.
+      Before, CAMEA and Flatcone files with no steps loaded and failed later on a monitor
+      mismatch; scalar counts and NICOS files without rows raised `IndexError`. Tests in
+      `test_ReaderValidation.py`. A file with no counts dataset at all still fails
+      `can_read` ("is not a CAMEA data file")
 
 ### CAMEA data not read yet
 - [ ] `MonitorMode`, `MonitorPreset`

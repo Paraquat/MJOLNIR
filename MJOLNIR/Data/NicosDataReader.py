@@ -36,6 +36,7 @@ class NICOSDataReader(DataReader):
 
         self.parameters, data_line = self.read_header(lines)
         titles, units, table = self.read_scan_data(lines, data_line)
+        self._check_has_data(table)
 
         # Scan parameters, with the last one moved to the front (as in DataFile)
         scan = self.scan_columns(titles)

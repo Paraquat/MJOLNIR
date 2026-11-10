@@ -74,3 +74,37 @@ def test_thales_without_marmot(readers, tmp_path):
 def test_wrong_file_raises(readers, name, path):
     with pytest.raises(ValueError, match='is not a .* data file'):
         readers[name](path)
+
+def without_data(source, path, counts):
+    """A copy of a Nexus file whose counts are replaced"""
+    shutil.copy(source, path)
+    reader = DataReaderFactory().get_reader_type(
+        InstrumentName.CAMEA if source == camea_file else InstrumentName.FLATCONE)
+    with h5py.File(path, 'a') as f:
+        key = next(p for p in reader.layout.field('counts').paths if p in f)
+        del f[key]
+        f[key] = counts
+    return path
+
+@pytest.mark.parametrize('counts', [np.zeros((0, 104, 1024), dtype='uint32'), np.array(0)],
+                         ids=['no steps', 'scalar'])
+def test_camea_without_data(tmp_path, counts):
+    path = without_data(camea_file, tmp_path / 'empty.hdf', counts)
+    with pytest.raises(ValueError, match=r'"empty.hdf" has no data \(0 scan steps\)'):
+        DataReaderFactory().create(InstrumentName.CAMEA, path)
+
+@pytest.mark.skipif(not flatcone_file.exists(), reason=f'{flatcone_file} not available')
+def test_flatcone_without_data(tmp_path):
+    path = without_data(flatcone_file, tmp_path / 'empty.nxs', np.zeros((31, 0)))
+    with pytest.raises(ValueError, match='has no data'):
+        DataReaderFactory().create(InstrumentName.FLATCONE, path)
+
+@pytest.mark.skipif(not bambus_file.exists(), reason=f'{bambus_file} not available')
+def test_nicos_without_data(tmp_path):
+    # The header and column titles of a scan, but no rows
+    lines = bambus_file.read_text().splitlines()
+    end = next(i for i, line in enumerate(lines) if '### Scan data' in line) + 3
+    path = tmp_path / 'empty.dat'
+    path.write_text('\n'.join(lines[:end] + ['### End of NICOS data file']) + '\n')
+    with pytest.raises(ValueError, match='has no data'):
+        DataReaderFactory().create(InstrumentName.BAMBUS, path)

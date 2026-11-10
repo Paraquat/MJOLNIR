@@ -239,6 +239,13 @@ class DataReader(ABC):
         low, high = calibration.bound.reshape(self.n_detectors, self.n_analysers, 2)[detector, analyser]
         return np.sum(self.counts[:, detector, int(low):int(high)], axis=1, dtype=float)
 
+    def _check_has_data(self, data):
+        """Raise for a file without measured points: a scan aborted before its first point, or a
+        file opened before any data was written. data = the counts (or scan table) as read"""
+        if np.ndim(data) == 0 or np.size(data) == 0:
+            raise ValueError(f'"{self.file.name}" has no data (0 scan steps): the scan may have '
+                             'been aborted, or not started yet')
+
     def _check_not_frozen(self, action: str):
         if self.frozen:
             raise ValueError(f'Cannot {action} "{self.file.name}": it holds derived data (e.g. a '

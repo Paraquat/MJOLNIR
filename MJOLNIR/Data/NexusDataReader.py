@@ -17,6 +17,7 @@ class NexusDataReader(DataReader):
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)
         self._file = h5py.File(filepath, mode = 'r')
+        self._check_has_data(np.array(self.getValue('counts')))
         self.sample = self.get_sample()
         self.counts = self.get_counts()
         self.n_steps = self.counts.shape[0]
