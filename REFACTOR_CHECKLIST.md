@@ -181,7 +181,16 @@ work is the open items in the sections further down; tick both.
       matplotlib's `canvas.set_cursor` (any backend) so MJOLNIR does not need Qt (PyQt5 is not
       in `install_requires`)
 - [ ] `Statistics/CutObject.py`
-- [ ] `Geometry/Instrument.py` (reads a vanadium file with `DataFile`)
+- [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
+      `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
+- [ ] `Geometry/Instrument.py`, port or drop (nothing in the package imports it at run time):
+      `generateCalibration` (writes the `.calib` files the readers load; keep, add a test
+      pytest collects), `prediction`, `converterToA3A4`, `converterToQxQy`,
+      `predictionInstrumentSupport` (keep: MJOLNIR-GUI's prediction tool),
+      `calculateResoultionMatrix` (only `DataSet_old`; port with the resolution matrices),
+      `convertToHDF` (unused: drop?), the `Instrument` class and XML geometry
+      (`InstrumentXML.py`; only the uncollected `test/Instrument.py`, `test/InstrumentXML.py`:
+      drop?), `getInstrumentInfo`, `timeEstimate`, `simpleDataSet`
 - [ ] Command line scripts (Convert, 3DView, History, CalibrationInspector) and
       `CommandLineScripts/_tools.py`, with an `--instrument` option; make `test_commandline`
       run (it needs the scripts installed). 3DView: `ds.view_3d`; History: `shallow_read`

@@ -7,7 +7,7 @@ from MJOLNIR.Geometry import GeometryConcept,Analyser,Detector,Wedge
 from MJOLNIR import _tools
 import MJOLNIR
 from MJOLNIR import TasUBlibDEG
-from MJOLNIR.Data import RLUAxes,DataFile
+from MJOLNIR.Data import RLUAxes
 from MJOLNIR.TasUBlibDEG import factorsqrtEK
 import warnings
 import matplotlib.pyplot as plt
@@ -379,7 +379,6 @@ class Instrument(GeometryConcept.GeometryConcept):
 
 
             VanFileInstrument = getInstrument(VanFile) # Get the HDF object of the instrument (CAMEA)
-            VanFileLoaded = DataFile.DataFile(VanFile)
 
             VanFileInstrumentType = VanFileInstrument.name.split('/')[-1]
             
@@ -404,7 +403,6 @@ class Instrument(GeometryConcept.GeometryConcept):
                     raise AttributeError("No binning has been chosen for normalization routine.")
 
                 monitor = np.array(VanFile.get('entry/monitor_2/data')) # Extract monitor count
-                #monitor = VanFileLoaded.Monitor
                 # Divide data with corresponding monitor by reshaping it correctly
                 intensities = VanFileInstrument.get('data/data')
                 if intensities is None:
