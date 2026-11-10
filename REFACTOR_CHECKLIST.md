@@ -167,9 +167,11 @@ work is the open items in the sections further down; tick both.
       (`absolute_normalize`, `undo_absolute_normalize`)
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
-- [ ] DataFile module constants the GUI and scripts read: `supportedRawFormats`,
-      `detectorLimits`, `analyzerLimits`. `possibleAttributes` is now `shallow_keys()` per
-      reader; `supportedConvertedFormats` is dropped with converted files
+- [ ] DataFile module constants the GUI and scripts read: `detectorLimits`,
+      `analyzerLimits`. Done: `supportedRawFormats` is `DataReaderFactory().file_extensions()`
+      (each reader's `file_extensions`; `CommandLineScripts/_tools.py` builds its file dialog
+      filter from it and no longer imports `DataFile`). `possibleAttributes` is now
+      `shallow_keys()` per reader; `supportedConvertedFormats` is dropped with converted files
 
 ### Move the rest of MJOLNIR off the old API
 - [ ] `Viewer1D.py`, `RLUAxes.py`, `DraggableShapes.py`, `_interactiveSettings.py`
@@ -369,7 +371,11 @@ runs on the new `DataSet` and readers, and every view works.
 ### Utilities
 - [ ] Compare files (`__eq__`, `difference`)
 - [ ] `__str__`, `shape` / `size`
-- [ ] Lists of supported instruments and formats
+- [x] Lists of supported instruments and formats: `InstrumentName` (old
+      `supportedInstruments`); `file_extensions` on each reader, all of them from
+      `DataReaderFactory().file_extensions()` (old `supportedRawFormats`): CAMEA `hdf`,
+      Flatcone and Marmot `nxs` (the old list missed it, as `.nxs` meant converted files),
+      MultiFLEXX and BAMBUS `dat` or none
 
 ## DataSet
 

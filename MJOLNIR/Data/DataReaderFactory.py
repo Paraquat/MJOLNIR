@@ -32,6 +32,13 @@ class DataReaderFactory:
         return None
 
     @classmethod
+    def file_extensions(cls) -> list[str]:
+        """Extensions of the data files of all registered readers, sorted (the old
+        DataFile.supportedRawFormats); '' stands for files without an extension"""
+        return sorted({extension for reader in cls._registry.values()
+                       for extension in reader.file_extensions})
+
+    @classmethod
     def create(cls, name: InstrumentName, path: Path) -> DataReader:
         return cls.get_reader_type(name)(path)
 

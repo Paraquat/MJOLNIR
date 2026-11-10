@@ -3,7 +3,7 @@ import sys
 import pickle
 import re
 import MJOLNIR._tools
-from MJOLNIR.Data import DataFile
+from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
 from PyQt5.Qt import QApplication
@@ -14,11 +14,11 @@ settingsFile = expanduser("~") # Use home folder for storing settings file
 
 settingsFile = os.path.join(settingsFile,'.MJOLNIRsettings')
 
-allowedRawFilesString = 'Raw ('+' '.join(['*.'+str(x) for x in DataFile.supportedRawFormats])+')'
-allowedConvertedFilesString = 'Converted ('+' '.join(['*.'+str(x) for x in DataFile.supportedConvertedFormats])+')'
+# Files without an extension (NICOS) cannot be given as a pattern: they show under All Files
+allowedRawFilesString = 'Raw ('+' '.join(['*.'+x for x in DataReaderFactory().file_extensions() if x != ''])+')'
 allowedAllFilesString = 'All Files (*)'
 
-allowedString = ';;'.join([allowedRawFilesString,allowedConvertedFilesString,allowedAllFilesString])
+allowedString = ';;'.join([allowedRawFilesString,allowedAllFilesString])
 global dataFilesLoaded
 # All functions are tested through the test_coonadline.py script but are called through the terminal thus not recorded as tested.
 def loadSetting(string): # pragma: no cover

@@ -23,3 +23,7 @@ def test_factory():
     assert reader.Ei == pytest.approx(4.00048, abs=1e-5)
     assert reader._metadata['proposal'] == '20240261'
     assert reader._metadata['sampleName'] == 'TbFeO3'
+
+def test_file_extensions():
+    # CAMEA .hdf, ILL .nxs, NICOS .dat or no extension; each listed once, sorted
+    assert DataReaderFactory().file_extensions() == ['', 'dat', 'hdf', 'nxs']

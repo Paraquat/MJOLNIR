@@ -10,6 +10,9 @@ from MJOLNIR.Data.Sample import Sample
 class NICOSDataReader(DataReader):
     """Parse a NICOS ASCII output file"""
 
+    # NICOS names files by scan number, with or without .dat
+    file_extensions = ('dat', '')
+
     # NICOS calibration tables store A4 with the opposite sign
     calibration_A4_sign = -1
 

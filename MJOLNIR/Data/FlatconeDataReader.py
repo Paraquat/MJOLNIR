@@ -14,6 +14,7 @@ class FlatconeDataReader(NexusDataReader):
     n_detectors = 31
     layout = FlatconeLayout
     instrument = FlatconeLayout.instrument
+    file_extensions = ('nxs',)
     calibration_file = MJOLNIR.__flatConeNormalization__
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):

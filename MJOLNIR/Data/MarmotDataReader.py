@@ -13,6 +13,7 @@ class MarmotDataReader(NexusDataReader):
     n_detectors = 30
     layout = MarmotLayout
     instrument = MarmotLayout.instrument
+    file_extensions = ('nxs',)
     # No calibration table is shipped for Marmot: pass calibration_file to the constructor
     calibration_file = None
 

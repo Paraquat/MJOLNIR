@@ -13,6 +13,7 @@ class CameaDataReader(NexusDataReader):
     n_analysers = 8
     n_detectors = 104
     instrument = CameaLayout.instrument
+    file_extensions = ('hdf',)
     default_binning = 8 # As chosen by the old DataFile conversion
     layout = CameaLayout
 

@@ -64,6 +64,9 @@ class DataReader(ABC):
     n_steps: int
     binning: int
     instrument: str
+    # Extensions of the instrument's data files (without the dot; '' for files without one),
+    # for file dialogs. can_read decides whether a file is read, not its extension
+    file_extensions: tuple[str, ...] = ()
 
     # Calibration: readers with one bin per analyser read it from a CSV table
     possible_binnings: list[int] = [1]
