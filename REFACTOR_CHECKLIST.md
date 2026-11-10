@@ -85,8 +85,8 @@ work is the open items in the sections further down; tick both.
 - [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
       scan command, `startTime`/`endTime`, `title`, `comment`. Done: CAMEA scan parameters,
       detector and analyser selection (`dasel`)
-- [ ] Calibration and sample: calibration plots, `updateSampleParameters`. Done:
-      `updateCalibration`
+- [ ] Calibration and sample: `updateSampleParameters`. Done: `updateCalibration`,
+      calibration plots
 - [x] Saving: `saveHDF` is replaced by the writers below. Dropped (2026-10-19):
       `saveNXsqom` (with converted files) and DataSet `save`/`load`
 - [x] `NexusLayout` and `CameaLayout` (`MJOLNIR/Data/NexusLayout.py`), not used by anything
@@ -193,9 +193,16 @@ work is the open items in the sections further down; tick both.
       `convertToHDF` (unused: drop?), the `Instrument` class and XML geometry
       (`InstrumentXML.py`; only the uncollected `test/Instrument.py`, `test/InstrumentXML.py`:
       drop?), `getInstrumentInfo`, `timeEstimate`, `simpleDataSet`
-- [ ] Command line scripts (Convert, 3DView, History, CalibrationInspector) and
-      `CommandLineScripts/_tools.py`, with an `--instrument` option; make `test_commandline`
-      run (it needs the scripts installed). 3DView: `ds.view_3d`; History: `shallow_read`
+- [x] Command line scripts (3DView, History, CalibrationInspector) and
+      `CommandLineScripts/_tools.py` on the new API, each with `-i`/`--instrument` (default
+      CAMEA). 3DView: `ds.view_3d` (`-b` defaults to the instrument's binning, not 8 for all);
+      History: `shallow_read`; CalibrationInspector: the `Plotting.plot_calibration_*`
+      functions. The scripts no longer run at import: `main(argv=None)` parses the arguments.
+      `test/test_commandline.py` calls them in-process (no install needed; the remembered
+      files go to a temporary settings file); the stale copy in `CommandLineScripts/` is
+      deleted. Convert: Dropped (2026-11-10) with converted files, with its entry point and
+      tutorial page (reasons in the refactoring log). History prints the whole `scanCommand`,
+      which in NICOS-era CAMEA files is the batch script, as the old script did
 - [ ] `_tools.PointerArray`: remove once nothing uses it
 - [ ] `Mask.py`: plotting combinations with `indexMask` or `CurratAxeMask`
 
@@ -357,7 +364,13 @@ runs on the new `DataSet` and readers, and every view works.
       calibrations by default. Calibrations and converted data (I, normalization, monitor,
       energy, qx, qy) identical to the old code with the 2024 tables in `Data/`, binnings 1,
       3, 5 and 8 / 8 and 3. Fixed: the old method took a single path as a list of characters
-- [ ] Calibration plots: `plotA4`, `plotEf`, `plotEfOverview`, `plotNormalization`
+- [x] Calibration plots: `plotA4`, `plotEf`, `plotEfOverview`, `plotNormalization` as
+      `Plotting.plot_calibration_a4`, `plot_calibration_ef`, `plot_calibration_ef_overview`,
+      `plot_calibration_normalization`; each takes an `InstrumentCalibration`
+      (`reader.get_instrument_calibration(binning)`) and `n_detectors`, an optional `ax`, and
+      returns the axes. Normalisation = amp * width * sqrt(2 pi)
+      (`Plotting.calibration_normalization`), as before. Old ones failed on NICOS-written files
+      (`DataFile` has no `detectors` for them)
 - [ ] `updateSampleParameters`: new unit cell, recalculate UB
 - [x] `calculateCurratAxeMask`: spurion masking, moved to `Mask.py` (works for every reader)
 
@@ -676,8 +689,8 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
 - [ ] `_interactiveSettings.py`
 - [ ] `Statistics/CutObject.py`
 - [ ] `_tools.py` (`PointerArray`)
-- [ ] Command line scripts: Convert, 3DView, History, CalibrationInspector
-- [ ] Command line scripts take an `--instrument` option instead of detecting it
+- [x] Command line scripts: 3DView, History, CalibrationInspector. Convert: Dropped
+- [x] Command line scripts take an `--instrument` option instead of detecting it
 
 ## Project setup
 - [x] Python 3.11 or newer required (`setup.cfg`, Read the Docs, docs/Introduction.rst);

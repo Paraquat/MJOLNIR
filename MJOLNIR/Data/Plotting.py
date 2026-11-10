@@ -560,3 +560,86 @@ def plot_powder_background(model, ax=None):
     ax.get_figure().colorbar(ax.p)
     ax.set_clim = lambda vmin, vmax: ax.p.set_clim(vmin, vmax)
     return ax
+
+
+def _calibration_table(values, n_detectors: int) -> np.ndarray:
+    """A calibration array (one value per pixel) as detectors x pixels"""
+    return np.reshape(values, (n_detectors, -1))
+
+
+def calibration_normalization(calibration) -> np.ndarray:
+    """Integrated intensity of each pixel's fitted Gaussian (amplitude * width * sqrt(2 pi)),
+    the normalisation the calibration gives"""
+    return calibration.amp * calibration.width * np.sqrt(2 * np.pi)
+
+
+def plot_calibration_a4(calibration, n_detectors: int, ax=None):
+    """Plot the fitted A4 of every pixel, coloured by its normalisation (the old
+    DataFile.plotA4).
+
+    Args:
+
+        - calibration (InstrumentCalibration): From reader.get_instrument_calibration(binning)
+
+        - n_detectors (int): Number of detectors (reader.n_detectors)
+
+    Kwargs:
+
+        - ax (Axes): Axes to draw on (default None: new figure)
+
+    Returns the axes.
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+    A4 = _calibration_table(calibration.A4, n_detectors)
+    normalization = _calibration_table(calibration_normalization(calibration), n_detectors)
+    for a4, norm in zip(A4, normalization):
+        ax.scatter(-a4, np.arange(len(a4)), c=norm)
+    ax.set_title('Instrument calibration')
+    ax.set_ylabel('Pixel')
+    ax.set_xlabel('-A4 [deg]')
+    return ax
+
+
+def plot_calibration_ef(calibration, n_detectors: int, ax=None):
+    """Plot the fitted final energy of every pixel against its detector (the old
+    DataFile.plotEf). Arguments as plot_calibration_a4; returns the axes"""
+    if ax is None:
+        _, ax = plt.subplots()
+    Ef = _calibration_table(calibration.Ef, n_detectors)
+    for detector, ef in enumerate(Ef):
+        ax.scatter(np.full(len(ef), detector), ef, zorder=10)
+    ax.set_xlabel('Detector number')
+    ax.set_ylabel('Ef [meV]')
+    ax.set_title('Final Energy Individual')
+    ax.grid(True)
+    return ax
+
+
+def plot_calibration_ef_overview(calibration, n_detectors: int, ax=None):
+    """Plot the fitted final energies as a detector x pixel map (the old
+    DataFile.plotEfOverview). Arguments as plot_calibration_a4; returns the axes"""
+    if ax is None:
+        _, ax = plt.subplots()
+    image = ax.imshow(_calibration_table(calibration.Ef, n_detectors).T, origin='lower',
+                      aspect='auto')
+    ax.get_figure().colorbar(image, ax=ax)
+    ax.set_xlabel('Detector number')
+    ax.set_ylabel('Pixel number')
+    ax.set_title('Final Energy Overview')
+    return ax
+
+
+def plot_calibration_normalization(calibration, n_detectors: int, ax=None):
+    """Plot the normalisation of every pixel (calibration_normalization) as a detector x pixel
+    map (the old DataFile.plotNormalization). Arguments as plot_calibration_a4; returns the
+    axes"""
+    if ax is None:
+        _, ax = plt.subplots()
+    normalization = _calibration_table(calibration_normalization(calibration), n_detectors)
+    image = ax.imshow(normalization.T, origin='lower', aspect='auto')
+    ax.get_figure().colorbar(image, ax=ax)
+    ax.set_xlabel('Detector number')
+    ax.set_ylabel('Pixel number')
+    ax.set_title('Normalization')
+    return ax

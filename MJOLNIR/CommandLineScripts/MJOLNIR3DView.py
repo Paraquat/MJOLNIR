@@ -10,58 +10,43 @@ Tool for quick viewing of data with viewer3D
 
 
 import argparse
-import numpy as np
 import matplotlib.pyplot as plt
 
-import os
-import sys
 from MJOLNIR.CommandLineScripts import _tools
 settingsName = 'ConvertionDir'
 
 
-from MJOLNIR.Data import DataSet
-import MJOLNIR._tools
-import re
-
-import warnings
-
+from MJOLNIR.Data.DataSet import DataSet
 
 
 parser = argparse.ArgumentParser(description="Conversion tool for quick visualization using the viewer3D.")
 parser.add_argument("DataFile", nargs ='*', default=argparse.SUPPRESS, type=str,help="Data file(s) to be used. If none provided file dialogue will appear. Using string format, directory and year is also possible. See documentation.")
 parser.add_argument("-r", "--reuse", action='store_true', help='Set flag to reuse files from previous usage. Default false.')
-parser.add_argument("-b", "--binning", type=int, default= '8',help="Binning performed. Default '8'")
+parser.add_argument("-b", "--binning", type=int, default=None,help="Binning performed. Default the instrument's (8 for CAMEA)")
 parser.add_argument("-d", "--dQxdQydE", nargs=3, type=float, default=[0.03,0.03,0.08], help="Binning used to plot in 3D, Default [0.03,0.03,0.08]")
 parser.add_argument("-M", "--VMax", type=float, default=None, help='Maximal value for plotting, default max of data')
 parser.add_argument("-m", "--VMin", type=float, default=None, help='Minimal value for plotting, default min of data')
+_tools.addInstrumentArgument(parser)
 
 
-args = parser.parse_args()
+def view(args):
+    """The data set of the files in args and its View3D viewer"""
+    files = _tools.extractDataFiles(args,settingsName)
+    _tools.updateSetting(settingsName,files)
 
-files = _tools.extractDataFiles(args,settingsName)
-
-_tools.updateSetting(settingsName,files)
-binning = args.binning
-dQxdQydE = args.dQxdQydE
-
-files = list(files)
-
-dataSet = DataSet.DataSet(np.array(files).copy())
-dataSet.convertDataFile(binning=binning,saveFile=False)
-dQx, dQy, dE = dQxdQydE
-V = dataSet.View3D(dQx=dQx,dQy=dQy,dE=dE,grid=-20,rlu=True)
-
-VMax = args.VMax
-VMin = args.VMin
-
-if VMax is None:
-    VMax = np.nanmax(V.masked_array.data[np.isfinite(V.masked_array.data)])
-
-if VMin is None:
-    VMin = np.nanmin(V.masked_array.data[np.isfinite(V.masked_array.data)])
-
-V.caxis = [VMin,VMax]
+    dataSet = DataSet(instrument=_tools.instrumentName(args), files=list(files))
+    if args.binning is not None:
+        dataSet.set_binning(args.binning)
+    dQx, dQy, dE = args.dQxdQydE
+    V = dataSet.view_3d(dQx, dQy, dE, rlu=True, vmin=args.VMin, vmax=args.VMax)
+    return dataSet, V
 
 
-def main():
+def main(argv=None):
+    args = parser.parse_args(argv)
+    dataSet, V = view(args)
     plt.show()
+
+
+if __name__ == '__main__':
+    main()

@@ -4,6 +4,7 @@ import pickle
 import re
 import MJOLNIR._tools
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
+from MJOLNIR.Data.InstrumentName import InstrumentName
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
 from PyQt5.Qt import QApplication
@@ -19,6 +20,16 @@ allowedRawFilesString = 'Raw ('+' '.join(['*.'+x for x in DataReaderFactory().fi
 allowedAllFilesString = 'All Files (*)'
 
 allowedString = ';;'.join([allowedRawFilesString,allowedAllFilesString])
+
+def addInstrumentArgument(parser):
+    """Add the -i/--instrument option: the instrument of the data files (default CAMEA)"""
+    names = [name.value for name in InstrumentName]
+    parser.add_argument("-i", "--instrument", type=str, default=InstrumentName.CAMEA.value, choices=names,
+                        help="Instrument of the data files. Default '{}'".format(InstrumentName.CAMEA.value))
+
+def instrumentName(args):
+    return InstrumentName(args.instrument)
+
 global dataFilesLoaded
 # All functions are tested through the test_coonadline.py script but are called through the terminal thus not recorded as tested.
 def loadSetting(string): # pragma: no cover

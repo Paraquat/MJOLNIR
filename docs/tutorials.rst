@@ -70,7 +70,6 @@ Below is an overview of currently implemented scripts and their arguments.
 
    Tutorials/MJOLNIRHistory
    Tutorials/MJOLNIRCalibrationInspector
-   Tutorials/MJOLNIRConvert
    Tutorials/MJOLNIR3DView
 
    

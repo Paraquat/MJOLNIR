@@ -10,66 +10,63 @@ History generator tool for looking through data files and create history.
 
 
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib._pylab_helpers
 import os
-import sys
+from pathlib import Path
 
 settingsName = 'HistoryDir'
 
-from MJOLNIR.Data import DataFile
 from MJOLNIR.CommandLineScripts import _tools
-
-import warnings
-
+from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 
 
 parser = argparse.ArgumentParser(description="History tool for displaying files and command for selected data files.")
 parser.add_argument("DataFile", nargs ='*', default=argparse.SUPPRESS, type=str,help="Data file(s) to be used. If none provided file dialogue will appear. Using string format, directory and year is also possible. See documentation.")
 parser.add_argument("-s", "--save", type=str, default= '',help="Location to which the generated history will be saved.")
 parser.add_argument("-r", "--reuse", action='store_true', help='Set flag to reuse files from previous usage. Default false.')
-
-args = parser.parse_args()
-files = _tools.extractDataFiles(args,settingsName)
-_tools.updateSetting(settingsName,files)
+_tools.addInstrumentArgument(parser)
 
 
-returnText = ''
+def asText(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return str(value)
 
-saveFile = args.save
 
-for file in files:
+def historyLine(file, instrument, factory=None):
+    """'name: scan command<tab>title' of a data file, or 'name not correct format'"""
+    if factory is None:
+        factory = DataReaderFactory()
     try:
-        f = DataFile.DataFile(file)
-    except:
-        textLine = file.split('/')[-1]+' not correct format\n'
-        returnText+= textLine
-    else:
-        textLine = f.name+': '
-        try:
-            textLine+=f.scanCommand.decode()
-        except:
-            textLine+=str(f.scanCommand)
-        try:
-            textLine+='\t'+f.title.decode()+'\n'
-        except:
-            textLine+='\t'+str(f.title)+'\n'
-        
-        returnText+=textLine
-    print(textLine[:-1]) # Print string excluding the added new line character. 
+        values = factory.shallow_read(instrument, [Path(file)], ['name', 'scanCommand', 'title'])[0]
+    except Exception:
+        return os.path.basename(file)+' not correct format'
+    return values['name']+': '+asText(values['scanCommand'])+'\t'+asText(values['title'])
 
 
-if saveFile != '':
-    if saveFile.split('.')[-1]!='txt':
-        saveFile+='.txt'
-    if os.path.isfile(saveFile):
-        oldName = '_old.'.join([x for x in saveFile.split('.')])
-        print('File already exists. Renaming old file to {}'.format(oldName))
-        os.rename(saveFile,oldName)
-    with open(saveFile,'w') as f:
-        f.write(returnText)
-            
+def main(argv=None):
+    args = parser.parse_args(argv)
+    files = _tools.extractDataFiles(args,settingsName)
+    _tools.updateSetting(settingsName,files)
+    instrument = _tools.instrumentName(args)
 
-def main():
-    pass
+    factory = DataReaderFactory()
+    lines = []
+    for file in files:
+        line = historyLine(file, instrument, factory)
+        print(line)
+        lines.append(line+'\n')
+
+    saveFile = args.save.strip()
+    if saveFile != '':
+        if saveFile.split('.')[-1]!='txt':
+            saveFile+='.txt'
+        if os.path.isfile(saveFile):
+            oldName = '_old.'.join([x for x in saveFile.split('.')])
+            print('File already exists. Renaming old file to {}'.format(oldName))
+            os.rename(saveFile,oldName)
+        with open(saveFile,'w') as f:
+            f.write(''.join(lines))
+
+
+if __name__ == '__main__':
+    main()
