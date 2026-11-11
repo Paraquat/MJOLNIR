@@ -205,7 +205,6 @@ class CameaLayout(NexusLayout):
         'preset': Field('{entry}/control/preset', dtype='float32'),
         'time': Field('{entry}/control/time', units='seconds', dtype='float32'),
         'absoluteTime': Field('{entry}/control/absolute_time', dtype='float64'),
-        'scanCommand': Field('{entry}/scancommand'),
         'scanVariables': Field('{entry}/scanvars'),
         # Older files store the counts in detector/counts
         'counts': Field('{entry}/{instrument}/detector/data',
@@ -264,6 +263,7 @@ class CameaLayout(NexusLayout):
     metadata = {
         **NexusLayout.metadata,
         'comment': Field('{entry}/comment'),
+        'scanCommand': Field('{entry}/scancommand'), # The NICOS command or script of the scan
         'proposal': Field('{entry}/proposal_id'),
         'proposalTitle': Field('{entry}/proposal_title'),
         'sampleName': Field('{entry}/sample/name'),

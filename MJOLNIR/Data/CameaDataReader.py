@@ -22,6 +22,8 @@ class CameaDataReader(NexusDataReader):
         self.counts = self.counts.swapaxes(1,2)
         self.monitor1 = np.array(self.getValue('monitor1'))
         self.monitor2 = np.array(self.getValue('monitor2'))
+        time = self.getValue('time') # Counting time per scan step [s]
+        self.time = None if time is None else np.asarray(time, dtype=float)
         self.get_possible_binnings()
         # Detector and analyser monitored during the scan (NICOS SelectDetectorAnalyser)
         for attribute, key in [('detector_selection', 'detectorSelection'),

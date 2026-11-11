@@ -82,9 +82,10 @@ work is the open items in the sections further down; tick both.
 ### Port the remaining features (items further down)
 - [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
-- [ ] File metadata: monitor mode and preset, monitor fixes, counting time, `absoluteTime`,
-      scan command, `startTime`/`endTime`, `title`, `comment`. Done: CAMEA scan parameters,
-      detector and analyser selection (`dasel`)
+- [ ] File metadata: monitor preset, monitor fixes, `absoluteTime`, temperature from the
+      NICOS log (questions 9, 11, 12, 41, 42 of the refactoring log). Done: CAMEA scan
+      parameters, detector and analyser selection (`dasel`), monitor mode, `title`,
+      `comment`, `startTime`/`endTime`, counting time (`reader.time`), scan command
 - [ ] Calibration and sample: `updateSampleParameters`. Done: `updateCalibration`,
       calibration plots
 - [x] Saving: `saveHDF` is replaced by the writers below. Dropped (2026-10-19):
@@ -325,9 +326,15 @@ runs on the new `DataSet` and readers, and every view works.
       `can_read` ("is not a CAMEA data file")
 
 ### CAMEA data not read yet
-- [ ] `MonitorMode`, `MonitorPreset`
+- [x] `MonitorMode`: `reader._metadata['mode']` (e.g. 'monitor'), with `title`, `comment`,
+      `startTime`, `endTime` and the other `CameaLayout.metadata` entries
+- [ ] `MonitorPreset` (`control/preset`, one value followed by zeros in NICOS files): only
+      the 2018 monitor fix would use it (questions 9 and 11)
 - [ ] Monitor fixes: 2018 wrong monitor, extra value in files of running scans
-- [ ] `Time` (counting time per step), `absoluteTime`. `totalCounts`: Dropped (2026-10-19)
+- [x] `Time` (counting time per step): `reader.time` [s], as the Marmot and NICOS readers;
+      identical to the old `DataFile` for all 20 CAMEA files. `totalCounts`: Dropped
+      (2026-10-19)
+- [ ] `absoluteTime`: only the temperature-from-log fallback would use it (question 41)
 - [x] `temperature`, `magneticField`, `electricField`: `SampleEnvironment` (measured and
       setpoints, units from the file), identical to the old DataFile for all CAMEA test files
 - [ ] Temperature from the NICOS log when no temperature is stored
@@ -339,7 +346,9 @@ runs on the new `DataSet` and readers, and every view works.
       20 CAMEA files. Not ported: Q scans (`qcscan`, scan variable `CAMEA`; no test data):
       left out with a warning, as are unknown variables (the old code added the name
       without values)
-- [ ] `scanCommand` (the GUI shows it)
+- [x] `scanCommand` (the GUI shows it): `reader._metadata['scanCommand']`, as the NICOS
+      readers (`CameaLayout` lists it under metadata now, not fields); identical to the old
+      `DataFile` for all 20 CAMEA files
 - [x] `protonBeam`, `singleDetector1/8`, `s2tRaw`, analyser / monochromator settings,
       `totalCounts`: Dropped (2026-10-19) as reader attributes; they stay in `CameaLayout`, so
       `shallow_read` and `getValue` still read them

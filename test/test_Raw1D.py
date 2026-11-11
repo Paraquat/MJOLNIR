@@ -29,6 +29,18 @@ def test_reader_selection_and_scan():
     assert np.array_equal(reader.scan_values[0], reader.A3)
 
 @needs_data
+def test_reader_time_and_scan_command():
+    reader = CameaDataReader(files[0])
+    with h5py.File(files[0]) as f:
+        assert np.array_equal(reader.time, f['entry/control/time'][()]) # Seconds per step
+        assert reader._metadata['scanCommand'] == f['entry/scancommand'][0].decode()
+    assert reader.time.shape == (reader.n_steps,)
+    assert 'CAMEAscan' in reader._metadata['scanCommand']
+    values = CameaDataReader.shallow_read(files[0], ['time', 'scanCommand'])
+    assert np.array_equal(values['time'], reader.time)
+    assert values['scanCommand'] == reader._metadata['scanCommand']
+
+@needs_data
 def test_raw_counts():
     reader = CameaDataReader(files[0])
     reader.set_instrument_calibration(8)
