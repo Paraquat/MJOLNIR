@@ -492,6 +492,77 @@ def plot_cut_qe_line(result: CutResult, sample=None, rlu: bool = True, ax=None, 
     ax.get_figure().tight_layout()
     return ax
 
+def plot_cut_powder(result: CutResult, ax=None, counts=False, log: bool = False, vmin=None,
+                    vmax=None, cmap=None, colorbar: bool = True, grid: bool = False, **kwargs):
+    """Plot a powder map (from Cuts.cut_powder) as a colour map of |Q| against energy (the old
+    DataSet.plotCutPowder).
+
+    Args:
+
+        - result (CutResult): The powder cut
+
+    Kwargs:
+
+        - ax (Axes): Axes to draw on (default None: new figure)
+
+        - counts (bool or str): Plot counts (True), the sensitivity ('sensitivity':
+          Normalization/BinCount) or the normalised intensity (False, default)
+
+        - log (bool): Plot log10 of the values (default False)
+
+        - vmin, vmax (float): Colour scale (default: smallest and largest value)
+
+        - cmap: Colour map (default None)
+
+        - colorbar (bool): Add a colour bar (default True)
+
+        - grid (bool): Show a grid (default False)
+
+    Other kwargs go to pcolormesh. Bins are drawn between their edges. The returned axes have
+    set_clim, get_clim, Data, result and to_csv; the read-out gives |q|, E and the value.
+    """
+    if result.parameters.get('grid') != ('q', 'energy'):
+        raise ValueError('plot_cut_powder takes results of cut_powder')
+    if ax is None:
+        _, ax = plt.subplots()
+    q_bins, energy_bins = result.bins['q'], result.bins['energy']
+    shape = (len(q_bins) - 1, len(energy_bins) - 1)
+    values = _map_values(result.data, counts, log, shape)
+    ax.pmeshs = [ax.pcolormesh(q_bins, energy_bins, values.T, cmap=cmap, **kwargs)]
+    finite = values.compressed()
+    vmin = (finite.min() if finite.size else 0.0) if vmin is None else vmin
+    vmax = (finite.max() if finite.size else 1.0) if vmax is None else vmax
+    ax.set_clim = lambda vmin, vmax: [mesh.set_clim(vmin, vmax) for mesh in ax.pmeshs]
+    ax.get_clim = lambda: ax.pmeshs[0].get_clim()
+    ax.set_clim(vmin, vmax)
+    ax.set_xlabel(r'$|q| [\AA^{-1}]$')
+    ax.set_ylabel('E [meV]')
+    ax.grid(grid)
+    if colorbar:
+        ax.colorbar = ax.get_figure().colorbar(ax.pmeshs[0], pad=0.1)
+
+    def calculate_index(x, y):
+        """Indices of the |Q| and energy bin containing a point, -1 outside the bins"""
+        index = []
+        for edges, value in ((q_bins, x), (energy_bins, y)):
+            inside = edges[0] <= value <= edges[-1]
+            index.append(min(np.searchsorted(edges, value, side='right') - 1, len(edges) - 2)
+                         if inside else -1)
+        return tuple(index)
+    ax.calculateIndex = calculate_index
+
+    def format_coord(x, y): # pragma: no cover
+        q_index, e_index = calculate_index(x, y)
+        if q_index == -1 or e_index == -1:
+            return 'outside range'
+        return f'|q| = {x:.3f}, E = {y:.3f}, I = {values[q_index, e_index]:0.4e}'
+    ax.format_coord = format_coord
+    ax.Data = result.data
+    ax.result = result
+    ax.type = 'Powder'
+    ax.to_csv = _to_csv(ax)
+    return ax
+
 def plot_raw_1d(results: list[CutResult], ax=None, legend=True, grid: bool = True, **kwargs):
     """Plot raw counts (from DataSet.cut_raw_1d) against the first scan variable, one series
     per file (the old DataSet.plotRaw1D).

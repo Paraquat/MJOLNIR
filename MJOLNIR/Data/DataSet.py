@@ -645,6 +645,15 @@ class DataSet:
         return Cuts.cut_qe_line(**points, q_points=q_points, energy_bins=energy_bins,
                                 width=width, min_pixel=min_pixel, sample=self.sample)
 
+    def cut_powder(self, q_bins, energy_bins, background_subtraction: bool = False) -> CutResult:
+        """Powder map: the data binned by the length of Q and by energy (bin edges q_bins
+        [1/AA] and energy_bins [meV]), the old cutPowder, which took the energy bins first.
+        Errors of derived data (intensity_error) are used. With background_subtraction, the
+        background model is subtracted. See Cuts.cut_powder"""
+        points = self._points(rotate=False, background_subtraction=background_subtraction,
+                              errors=True)
+        return Cuts.cut_powder(**points, q_bins=q_bins, energy_bins=energy_bins)
+
     def cut_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
                     x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,
                     rlu: bool = True, background_subtraction: bool = False) -> CutResult:
@@ -793,6 +802,15 @@ class DataSet:
         result = self.cut_qe_line(q_points, energy_bins, width=width, min_pixel=min_pixel,
                                   rlu=rlu, background_subtraction=background_subtraction)
         return Plotting.plot_cut_qe_line(result, sample=self.sample, rlu=rlu, **plot_options)
+
+    def plot_cut_powder(self, q_bins, energy_bins, background_subtraction: bool = False,
+                        **plot_options):
+        """Powder map (cut_powder) plotted as a colour map of |Q| against energy
+        (Plotting.plot_cut_powder, which takes plot_options such as ax, counts, log, vmin,
+        vmax, colorbar). Returns the axes; the cut is ax.result"""
+        result = self.cut_powder(q_bins, energy_bins,
+                                 background_subtraction=background_subtraction)
+        return Plotting.plot_cut_powder(result, **plot_options)
 
     def plot_q_plane(self, energy_min=None, energy_max=None, energy_bins=None,
                      x_bin_tolerance: float = 0.05, y_bin_tolerance: float = 0.05,

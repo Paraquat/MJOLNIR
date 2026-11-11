@@ -9,6 +9,7 @@ COLUMNS = {
     'h': 'H',
     'k': 'K',
     'l': 'L',
+    'qLength': 'q', # |Q| of powder cuts
     'e': 'Energy',
     'int': 'Int',
     'intensity': 'intensity',

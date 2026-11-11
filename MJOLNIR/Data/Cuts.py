@@ -372,6 +372,53 @@ def cut_qe_line(qx, qy, energy, intensity, normalization, monitor, q_points, ene
                      dict(q_points=q_points, offsets=offsets, distance=distance_bins,
                           energy=energy_edges), parameters)
 
+def cut_powder(qx, qy, energy, intensity, normalization, monitor, q_bins, energy_bins,
+               background=None, intensity_error=None) -> CutResult:
+    """Powder map: the points binned by the length of Q and by energy, whatever their
+    direction (the old DataSet.cutPowder). q_bins and energy_bins are the bin edges [1/AA],
+    [meV]; the last edge of each is included.
+
+    data has one row per bin, also empty ones (Int NaN), ordered by |Q| bin, then energy bin:
+    q and Energy are the bin centres. With background, Int is background subtracted, with the
+    columns of the other cuts (see _subtract_background). intensity_error is the standard
+    deviation of each point's intensity (default: counting statistics); its squares are
+    summed per bin.
+
+    bins: 'q' and 'energy' (the edges). result.grid(column) gives a column as an array of
+    shape (|Q| bins, energy bins).
+    """
+    q_bins = np.asarray(q_bins, dtype=float)
+    energy_bins = np.asarray(energy_bins, dtype=float)
+    for name, edges in [('q_bins', q_bins), ('energy_bins', energy_bins)]:
+        if edges.ndim != 1 or len(edges) < 2 or np.any(np.diff(edges) <= 0):
+            raise ValueError(f'{name} must be at least 2 increasing bin edges')
+    q_length = np.hypot(qx, qy)
+    variance = intensity if intensity_error is None else np.asarray(intensity_error)**2
+
+    def binned(weights=None):
+        return np.histogram2d(q_length, energy, bins=(q_bins, energy_bins), weights=weights)[0]
+    counts, monitor_sum, normalization_sum = binned(intensity), binned(monitor), binned(normalization)
+    bin_count, variance_sum = binned(), binned(variance)
+
+    centres_q, centres_e = np.meshgrid(0.5*(q_bins[1:] + q_bins[:-1]),
+                                       0.5*(energy_bins[1:] + energy_bins[:-1]), indexing='ij')
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore') # Empty bins divide by zero
+        denominator = monitor_sum*normalization_sum # Operation order as the old code
+        data = pd.DataFrame({
+            COLUMNS['qLength']: centres_q.flatten(), COLUMNS['e']: centres_e.flatten(),
+            COLUMNS['intError']: np.divide(np.sqrt(variance_sum)*bin_count, denominator).flatten(),
+            COLUMNS['int']: np.divide(counts*bin_count, denominator).flatten(),
+            COLUMNS['intensity']: counts.flatten(),
+            COLUMNS['norm']: normalization_sum.flatten(),
+            COLUMNS['mon']: monitor_sum.flatten(),
+            COLUMNS['binCount']: bin_count.flatten().astype(int),
+        })
+    if background is not None:
+        data = _subtract_background(data, binned(background).flatten(), variance_sum.flatten())
+    return CutResult(data, dict(q=q_bins, energy=energy_bins),
+                     dict(q_bins=q_bins, energy_bins=energy_bins, grid=('q', 'energy')))
+
 def cut_q_plane(qx, qy, energy, intensity, normalization, monitor, energy_bins=None,
                 energy_min=None, energy_max=None, x_bin_tolerance: float = 0.05,
                 y_bin_tolerance: float = 0.05, sample=None, background=None) -> CutResult:

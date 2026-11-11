@@ -155,14 +155,15 @@ work is the open items in the sections further down; tick both.
       unchanged
 - [x] Full-file mode: Dropped (2026-10-19). Only `createEmptyDataFile` and NXsqom output
       needed it, and both are dropped
-- [ ] Cuts: `cutPowder`, measurement errors (`I_err`), `cutQE` smoothing and scaled energy,
+- [ ] Cuts: measurement errors (`I_err`), `cutQE` smoothing and scaled energy,
       `plotCoverage`. Done: `cut1DE` (`cut_constant_q`), `cutQELine` (`cut_qe_line`),
-      `cutRaw1D` (`cut_raw_1d`). Dropped: raw `extractData`
-- [ ] Plots and axes: `plotCutPowder`, `createQAxis` / `createQEAxes`, `generate1DAxis(E)`,
+      `cutRaw1D` (`cut_raw_1d`), `cutPowder` (`cut_powder`). Dropped: raw `extractData`
+- [ ] Plots and axes: `createQAxis` / `createQEAxes`, `generate1DAxis(E)`,
       polar binning and `enlargen` in `plotQPlane`, click handlers and
       `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine`
       (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
-      (`plot_raw_1d`), `plotCut1DE` (`plot_cut_constant_q`)
+      (`plot_raw_1d`), `plotCut1DE` (`plot_cut_constant_q`), `plotCutPowder`
+      (`plot_cut_powder`)
 - [ ] Normalisation: `symmetrize`. Done: `absoluteNormalize` / `undoAbsoluteNormalize`
       (`absolute_normalize`, `undo_absolute_normalize`)
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
@@ -422,8 +423,8 @@ runs on the new `DataSet` and readers, and every view works.
 ### Combined data
 - [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`
       (`gather`; boundaries are `view.offsets[1:]`)
-- [ ] `I_err`: readers have `intensity_error` (set by `ds1 - ds2`) and `cut_constant_q`
-      uses it; `cut_1d`, `cut_qe`, `cut_q_plane`, `bin_3d` do not yet
+- [ ] `I_err`: readers have `intensity_error` (set by `ds1 - ds2`); `cut_constant_q` and
+      `cut_powder` use it; `cut_1d`, `cut_qe`, `cut_q_plane`, `bin_3d` do not yet
 - [x] Rotate files into the first file's frame when samples differ slightly (`rlu`):
       `gather_q`
 
@@ -490,7 +491,15 @@ runs on the new `DataSet` and readers, and every view works.
       `min_pixel` shared or per segment. The old `constantBins` (default True) did nothing:
       `cutQE` only used it in a branch that never ran (`if False:`); not ported
 - [x] `cutELine`: Dropped (2026-10-19)
-- [ ] `cutPowder`
+- [x] `cutPowder`: `Cuts.cut_powder(..., q_bins, energy_bins, background, intensity_error)`,
+      `ds.cut_powder(q_bins, energy_bins, background_subtraction)`. NOTE the argument order:
+      |Q| bins first (the old `cutPowder(EBins, QBins)` took the energy bins first). A
+      `CutResult` with the old columns (`q`, `Energy`, `Int_err`, `Int`, `intensity`,
+      `Normalization`, `Monitor`, `BinCount`; `COLUMNS['qLength']` = `q`), bins `q` and
+      `energy`, and `result.grid(column)` of shape (|Q| bins, energy bins). Every column
+      identical to the old `cutPowder` without background. Uses measurement errors
+      (`intensity_error`). Not ported: `constantBins` (never used), `dataFiles=`. Changes
+      under "Cut bugs fixed in the port"
 - [x] `binData3D` (`Cuts.bin_3d`, `ds.bin_3d`, `CutResult.grid`; `calculateBins` and
       `calculateGrid3D` reduced to `Cuts.grid_edges`, one edge array per axis). Identical
       to the old code. Not ported: `noApproximation` (returned 2 arrays instead of 4) and the
@@ -541,7 +550,12 @@ runs on the new `DataSet` and readers, and every view works.
       `dataList=` (pass a `cut_qe_line` result to `Plotting.plot_cut_qe_line`), `dataFiles=`,
       `outputFunction`, the click handler and `_interactiveSettings` modes
 - [x] `plotCutELine`: Dropped (2026-10-19)
-- [ ] `plotCutPowder`
+- [x] `plotCutPowder`: `Plotting.plot_cut_powder(result, ax, counts, log, vmin, vmax, cmap,
+      colorbar=True, grid, **pcolormesh options)`, `ds.plot_cut_powder(q_bins, energy_bins,
+      background_subtraction, **plot_options)`. Returns the axes (`pmeshs`, `set_clim`,
+      `get_clim`, `calculateIndex`, `Data`, `result`, `to_csv`, `type = 'Powder'`). Plotted
+      values, colour limits and labels identical to the old plot. `counts` added as in the
+      other maps. Not ported: the click printout (`outputFunction`), `dataFiles=`
 - [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
       polar binning, `enlargen`, 3D axes, `scaleFunction`)
 - [x] `plotRaw1D`: `Plotting.plot_raw_1d(results, ax, legend, grid, **scatter options)`,
@@ -688,6 +702,15 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       it; given axes got no labels or tick formatting; its read-out formatted L with
       `{:-3e}` (a missing dot). `plot_cut_constant_q` raises, sets up given axes, and
       formats L like H and K
+- [x] `cutPowder` with background: `intensity` held counts minus background and
+      `Int_Fg`/`Int_Bg` raw counts (as the old `cutQE`), and `Int_err` ignored the background
+      (`sqrt(Int + BGInt)` taken after `Int` had the background subtracted, i.e.
+      sqrt(counts)). Now the columns of every other cut, `Int_err` from counts and background
+- [x] `plotCutPowder`: `ax.get_clim()` raised (`ax.pmesh[0]` on a single mesh); `log=True`
+      added its offset after the logarithm (`log10(Int) + 1e-20`), so zero intensity gave
+      -inf; bins were drawn around their centres (`shading='auto'`), misplacing the
+      boundaries of unequal bins. Now `get_clim` works, `log10(value + 1e-20)`, and bins are
+      drawn between their edges. The docstrings promised qx, qy, H, K, L columns
 - [x] `undoAbsoluteNormalize` multiplied the normalization by the factor again instead of
       dividing (normalization factor^2 of the original, flags saying "not normalised");
       `undo_absolute_normalize` restores the normalization exactly
