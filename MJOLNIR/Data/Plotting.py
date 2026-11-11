@@ -103,6 +103,55 @@ def _map_values(data, counts, log: bool, shape) -> np.ma.MaskedArray:
         values = np.log10(values + 1e-20)
     return values
 
+def _check_counts(counts):
+    if not (counts is True or counts is False or str(counts).lower() == 'sensitivity'):
+        raise AttributeError(f'Provided counts attribute not understood. Received "{counts}"')
+
+def _draw_1d(ax, position, data, counts, plot_foreground: bool, plot_background: bool, kwargs):
+    """Error bars of a 1D cut against position: counts (True), the sensitivity
+    ('sensitivity') or Int with Int_err (False); with background subtraction also the
+    foreground and background if asked for"""
+    column = lambda name: np.asarray(data[name], dtype=float)
+    ax.set_ylabel('$I$ [arb.u.]')
+    kwargs.setdefault('fmt', '.')
+    kwargs.setdefault('label', '_Data')
+    background = COLUMNS['BackgroundIntensity'] in data
+
+    if counts is True:
+        foreground = column(COLUMNS['intensity'])
+        if background:
+            values = foreground - column(COLUMNS['BackgroundIntensity'])
+            errors = np.sqrt(foreground + column(COLUMNS['BackgroundIntensity']))
+        else:
+            values, errors = foreground, np.sqrt(foreground)
+        ax.errorbar(position, values, yerr=errors, **kwargs)
+        extra = {'Foreground': COLUMNS['ForegroundIntensity'],
+                 'Background': COLUMNS['BackgroundIntensity']}
+        extra_errors = {label: np.sqrt(column(name)) for label, name in extra.items()
+                        if name in data}
+    elif counts is False:
+        ax.errorbar(position, column(COLUMNS['int']), yerr=column(COLUMNS['intError']), **kwargs)
+        extra = {'Foreground': COLUMNS['Foreground'], 'Background': COLUMNS['Background']}
+        if background:
+            extra_errors = {'Foreground': column(COLUMNS['ForegroundError']),
+                            'Background': column(COLUMNS['BackgroundError'])}
+    else:
+        ax.errorbar(position, column(COLUMNS['norm'])/column(COLUMNS['binCount']), **kwargs)
+        extra = {}
+    for label, wanted in [('Foreground', plot_foreground), ('Background', plot_background)]:
+        if wanted and background and label in extra:
+            ax.errorbar(position, column(extra[label]), yerr=extra_errors[label],
+                        fmt=kwargs['fmt'], label=label)
+
+def _to_csv(ax):
+    """CSV export of ax.Data, as the other cut plots"""
+    def to_csv(file_name):
+        with open(file_name, 'w') as f:
+            f.write(f'# CSV generated from MJOLNIR {MJOLNIR.__version__}. '
+                    f'Shape of data is {(len(ax.Data),)}\n')
+        ax.Data.fillna(-1).to_csv(file_name, mode='a')
+    return to_csv
+
 def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
                 show_energy: bool = True, plot_foreground: bool = False,
                 plot_background: bool = False, **kwargs):
@@ -138,8 +187,7 @@ def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, count
     """
     if rlu and sample is None:
         raise AttributeError('A sample is needed to plot the cut in H, K, L (rlu=True)')
-    if not (counts is True or counts is False or str(counts).lower() == 'sensitivity'):
-        raise AttributeError(f'Provided counts attribute not understood. Received "{counts}"')
+    _check_counts(counts)
     if not hasattr(ax, 'calculatePositionInv'): # New axes, or axes not set up for a cut yet
         q1, q2 = result.parameters['q1'], result.parameters['q2']
         start, end = (_to_hkl(sample, q1), _to_hkl(sample, q2)) if rlu else (q1, q2)
@@ -151,49 +199,96 @@ def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, count
         ax.energy = np.mean(data[COLUMNS['e']])
     columns = [COLUMNS[key] for key in (['h', 'k', 'l'] if rlu else ['qx', 'qy'])]
     data[COLUMNS['plotPosition']] = ax.calculatePositionInv(np.asarray(data[columns])).flatten()
-    column = lambda name: np.asarray(data[name], dtype=float)
-    position = column(COLUMNS['plotPosition'])
-    ax.set_ylabel('$I$ [arb.u.]')
-    kwargs.setdefault('fmt', '.')
-    kwargs.setdefault('label', '_Data')
-    background = COLUMNS['BackgroundIntensity'] in data
-
-    if counts is True:
-        foreground = column(COLUMNS['intensity'])
-        if background:
-            values = foreground - column(COLUMNS['BackgroundIntensity'])
-            errors = np.sqrt(foreground + column(COLUMNS['BackgroundIntensity']))
-        else:
-            values, errors = foreground, np.sqrt(foreground)
-        ax.errorbar(position, values, yerr=errors, **kwargs)
-        extra = {'Foreground': COLUMNS['ForegroundIntensity'],
-                 'Background': COLUMNS['BackgroundIntensity']}
-        extra_errors = {label: np.sqrt(column(name)) for label, name in extra.items()
-                        if name in data}
-    elif counts is False:
-        ax.errorbar(position, column(COLUMNS['int']), yerr=column(COLUMNS['intError']), **kwargs)
-        extra = {'Foreground': COLUMNS['Foreground'], 'Background': COLUMNS['Background']}
-        if background:
-            extra_errors = {'Foreground': column(COLUMNS['ForegroundError']),
-                            'Background': column(COLUMNS['BackgroundError'])}
-    else:
-        ax.errorbar(position, column(COLUMNS['norm'])/column(COLUMNS['binCount']), **kwargs)
-        extra = {}
-    for label, wanted in [('Foreground', plot_foreground), ('Background', plot_background)]:
-        if wanted and background and label in extra:
-            ax.errorbar(position, column(extra[label]), yerr=extra_errors[label],
-                        fmt=kwargs['fmt'], label=label)
+    position = np.asarray(data[COLUMNS['plotPosition']], dtype=float)
+    _draw_1d(ax, position, data, counts, plot_foreground, plot_background, kwargs)
     if len(position) > 0:
         ax.set_xlim(*_tools.minMax(position))
     ax.Data = data
     ax.result = result
+    ax.to_csv = _to_csv(ax)
+    ax.get_figure().tight_layout()
+    return ax
 
-    def to_csv(file_name):
-        with open(file_name, 'w') as f:
-            f.write(f'# CSV generated from MJOLNIR {MJOLNIR.__version__}. '
-                    f'Shape of data is {(len(ax.Data),)}\n')
-        ax.Data.fillna(-1).to_csv(file_name, mode='a')
-    ax.to_csv = to_csv
+def plot_cut_constant_q(result: CutResult, sample=None, rlu: bool = True, ax=None,
+                        counts=False, show_q: bool = True, plot_foreground: bool = False,
+                        plot_background: bool = False, **kwargs):
+    """Plot an energy scan at constant Q (from Cuts.cut_constant_q) with error bars against
+    the energy (the old DataSet.plotCut1DE).
+
+    Args:
+
+        - result (CutResult): The cut
+
+    Kwargs:
+
+        - sample (Sample): Sample of the cut's frame, needed for rlu with show_q (default None)
+
+        - rlu (bool): Give the Q point in H, K, L, else in Qx, Qy (default True)
+
+        - ax (Axes): Axes to draw on (default None: new figure). Axes of an earlier constant-Q
+          plot keep their Q point, so several cuts can share them
+
+        - counts, plot_foreground, plot_background: As plot_cut_1d
+
+        - show_q (bool): Add the Q point to the tick labels and the read-out (default True)
+
+    Other kwargs go to errorbar (default fmt '.'). The BinDistance column of ax.Data holds the
+    energy of each bin. The returned axes have Data, result, startPoint (the Q point) and
+    to_csv.
+    """
+    _check_counts(counts)
+    if 'q' not in result.parameters:
+        raise ValueError('plot_cut_constant_q takes results of cut_constant_q')
+    if getattr(ax, 'type', None) != 'ConstantQ': # New axes, or not set up for this plot yet
+        if ax is None:
+            _, ax = plt.subplots()
+        q = np.asarray(result.parameters['q'], dtype=float)
+        if show_q and rlu and sample is None:
+            raise AttributeError('A sample is needed to show the Q point in H, K, L (rlu=True)')
+        ax.startPoint = _to_hkl(sample, q) if (rlu and sample is not None) else q
+        ax.rlu = rlu
+        ax.type = 'ConstantQ'
+        ax.fmtPrecisionString = '{:.2f}'
+        names = ['H', 'K', 'L'] if rlu else ['qx', 'qy']
+        if not show_q:
+            ax.set_xlabel('E [meV]')
+        elif rlu:
+            ax.set_xlabel('[$Q_h$ [RLU], $Q_k$ [RLU], $Q_l$ [RLU], E [meV]]')
+        else:
+            ax.set_xlabel(r'[$Q_x [\AA^{-1}]$, $Q_y [\AA^{-1}]$, E [meV]]')
+
+        def set_precision(value):
+            ax._x_precision = value
+            ax.fmtPrecisionString = '{:.' + str(value) + 'f}'
+
+        def calculate_x_precision(ax):
+            # Enough decimals to tell the energy tick labels apart
+            change = np.diff(ax.get_xlim())[0]/max(len(ax.xaxis.get_ticklocs()), 1)
+            if change > 0:
+                ax.set_precision(max(int(-np.floor(np.log10(change))) + 1, 0))
+        ax.set_precision = set_precision
+        ax.calculateXPrecision = calculate_x_precision
+
+        def tick_label(x, _):
+            positions = (list(ax.startPoint) if show_q else []) + [x]
+            return '\n'.join(ax.fmtPrecisionString.format(p) for p in positions)
+        ax.xaxis.set_major_formatter(FuncFormatter(tick_label))
+        ax.callbacks.connect('xlim_changed', ax.calculateXPrecision)
+
+        def format_coord(x, y): # pragma: no cover
+            point = ', '.join(f'{name} = {value:.3e}' for name, value
+                              in zip(names, ax.startPoint)) + ', ' if show_q else ''
+            return f'{point}E = {x:.3f}, I = {y:0.4e}'
+        ax.format_coord = format_coord
+
+    data = result.data
+    data[COLUMNS['plotPosition']] = data[COLUMNS['e']]
+    position = np.asarray(data[COLUMNS['e']], dtype=float)
+    _draw_1d(ax, position, data, counts, plot_foreground, plot_background, kwargs)
+    ax.calculateXPrecision(ax)
+    ax.Data = data
+    ax.result = result
+    ax.to_csv = _to_csv(ax)
     ax.get_figure().tight_layout()
     return ax
 

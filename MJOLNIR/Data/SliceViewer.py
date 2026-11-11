@@ -454,12 +454,5 @@ def default_cut(dataset, kind: str, parameters: dict):
     if kind == 'qe':
         return dataset.plot_cut_qe(**parameters)
     if kind == 'constant_q':
-        result = dataset.cut_constant_q(**parameters)
-        _, ax = plt.subplots()
-        ax.errorbar(result.data[COLUMNS['e']], result.data[COLUMNS['int']],
-                    yerr=result.data[COLUMNS['intError']], fmt='.')
-        ax.set_xlabel(AXIS_LABELS['energy'])
-        ax.set_ylabel('$I$ [arb.u.]')
-        ax.result = result
-        return ax
+        return dataset.plot_cut_constant_q(**parameters)
     raise ValueError(f'Unknown cut kind "{kind}"')

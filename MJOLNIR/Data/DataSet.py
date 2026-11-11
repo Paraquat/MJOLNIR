@@ -719,6 +719,24 @@ class DataSet:
                 scan_units=list(reader.scan_units))))
         return results
 
+    def plot_cut_constant_q(self, q, width: float = 0.04, min_pixel: float = 0.1,
+                            energy_min: float = -np.inf, energy_max: float = np.inf,
+                            rlu: bool = True, constant_bins: bool = False,
+                            background_subtraction: bool = False, **plot_options):
+        """Energy scan at constant Q (cut_constant_q) plotted with error bars against the
+        energy (Plotting.plot_cut_constant_q, which takes plot_options such as ax, counts,
+        show_q, plot_foreground, plot_background and errorbar options), the old plotCut1DE.
+        As there, asking for the foreground or background turns background subtraction on.
+        Returns the axes; the cut is ax.result"""
+        background_subtraction = bool(background_subtraction
+                                      or plot_options.get('plot_foreground')
+                                      or plot_options.get('plot_background'))
+        result = self.cut_constant_q(q, width=width, min_pixel=min_pixel,
+                                     energy_min=energy_min, energy_max=energy_max, rlu=rlu,
+                                     constant_bins=constant_bins,
+                                     background_subtraction=background_subtraction)
+        return Plotting.plot_cut_constant_q(result, sample=self.sample, rlu=rlu, **plot_options)
+
     def plot_raw_1d(self, detector=None, analyser=None, **plot_options):
         """Raw counts of one detector and analyser against the first scan variable, one series
         per file (cut_raw_1d, Plotting.plot_raw_1d, which takes plot_options such as ax,

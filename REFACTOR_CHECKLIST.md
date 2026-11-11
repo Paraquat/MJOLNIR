@@ -158,11 +158,11 @@ work is the open items in the sections further down; tick both.
 - [ ] Cuts: `cutPowder`, measurement errors (`I_err`), `cutQE` smoothing and scaled energy,
       `plotCoverage`. Done: `cut1DE` (`cut_constant_q`), `cutQELine` (`cut_qe_line`),
       `cutRaw1D` (`cut_raw_1d`). Dropped: raw `extractData`
-- [ ] Plots and axes: `plotCut1DE`, `plotCutPowder`, `createQAxis` /
-      `createQEAxes`, `generate1DAxis(E)`, polar binning and `enlargen` in `plotQPlane`,
-      click handlers and `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`),
-      `plotCutQELine` (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
-      (`plot_raw_1d`)
+- [ ] Plots and axes: `plotCutPowder`, `createQAxis` / `createQEAxes`, `generate1DAxis(E)`,
+      polar binning and `enlargen` in `plotQPlane`, click handlers and
+      `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine`
+      (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
+      (`plot_raw_1d`), `plotCut1DE` (`plot_cut_constant_q`)
 - [ ] Normalisation: `symmetrize`. Done: `absoluteNormalize` / `undoAbsoluteNormalize`
       (`absolute_normalize`, `undo_absolute_normalize`)
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
@@ -258,7 +258,8 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
 - [ ] Cut 1D manager: `cut_1d`, `cut_constant_q` (was `cut1DE`; `width` is now the
-      diameter, twice the old value), 1D plots from a stored cut, ufit export
+      diameter, twice the old value), `plot_cut_1d` and `plot_cut_constant_q` (was
+      `plotCut1DE`) on a stored cut (`Plotting.plot_cut_...(result)`), ufit export
       (`Gui1DCutObject`: `ds.generate_ufit_dataset(result)` in place of
       `generateUFitDataset(pdData, q1, q2, ...)`)
 - [ ] Q-E line manager: `plot_cut_qe`, `plot_cut_qe_line` (was `plotCutQELine`; returns the
@@ -517,7 +518,18 @@ runs on the new `DataSet` and readers, and every view works.
       curves), except the `Int_err` bars, which no longer have the old truncation (up to
       2.8% here). Not ported: `ufit=True` (use `ds.generate_ufit_dataset(ax.result)`),
       `plotCoverage`, `dataFiles=`, `outputFunction`
-- [ ] `plotCut1DE`
+- [x] `plotCut1DE`: `Plotting.plot_cut_constant_q(result, sample, rlu, ax, counts, show_q,
+      plot_foreground, plot_background, **errorbar options)` and
+      `ds.plot_cut_constant_q(q, width=0.04, min_pixel, energy_min, energy_max, ...,
+      **plot_options)`: `Int` with `Int_err` against energy, the Q point in the tick labels
+      (`show_q`). Shares the drawing of `plot_cut_1d` (`_draw_1d`). Returns the axes
+      (`Data`, `result`, `startPoint`, `to_csv`, `type = 'ConstantQ'`); axes of an earlier
+      constant-Q plot are reused. Drawn points, error bars, labels and tick labels identical
+      to the old `plotCut1DE` (old width doubled) for rlu on and off, `show_q` off, counts
+      True / 'sensitivity', and background with foreground and background curves. As in the
+      old method, asking for those curves turns background subtraction on. The 3D viewer's
+      default constant-Q cut uses it. Not ported: `ufit=True` (use
+      `ds.generate_ufit_dataset(ax.result)`), `data=`, `dataFiles=`, the click printout
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [x] `plotCutQELine`: `Plotting.plot_cut_qe_line(result, sample, rlu, ax, counts, log,
       vmin, vmax, cmap, colorbar, ticks, plot_separator, separator_color, separator_width,
@@ -573,19 +585,20 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `save` / `load`: Dropped (2026-10-19)
 
 ## Bugs in the old code to fix, not port
-Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHDF` items.
+Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHDF` items,
+which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] Combined `h/k/l` point at attributes `H/K/L`: Dropped (2026-10-19);
       `gather(ArrayType.H)` etc. replace them
 - [x] `cutELine` parameter misspelt `EMn`; `plotCutELine` always fails: Dropped (2026-10-19)
 - [x] `plotA3A4` calls the missing `voronoiTessellation`: Dropped (2026-10-19)
 - [x] `removeMasking` fails unless a `Mask` object was applied (new `remove_masking` works)
 - [x] `save` cannot pickle the data set: Dropped (2026-10-19)
-- [ ] `saveHDF` crashes on every NICOS-written CAMEA file (2023 and 2024 data): sample
+- [x] `saveHDF` crashes on every NICOS-written CAMEA file (2023 and 2024 data): sample
       `x`/`y` are absent, read as `array(None, dtype=object)`, and h5py cannot store them
-- [ ] `saveHDF` opens its target with mode `'w'`, so the crash leaves a truncated file; the
+- [x] `saveHDF` opens its target with mode `'w'`, so the crash leaves a truncated file; the
       GUI calibration update writes over the original raw file (`d.saveHDF(d.fileLocation)`),
       destroying it (1.6 MB file left as a 0.56 MB stub without counts, checked on a copy)
-- [ ] `saveHDF` rebuilds the file from what `DataFile` read, in the pre-NICOS layout: drops
+- [x] `saveHDF` rebuilds the file from what `DataFile` read, in the pre-NICOS layout: drops
       `detector/data`, `total_counts`, `monitor_2`, the temperature and field logs and
       `qh/qk/ql`; adds fields the source lacks; `CameaDataReader` cannot read the result
 
@@ -671,6 +684,10 @@ Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHD
       non-CAMEA instrument, hard-coded CAMEA's 8 analysers and accepted negative numbers;
       `raw_counts` checks 0 <= detector < n_detectors and 0 <= analyser < n_analysers
 - [x] `plotRaw1D` read-out chose decimals from the natural logarithm of the step; now log10
+- [x] `plotCut1DE` with an unknown `counts` value built an `AttributeError` without raising
+      it; given axes got no labels or tick formatting; its read-out formatted L with
+      `{:-3e}` (a missing dot). `plot_cut_constant_q` raises, sets up given axes, and
+      formats L like H and K
 - [x] `undoAbsoluteNormalize` multiplied the normalization by the factor again instead of
       dividing (normalization factor^2 of the original, flags saying "not normalised");
       `undo_absolute_normalize` restores the normalization exactly

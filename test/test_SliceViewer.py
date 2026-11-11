@@ -134,7 +134,8 @@ def test_default_cuts(dataset, binned):
     viewer.set_axis(0)
     energies = viewer.edges[2]
     ax = viewer.cut((y[10], energies[2]), (y[10], energies[-2]))
-    assert len(ax.result) > 0 and ax.get_xlabel() == 'E [meV]'
+    assert len(ax.result) > 0 and ax.type == 'ConstantQ' # plot_cut_constant_q
+    assert ax.get_xlabel().endswith('E [meV]]')
     alone = SliceViewer(binned, sample=dataset.sample)
     with pytest.warns(UserWarning, match='neither on_cut nor a data set'):
         assert alone.cut((x[3], y[3]), (x[-3], y[-3])) is None

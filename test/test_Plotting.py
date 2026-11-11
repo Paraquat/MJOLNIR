@@ -260,3 +260,59 @@ def test_plot_cut_qe_line_rlu_false(dataset, qe_line):
     for mesh, expected in zip(ax.pmeshs, reference.pmeshs): # Same points: one file orientation
         assert np.array_equal(np.ma.filled(mesh.get_array(), np.nan),
                               np.ma.filled(expected.get_array(), np.nan), equal_nan=True)
+
+# Energy scans at constant Q
+
+Q_POINT = np.array([0.0, 0.2, 0.0])
+
+@pytest.fixture(scope="module")
+def constant_q(dataset):
+    return dataset.cut_constant_q(Q_POINT, width=0.1, min_pixel=0.05, energy_min=-0.8,
+                                  energy_max=0.6)
+
+def test_plot_cut_constant_q(dataset, constant_q):
+    ax = Plotting.plot_cut_constant_q(constant_q, sample=dataset.sample)
+    x, y = ax.lines[0].get_data()
+    assert np.allclose(x, constant_q.data['Energy'])
+    assert np.allclose(y, constant_q.data['Int'], equal_nan=True)
+    assert np.allclose(ax.Data['BinDistance'], constant_q.data['Energy'])
+    assert np.allclose(ax.startPoint, Q_POINT, atol=1e-9) and ax.type == 'ConstantQ'
+    assert ax.get_xlabel() == '[$Q_h$ [RLU], $Q_k$ [RLU], $Q_l$ [RLU], E [meV]]'
+    ax.get_figure().canvas.draw()
+    label = ax.get_xticklabels()[1].get_text().split('\n')
+    assert len(label) == 4 and [float(v) for v in label[:3]] == pytest.approx(Q_POINT, abs=0.01)
+    assert ax.result is constant_q
+
+def test_plot_cut_constant_q_options(dataset, constant_q, tmp_path):
+    plain = Plotting.plot_cut_constant_q(constant_q, show_q=False, counts=True)
+    assert plain.get_xlabel() == 'E [meV]' # No sample needed without the Q point
+    assert np.allclose(plain.lines[0].get_ydata(), constant_q.data['intensity'])
+    plain.get_figure().canvas.draw()
+    assert '\n' not in plain.get_xticklabels()[1].get_text()
+    qxqy = Plotting.plot_cut_constant_q(constant_q, rlu=False)
+    assert np.allclose(qxqy.startPoint, constant_q.parameters['q'])
+    qxqy.to_csv(tmp_path / 'cut.csv')
+    assert len((tmp_path / 'cut.csv').read_text().splitlines()) == 2 + len(constant_q)
+    with pytest.raises(AttributeError, match='not understood'):
+        Plotting.plot_cut_constant_q(constant_q, sample=dataset.sample, counts='unknown')
+    with pytest.raises(AttributeError, match='sample is needed'):
+        Plotting.plot_cut_constant_q(constant_q)
+    with pytest.raises(ValueError, match='cut_constant_q'):
+        Plotting.plot_cut_constant_q(dataset.cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8),
+                                     sample=dataset.sample)
+
+def test_plot_cut_constant_q_shared_axes_and_background(dataset):
+    options = dict(width=0.1, min_pixel=0.05, energy_min=-0.8, energy_max=0.6)
+    ax = dataset.plot_cut_constant_q(Q_POINT, label='first', **options)
+    second = dataset.plot_cut_constant_q([0.0, 0.3, 0.0], ax=ax, label='second', **options)
+    assert second is ax and [c.get_label() for c in ax.containers] == ['first', 'second']
+    assert np.allclose(ax.startPoint, Q_POINT, atol=1e-9) # The first cut's Q point is kept
+    dataset.generate_background_model()
+    try: # Asking for the curves turns background subtraction on, as the old plotCut1DE
+        curves = dataset.plot_cut_constant_q(Q_POINT, plot_foreground=True,
+                                             plot_background=True, **options)
+        assert [c.get_label() for c in curves.containers] == ['_Data', 'Foreground', 'Background']
+        assert np.allclose(curves.lines[1].get_ydata(), curves.Data['Int_Fg'], equal_nan=True)
+        assert np.allclose(curves.lines[0].get_ydata(), curves.Data['Int'], equal_nan=True)
+    finally:
+        dataset.remove_background_model()
