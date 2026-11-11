@@ -164,8 +164,8 @@ work is the open items in the sections further down; tick both.
       (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
       (`plot_raw_1d`), `plotCut1DE` (`plot_cut_constant_q`), `plotCutPowder`
       (`plot_cut_powder`)
-- [ ] Normalisation: `symmetrize`. Done: `absoluteNormalize` / `undoAbsoluteNormalize`
-      (`absolute_normalize`, `undo_absolute_normalize`)
+- [x] Normalisation: done: `absoluteNormalize` / `undoAbsoluteNormalize`
+      (`absolute_normalize`, `undo_absolute_normalize`). Dropped (2026-11-11): `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
 - [ ] DataFile module constants the GUI and scripts read: `detectorLimits`,
@@ -465,7 +465,10 @@ runs on the new `DataSet` and readers, and every view works.
       as a whole). Factor identical to the old one for every option; normalised cuts
       identical to the old `cut1D` after `absoluteNormalize`. Changes under "Cut bugs fixed
       in the port"
-- [ ] `symmetrize`
+- [x] `symmetrize`: Dropped (2026-11-11). Used by nothing but an uncollected old test (the
+      FAQ's "symmetrize" entry describes another technique: loading the files again with
+      rotated A3 offsets). It overwrote qx, qy in place with no undo, was lost on
+      reconversion, and dropped any out-of-plane component. Reasons in the refactoring log
 
 ### Coordinates
 - [x] `convertToQxQy`, `convertToHKL` (`convert_to_qxqy`, `convert_to_hkl`)
