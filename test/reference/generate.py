@@ -6,7 +6,7 @@ test/reference_data.py available:
 
     python test/reference/generate.py [name ...]
 
-name is one or more of conversion, cuts, bin3d, background, amber, sample, axes (default:
+name is one or more of conversion, cuts, bin3d, background, amber, sample, axes, physics (default:
 all). amber needs the AMBER-ds4ms package. Each writes test/reference/<name>.npz. The
 settings are those of the comparisons made while porting; the values were identical to the
 new code's then, apart from the differences test_Reference.py lists.
@@ -235,8 +235,55 @@ def axes():
         plt.close('all')
     save('axes', entries)
 
+# Physics settings: energy transfers, peaks, resolution points (H, K, L), outgoing energies (one
+# per CAMEA analyser), projection planes (4D: Qx, Qy, Qz, E)
+ENERGY_TRANSFERS = np.array([-1.0, 0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 10.0])
+# camea_test (Ei 6 to 10.1 meV): no file reaches the second-order line itself (Ef = Ei/4 is
+# below CAMEA's 3.2 meV), so wide tolerances exercise the matching
+SECOND_ORDER_PEAKS = np.array([6.6, 6.8, 7.0, 5.0, 2.0])
+SECOND_ORDER_ATOL = np.array([4.0, 2.0, 0.2])
+RESOLUTION_POSITIONS = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.5, 0.5, 0.0]])
+RESOLUTION_EF = np.array([3.2, 3.5, 3.8, 4.0, 4.2, 4.4, 4.7, 5.0])
+PROJECTIONS = {'qx_qy': ([1.0, 0, 0, 0], [0, 1.0, 0, 0]), 'qx_e': ([1.0, 0, 0, 0], [0, 0, 0, 1.0])}
+
+def physics():
+    """findEi and checkSecondOrderElastic (camea_test: six incoming energies), and the resolution
+    matrices (2024 files, binning 8: at other binnings the old code took the wrong analyser's
+    distance)"""
+    entries = {}
+    old = old_dataset(R.CAMEA_2023)
+    entries['find_ei/energy_transfers'] = ENERGY_TRANSFERS
+    for index, energy in enumerate(ENERGY_TRANSFERS):
+        entries[f'find_ei/{index}'] = np.asarray(old.findEi(energy), dtype=float)
+    entries['second_order/peaks'] = SECOND_ORDER_PEAKS
+    entries['second_order/atol'] = SECOND_ORDER_ATOL
+    for index, atol in enumerate(SECOND_ORDER_ATOL):
+        entries[f'second_order/{index}'] = np.asarray(
+            old.checkSecondOrderElastic(SECOND_ORDER_PEAKS, atol=atol, printing=False), dtype=float)
+
+    old = old_dataset(R.CAMEA_2024[:2])
+    Ei = float(np.asarray(old[0].Ei).ravel()[0])
+    entries['Ei'] = np.array(Ei)
+    entries['resolution/positions'] = RESOLUTION_POSITIONS
+    entries['resolution/Ef'] = RESOLUTION_EF
+    for i, position in enumerate(RESOLUTION_POSITIONS):
+        for j, Ef in enumerate(RESOLUTION_EF):
+            entries[f'resolution/{i}/{j}'] = old.calculateResolutionMatrix(position, Ei, Ef, rlu=True)
+            for name, (first, second) in PROJECTIONS.items():
+                for lattice in (False, True):
+                    _, axes, sigma = old.calculateResolutionMatrixAndVectors(
+                        position, np.array(first), np.array(second), Ei, Ef, rlu=True,
+                        rluAxis=lattice)
+                    entries[f'ellipse/{i}/{j}/{name}/{lattice}/axes'] = np.asarray(axes, dtype=float)
+                    entries[f'ellipse/{i}/{j}/{name}/{lattice}/sigma'] = np.asarray(sigma, dtype=float)
+    # rlu=False: the same point given in Qx, Qy
+    qxqy = old.convertToQxQy(RESOLUTION_POSITIONS[0])
+    entries['resolution/qxqy'] = np.asarray(qxqy, dtype=float)
+    entries['resolution/qxqy/matrix'] = old.calculateResolutionMatrix(qxqy, Ei, 4.0, rlu=False)
+    save('physics', entries)
+
 GENERATORS = dict(conversion=conversion, cuts=cuts, bin3d=bin3d, background=background,
-                  amber=amber, sample=sample, axes=axes)
+                  amber=amber, sample=sample, axes=axes, physics=physics)
 
 if __name__ == '__main__':
     for name in sys.argv[1:] or GENERATORS:

@@ -264,3 +264,39 @@ def test_axes(camea_2024):
         for axis in (0, 1):
             ax = camea_2024.create_qe_axes(axis=axis, rlu=rlu)
             assert [ax.get_xlabel(), ax.format_coord(0.3, 1.0)] == list(reference[f'qe/{rlu}/{axis}'])
+
+# Instrument physics
+
+@R.needs(R.CAMEA_2023)
+def test_find_ei_and_second_order_elastic(camea_2023):
+    """Within single precision: the old code kept Ei as float32"""
+    reference = R.load('physics')
+    for index, energy in enumerate(reference['find_ei/energy_transfers']):
+        expected = reference[f'find_ei/{index}']
+        found = camea_2023.find_ei(energy)
+        assert found.shape == expected.shape and np.allclose(found, expected, rtol=1e-6), energy
+    for index, atol in enumerate(reference['second_order/atol']):
+        assert np.allclose(camea_2023.second_order_elastic(reference['second_order/peaks'], atol=atol),
+                           reference[f'second_order/{index}'], rtol=1e-6, equal_nan=True), atol
+
+@R.needs(R.CAMEA_2024)
+def test_resolution(camea_2024):
+    reference = R.load('physics')
+    Ei = float(reference['Ei'])
+    projections = {'qx_qy': ([1.0, 0, 0, 0], [0, 1.0, 0, 0]), 'qx_e': ([1.0, 0, 0, 0], [0, 0, 0, 1.0])}
+    for i, position in enumerate(reference['resolution/positions']):
+        for j, Ef in enumerate(reference['resolution/Ef']):
+            expected = reference[f'resolution/{i}/{j}']
+            M = camea_2024.resolution_matrix(position, Ei, Ef)
+            assert np.allclose(M, expected, rtol=1e-12, atol=1e-12*np.abs(expected).max())
+            for name, (first, second) in projections.items():
+                for lattice in (False, True):
+                    _, axes, sigma = camea_2024.resolution_ellipse(position, first, second, Ei, Ef,
+                                                                   lattice_axes=lattice)
+                    case = f'ellipse/{i}/{j}/{name}/{lattice}'
+                    assert np.allclose(axes, reference[f'{case}/axes'], rtol=1e-9, atol=1e-12)
+                    assert np.allclose(sigma, reference[f'{case}/sigma'], rtol=1e-9)
+    # Qx, Qy input (the old function needed a sample for it, and failed without one)
+    expected = reference['resolution/qxqy/matrix']
+    assert np.allclose(camea_2024.resolution_matrix(reference['resolution/qxqy'], Ei, 4.0, rlu=False),
+                       expected, rtol=1e-12, atol=1e-12*np.abs(expected).max())

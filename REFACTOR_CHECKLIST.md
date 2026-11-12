@@ -78,7 +78,8 @@ work is the open items in the sections further down; tick both.
       `plotQPlane` (data and mesh), `binData3D` (rlu on and off, two step sizes), the powder
       background (with and without the foreground mask) and AMBER (old conventions; run when
       AMBER and torch are installed), `updateSampleParameters`, `createQAxis` /
-      `createQEAxes`. The milestone plots: their Q-E cut and Q plane, of the data and of a
+      `createQEAxes`, the physics (`findEi`, `checkSecondOrderElastic`, the resolution
+      matrices and ellipses at binning 8; `physics.npz`, added 12 Nov 2026). The milestone plots: their Q-E cut and Q plane, of the data and of a
       difference. Large arrays are kept as summaries (shape, NaN count, sum, sum of squares,
       min, max, 5000 sampled values); cut results whole. Known differences are left out of
       the comparison where they are: Flatcone counts (the old conversion truncated them),
@@ -187,7 +188,8 @@ work is the open items in the sections further down; tick both.
       `enlargen` and `scaleFunction` in `plotQPlane`
 - [x] Normalisation: done: `absoluteNormalize` / `undoAbsoluteNormalize`
       (`absolute_normalize`, `undo_absolute_normalize`). Dropped (2026-11-11): `symmetrize`
-- [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
+- [x] Physics (12 Nov 2026): resolution matrices, `findEi`, `checkSecondOrderElastic` (see
+      "Instrument physics"). Resolution for the other instruments: see "Later"
 - [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
 - [x] DataFile module constants the GUI and scripts read. Moved to Milestone 3 (2026-11-12):
       `detectorLimits`, `analyzerLimits`. Done: `supportedRawFormats` is `DataReaderFactory().file_extensions()`
@@ -209,7 +211,8 @@ work is the open items in the sections further down; tick both.
       `generateCalibration` (writes the `.calib` files the readers load; keep, add a test
       pytest collects), `prediction`, `converterToA3A4`, `converterToQxQy`,
       `predictionInstrumentSupport` (keep: MJOLNIR-GUI's prediction tool),
-      `calculateResoultionMatrix` (only `DataSet_old`; port with the resolution matrices),
+      `calculateResoultionMatrix` (ported to `Data/Resolution.py`; drop with `DataSet_old`,
+      its only caller besides the interactive modes),
       `convertToHDF` (unused: drop?), the `Instrument` class and XML geometry
       (`InstrumentXML.py`; only the uncollected `test/Instrument.py`, `test/InstrumentXML.py`:
       drop?), `getInstrumentInfo`, `timeEstimate`, `simpleDataSet`
@@ -668,9 +671,28 @@ runs on the new `DataSet` and readers, and every view works.
       moved to Milestone 3 (2026-11-12)
 
 ### Instrument physics
-- [ ] `calculateResolutionMatrix`, `calculateResolutionMatrixAndVectors`
-- [ ] `findEi`
-- [ ] `checkSecondOrderElastic`
+- [x] `calculateResolutionMatrix`, `calculateResolutionMatrixAndVectors`:
+      `ds.resolution_matrix(position, Ei, Ef, rlu)` and `ds.resolution_ellipse(position,
+      direction1, direction2, Ei, Ef, rlu, lattice_axes)` (was `rluAxis`), on
+      `MJOLNIR/Data/Resolution.py` (`camea_resolution_matrix(qx, qy, Ei, Ef, analyser,
+      a3_offset)`, `project`; the Eckold-Sobolev calculation of `Geometry/eck_Flipped.py`,
+      imported without `Instrument.py` and its Qt import). The analyser is the one whose
+      calibrated Ef, in the first file's own calibration, is nearest to Ef (the old one read
+      the default tables shipped with the package). CAMEA only: other instruments raise
+      `NotImplementedError`. Matrices identical to the old code at binning 8 (within 1e-12,
+      three positions x one Ef per analyser), ellipse axes and widths too, also on lattice
+      axes; Qx, Qy input. Bugs fixed: listed under "Bugs in the old code to fix, not port".
+      Tests: `test_Resolution.py`, `test_Reference.py`. The ellipses drawn on plots stay with
+      the interactive modes (Milestone 3)
+- [x] `findEi`: `ds.find_ei(energy_transfer)`, the incoming energies at which an energy
+      transfer is measured. Uses every Ei of a file (the old one its first) and ignores
+      pixels without a calibrated Ef (NaN). Identical to the old code on camea_test (six
+      incoming energies, 11 energy transfers), within single precision (the old Ei was float32)
+- [x] `checkSecondOrderElastic`: `ds.second_order_elastic(energies, atol=0.2)`, the Ei whose
+      elastic line the analysers pass in second order at each energy (4 Ef = Ei), NaN where
+      none; no printing. Identical to the old code on camea_test (five peaks, three
+      tolerances), within single precision. No test file reaches the line itself (it needs
+      Ei >= 12.8 meV, as CAMEA's lowest Ef is 3.2 meV)
 
 ### Export and saving
 - [x] `generateUFitDataset` (ufit): `Export.to_ufit(result, rlu, meta)` and
@@ -684,6 +706,13 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `save` / `load`: Dropped (2026-10-19)
 
 ## Bugs in the old code to fix, not port
+- [x] Resolution matrix (`Instrument.calculateResoultionMatrix`), fixed in
+      `Data/Resolution.py`: the analyser (and so the sample-analyser distance) was the Ef bin
+      index // 8, right only at binning 8 (the same point gave a Qx term of 7214 at binning 1,
+      7628 at 2, 8940 at 8); a Qx, Qy position without a sample raised (`if rlu or sample is
+      None` then used the sample); another instrument raised `UnboundLocalError` (a
+      `NotImplementedError` built but not raised); the binning check let 9 and more through
+      (`not binning>0 and binning <9`)
 Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHDF` items,
 which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] Combined `h/k/l` point at attributes `H/K/L`: Dropped (2026-10-19);
@@ -848,6 +877,12 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       (Python 3.14) and 2.4.6 (Python 3.11)
 
 ## Later (after Milestone 3)
+- [ ] Resolution matrices for the other instruments (Bambus, MultiFLEXX, Flatcone, Marmot):
+      `ds.resolution_matrix` is CAMEA only. The Eckold-Sobolev calculation
+      (`Geometry/eck_Flipped.py`) takes any three-axis geometry, so each needs its distances,
+      component sizes, focusing, collimation and mosaics (`Data/Resolution.py` holds CAMEA's),
+      and the multi-analyser instruments the analyser for each Ef. Decide which are needed and
+      where the instrument parameters come from (constants per instrument, or the files)
 - [ ] McStas simulated files: `MJOLNIR/Data/McStasReader.py`, a `McStasReader` derived from
       `DataReader`, registered in `DataReaderFactory`. Written new rather than ported: the
       old `DataFile` code can serve as a reference for the file layout until it is deleted

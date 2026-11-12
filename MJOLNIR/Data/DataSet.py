@@ -16,6 +16,7 @@ from MJOLNIR.Data.BackgroundModel import PowderBackground, AMBERBackground
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
+from MJOLNIR.Data.Resolution import camea_resolution_matrix, project
 
 # Anything that can be added to a DataSet: a reader, or the path of a file to read
 DataFileLike = DataReader | str | Path
@@ -724,6 +725,68 @@ class DataSet:
         points = self._points(rotate=rlu, align_to_lattice=True,
                               background_subtraction=background_subtraction, errors=True)
         return Cuts.bin_3d(**points, dx=dx, dy=dy, dz=dz, sample=sample)
+
+    # Instrument physics
+
+    def find_ei(self, energy_transfer: float) -> np.ndarray:
+        """Incoming energies of the data set at which energy_transfer [meV] is measured (the old
+        findEi): each file's Ei for which Ei - energy_transfer lies within the outgoing energies
+        of its calibration. Sorted, rounded to 0.01 meV"""
+        found = []
+        for reader in self._readers:
+            Ef = np.asarray(reader.calibration.Ef, dtype=float) # NaN for pixels without one
+            Ei = np.unique(np.asarray(reader.Ei, dtype=float))
+            inside = (Ei > np.nanmin(Ef) + energy_transfer) & (Ei < np.nanmax(Ef) + energy_transfer)
+            found.append(Ei[inside])
+        return np.unique(np.round(np.concatenate(found), 2)) if found else np.array([])
+
+    def second_order_elastic(self, energies, atol: float = 0.2) -> np.ndarray:
+        """For each energy transfer [meV], the incoming energy whose elastic scattering the
+        analysers pass in second order there (4 Ef = Ei within atol, i.e. E = 3/4 Ei), from the
+        files that measure that energy transfer; NaN where there is none. A peak at such an
+        energy may be this spurion, not a signal (the old checkSecondOrderElastic, which also
+        printed the matches)"""
+        result = []
+        for energy in np.atleast_1d(np.asarray(energies, dtype=float)):
+            Ei = [np.asarray(reader.Ei, dtype=float).ravel() for reader in self._readers
+                  if np.nanmin(reader.energy) < energy < np.nanmax(reader.energy)]
+            Ei = np.concatenate(Ei) if Ei else np.array([])
+            matching = Ei[np.isclose(4.0*(Ei - energy) - Ei, 0.0, atol=atol)]
+            result.append(matching.mean() if matching.size else np.nan)
+        return np.array(result)
+
+    def resolution_matrix(self, position, Ei: float, Ef: float, rlu: bool = True) -> np.ndarray:
+        """Resolution matrix (4 x 4, in Qx, Qy, Qz [1/AA] and energy [meV]) at position (H, K,
+        L with rlu, else Qx, Qy, in the frame of the first file, as the cuts) for Ei and Ef [meV]:
+        a point at distance x has probability exp(-x M x / 2). See Resolution.py (the old
+        calculateResolutionMatrix). The analyser is the one whose calibrated Ef (the mean over
+        detectors, in the first file's calibration) is nearest to Ef. CAMEA only"""
+        if self.instrument is not InstrumentName.CAMEA:
+            raise NotImplementedError(f'Resolution matrices are only implemented for CAMEA; '
+                                      f'this data set is {getattr(self.instrument, "value", None)}')
+        if len(self) == 0:
+            raise ValueError('DataSet contains no data files')
+        qx, qy = self.convert_to_qxqy(position) if rlu else np.asarray(position, dtype=float)
+        reader = self._readers[0]
+        bins = reader.n_analysers*reader.binning # Ordered by analyser, then pixel bin
+        Ef_bins = np.nanmean(np.asarray(reader.calibration.Ef, dtype=float)
+                             .reshape(reader.n_detectors, bins), axis=0)
+        analyser = int(np.nanargmin(np.abs(Ef_bins - Ef)))//reader.binning
+        return camea_resolution_matrix(qx, qy, Ei, Ef, analyser, a3_offset=self.sample.theta)
+
+    def resolution_ellipse(self, position, direction1, direction2, Ei: float, Ef: float,
+                           rlu: bool = True, lattice_axes: bool = False):
+        """The resolution at position (as resolution_matrix) projected onto the plane of two
+        directions (4D unit vectors in Qx, Qy, Qz and energy): (M, axes, sigma), the matrix,
+        the ellipse's axes (eigenvectors as columns) and its widths along them (the old
+        calculateResolutionMatrixAndVectors). lattice_axes rotates the axes for drawing on
+        reciprocal lattice axes (create_q_axis), as the old rluAxis"""
+        M = self.resolution_matrix(position, Ei, Ef, rlu=rlu)
+        axes, sigma = project(M, direction1, direction2)
+        if lattice_axes:
+            axes[:, 0] = axes[:, 0] @ self.sample.RotMat.T
+            axes[:, 1] = axes[:, 1] @ self.sample.RotMat.T
+        return M, axes, sigma
 
     # Axes to draw on
 
