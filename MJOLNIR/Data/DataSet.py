@@ -2,6 +2,7 @@ import copy
 import warnings
 from pathlib import Path
 from operator import attrgetter
+from types import SimpleNamespace
 from collections.abc import Callable, Iterable, Iterator
 import numpy as np
 import pandas as pd
@@ -9,7 +10,7 @@ import pandas as pd
 from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.AxisView import AxisView
 from MJOLNIR.Data.Coordinates import convert_to_qxqy, convert_to_hkl, align_to_lattice
-from MJOLNIR.Data import Cuts, Plotting
+from MJOLNIR.Data import Cuts, Plotting, RLUAxes
 from MJOLNIR.Data.CutResult import CutResult, COLUMNS
 from MJOLNIR.Data.BackgroundModel import PowderBackground, AMBERBackground
 from MJOLNIR.Data.DataReader import DataReader
@@ -723,6 +724,34 @@ class DataSet:
         points = self._points(rotate=rlu, align_to_lattice=True,
                               background_subtraction=background_subtraction, errors=True)
         return Cuts.bin_3d(**points, dx=dx, dy=dy, dz=dz, sample=sample)
+
+    # Axes to draw on
+
+    def _sample_holder(self):
+        """The first file's sample as RLUAxes reads it from a data set (a list of samples)"""
+        if len(self) == 0:
+            raise ValueError('DataSet contains no data files: the axes need its sample')
+        return SimpleNamespace(sample=[self.sample])
+
+    def create_q_axis(self, rlu: bool = True, figure=None, ids=(1, 1, 1), basex=None,
+                      basey=None):
+        """Empty axes of the Qx, Qy plane (the old createQAxis, RLUAxes.createQAxis): with rlu
+        a reciprocal lattice grid along the sample's projection vectors, positions read in
+        H, K, L, ticks at multiples of basex, basey (default: found when zooming); else plain
+        Qx, Qy axes. Draw points aligned to the lattice (gather_q(align_to_lattice=True)) on
+        them, or pass them to plot_q_plane as ax"""
+        return RLUAxes.createQAxis(self._sample_holder(), rlu=rlu, withoutOnClick=True,
+                                   figure=figure, ids=list(ids), basex=basex, basey=basey)
+
+    def create_qe_axes(self, axis: int = 0, figure=None, projection_vector1=None,
+                       projection_vector2=None, rlu: bool = True, figure_position=(1, 1, 1)):
+        """Empty axes of Q along a direction against energy (the old createQEAxes,
+        RLUAxes.createQEAxes): Q along projection_vector1 (axis 0) or projection_vector2
+        (axis 1), by default the sample's projection vectors; H, K, L with rlu, else Qx, Qy"""
+        return RLUAxes.createQEAxes(self._sample_holder(), axis=axis, figure=figure,
+                                    projectionVector1=projection_vector1,
+                                    projectionVector2=projection_vector2, rlu=rlu,
+                                    figurePos=list(figure_position))
 
     def plot_cut_1d(self, q1, q2, width: float, min_pixel: float, energy_min: float,
                     energy_max: float, rlu: bool = True, extend: bool = False,

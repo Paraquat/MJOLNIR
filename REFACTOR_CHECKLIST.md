@@ -160,12 +160,14 @@ work is the open items in the sections further down; tick both.
       `cutRaw1D` (`cut_raw_1d`), `cutPowder` (`cut_powder`), measurement errors (`I_err`)
       in every cut. Dropped: raw `extractData`; (2026-11-12) `cutQE` smoothing and scaled
       energy, `plotCoverage`
-- [ ] Plots and axes: `createQAxis` / `createQEAxes`, `generate1DAxis(E)`,
-      polar binning and `enlargen` in `plotQPlane`, click handlers and
-      `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine`
-      (`plot_cut_qe_line`), `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D`
-      (`plot_raw_1d`), `plotCut1DE` (`plot_cut_constant_q`), `plotCutPowder`
-      (`plot_cut_powder`)
+- [ ] Plots and axes: `_interactiveSettings` modes (cutting from a plot; to the GUI in
+      Milestone 3, with an `on_cut` hook on `plot_q_plane` and `plot_cut_qe`), 3D axes in
+      `plotQPlane`. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`),
+      `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D` (`plot_raw_1d`), `plotCut1DE`
+      (`plot_cut_constant_q`), `plotCutPowder` (`plot_cut_powder`), `createQAxis` /
+      `createQEAxes` (`create_q_axis`, `create_qe_axes`), `generate1DAxis(E)` (inside the
+      plots), the click read-out (`on_click`). Dropped (2026-11-12): polar binning,
+      `enlargen` and `scaleFunction` in `plotQPlane`
 - [x] Normalisation: done: `absoluteNormalize` / `undoAbsoluteNormalize`
       (`absolute_normalize`, `undo_absolute_normalize`). Dropped (2026-11-11): `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
@@ -554,7 +556,7 @@ runs on the new `DataSet` and readers, and every view works.
       False / 'sensitivity', `show_energy`, background with foreground and background
       curves), except the `Int_err` bars, which no longer have the old truncation (up to
       2.8% here). Not ported: `ufit=True` (use `ds.generate_ufit_dataset(ax.result)`),
-      `plotCoverage`, `dataFiles=`, `outputFunction`
+      `plotCoverage`, `dataFiles=`; `outputFunction` is `on_click`
 - [x] `plotCut1DE`: `Plotting.plot_cut_constant_q(result, sample, rlu, ax, counts, show_q,
       plot_foreground, plot_background, **errorbar options)` and
       `ds.plot_cut_constant_q(q, width=0.04, min_pixel, energy_min, energy_max, ...,
@@ -566,7 +568,8 @@ runs on the new `DataSet` and readers, and every view works.
       True / 'sensitivity', and background with foreground and background curves. As in the
       old method, asking for those curves turns background subtraction on. The 3D viewer's
       default constant-Q cut uses it. Not ported: `ufit=True` (use
-      `ds.generate_ufit_dataset(ax.result)`), `data=`, `dataFiles=`, the click printout
+      `ds.generate_ufit_dataset(ax.result)`), `data=`, `dataFiles=`; the click printout is
+      `on_click`
 - [x] `plotCutQE` (`Plotting.plot_cut_qe`)
 - [x] `plotCutQELine`: `Plotting.plot_cut_qe_line(result, sample, rlu, ax, counts, log,
       vmin, vmax, cmap, colorbar, ticks, plot_separator, separator_color, separator_width,
@@ -576,21 +579,28 @@ runs on the new `DataSet` and readers, and every view works.
       labels, tick labels (also with `ticks`) and limits identical to the old plot; `counts`
       added as in `plot_cut_qe`. Changes under "Cut bugs fixed in the port". Not ported:
       `dataList=` (pass a `cut_qe_line` result to `Plotting.plot_cut_qe_line`), `dataFiles=`,
-      `outputFunction`, the click handler and `_interactiveSettings` modes
+      `_interactiveSettings` modes; the click printout (`outputFunction`) is `on_click`
 - [x] `plotCutELine`: Dropped (2026-10-19)
 - [x] `plotCutPowder`: `Plotting.plot_cut_powder(result, ax, counts, log, vmin, vmax, cmap,
       colorbar=True, grid, **pcolormesh options)`, `ds.plot_cut_powder(q_bins, energy_bins,
       background_subtraction, **plot_options)`. Returns the axes (`pmeshs`, `set_clim`,
       `get_clim`, `calculateIndex`, `Data`, `result`, `to_csv`, `type = 'Powder'`). Plotted
       values, colour limits and labels identical to the old plot. `counts` added as in the
-      other maps. Not ported: the click printout (`outputFunction`), `dataFiles=`
-- [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; options not ported yet:
-      polar binning, `enlargen`, 3D axes, `scaleFunction`)
+      other maps. Click printout: `on_click`. Not ported: `dataFiles=`
+- [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; option not ported yet:
+      3D axes)
+- [x] `plotQPlane` `binning='polar'` (bins in angle and |Q|), `enlargen` (adaptive bins) and
+      `scaleFunction` (a function applied to the intensity): Dropped (2026-11-12). Unused by
+      the GUI and the docs, and broken: `polar` with `enlargen` always raised (`binEdges(x,
+      tolrance=...)`); bin edges were stored only for energy ranges with points but looked up
+      by the range's index, so an empty range gave an `IndexError` or shifted the bins of
+      later ranges; `scaleFunction` ignored the background (`if not backgroundSubtraction is
+      None` is always true). Use `log=True`, or rescale `ax.Int` / the result's `Int`
 - [x] `plotRaw1D`: `Plotting.plot_raw_1d(results, ax, legend, grid, **scatter options)`,
       `ds.plot_raw_1d(detector, analyser, **plot_options)`: a scatter per file of counts
       against the first scan variable, legend of file names (or given names), read-out of
       all scan variables at a position (interpolated) and the counts, `ax.results`,
-      `ax.to_csv`. Returns the axes. Not ported: the click printout (`outputFunction`)
+      `ax.to_csv`. Returns the axes. The click printout (`outputFunction`) is `on_click`
 - [x] `plotA3A4` (with `boundaryQ`, `convexHullPoints`): Dropped (2026-10-19)
 - [x] `View3D`: `ds.view_3d(dx, dy, dz, rlu, background_subtraction, **viewer options)`,
       `SliceViewer.SliceViewer(result of bin_3d, sample, rlu, axis, counts, log, vmin, vmax,
@@ -606,9 +616,26 @@ runs on the new `DataSet` and readers, and every view works.
       positions equal the readers' H, K, L; elastic spurions on their Bragg peaks. Changes
       under "Cut bugs fixed in the port". Not ported: `instrumentAngles`, `grid` as a zorder,
       `customSlicer` (see the 3D viewer split), the old `_interactiveSettings` modes
-- [ ] `createQAxis` / `createQEAxes`, `generate1DAxis(E)`
-- [ ] CSV export from figures, click and hover handlers (Q-E plots: CSV export and hover
-      done; printing the data at a clicked point and the `_interactiveSettings` modes not yet)
+- [x] `createQAxis` / `createQEAxes`: `ds.create_q_axis(rlu, figure, ids, basex, basey)` and
+      `ds.create_qe_axes(axis, figure, projection_vector1, projection_vector2, rlu,
+      figure_position)`, wrapping `RLUAxes` (which reads the sample from a list, so it failed
+      on the new `DataSet`). Labels and read-out identical to the old methods (rlu on and
+      off, both Q-E axes). `create_q_axis` has no click handler (the old default one failed
+      on empty axes: it read the bins of a Q-plane plot); `plot_q_plane(ax=...)` adds its own
+- [x] `generate1DAxis(E)`: inside `plot_cut_1d` / `plot_cut_qe` (`_cut_axes`) and
+      `plot_cut_constant_q`; not public (no users outside the old code)
+- [x] Click read-out (the old `outputFunction`): every plot (`plot_cut_1d`,
+      `plot_cut_constant_q`, `plot_cut_qe`, `plot_cut_qe_line`, `plot_cut_powder`,
+      `plot_q_plane`, `plot_raw_1d`) and `SliceViewer` take `on_click` (default `print`; None
+      off): a click, not while zooming or panning, passes the position and the bin's Int,
+      Cts, Norm, Mon, NormCount (`Plotting.bin_text`). `ax.read_out(x, y)` and
+      `ax.bin_at(x, y)` (the data row) without clicking. The old check for the Qt cursor
+      shape is replaced by the toolbar mode; on a Q plane with overlapping energy ranges the
+      read-out is of the last range with points there (the old one always used the first);
+      counts of derived data are not truncated to integers
+- [ ] `_interactiveSettings` modes (drawing cuts on plots): to the GUI in Milestone 3; the
+      plots get an `on_cut(kind, parameters)` hook as `SliceViewer`. CSV export and hover:
+      done
 
 ### Instrument physics
 - [ ] `calculateResolutionMatrix`, `calculateResolutionMatrixAndVectors`

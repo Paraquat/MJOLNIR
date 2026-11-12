@@ -1,8 +1,9 @@
 """Plots of cut results. Each function draws a CutResult onto matplotlib axes (new axes if none
 are given) and returns the axes; none of them computes a cut.
 
-Not ported yet from the old DataSet plots: printing the data at a clicked point, and the
-interactive modes of _interactiveSettings (cutting from a plot).
+A click on a plot passes a read-out of the bin under the cursor to on_click (default print),
+as the old outputFunction did. Not ported yet from the old DataSet plots: the interactive modes
+of _interactiveSettings (cutting from a plot).
 """
 import warnings
 from types import SimpleNamespace
@@ -152,9 +153,67 @@ def _to_csv(ax):
         ax.Data.fillna(-1).to_csv(file_name, mode='a')
     return to_csv
 
+def _number(value) -> str:
+    """Counts or monitor in a read-out: whole numbers without decimals"""
+    return f'{float(value):.10g}'
+
+def bin_text(row) -> str:
+    """Values of one bin (a row of a cut's data), as the old click print-out"""
+    return (f'Int = {float(row[COLUMNS["int"]]):.4e}, Cts = {_number(row[COLUMNS["intensity"]])}, '
+            f'Norm = {float(row[COLUMNS["norm"]]):.3f}, Mon = {_number(row[COLUMNS["mon"]])}, '
+            f'NormCount = {_number(row[COLUMNS["binCount"]])}')
+
+def _nearest(centres, value) -> int | None:
+    """Index of the bin centre nearest to value, None beyond the outer bins (each reaching
+    half way to its neighbour)"""
+    centres = np.asarray(centres, dtype=float)
+    if centres.size == 0 or not np.isfinite(value):
+        return None
+    if centres.size > 1:
+        ordered = np.sort(centres)
+        if not (ordered[0] - 0.5*(ordered[1] - ordered[0]) <= value
+                <= ordered[-1] + 0.5*(ordered[-1] - ordered[-2])):
+            return None
+    return int(np.argmin(np.abs(centres - value)))
+
+def _connect_read_out(ax, on_click, bin_at):
+    """Click read-out (the old outputFunction): a click on ax, while neither zooming nor
+    panning, calls on_click with ax.read_out(x, y), the position under the cursor
+    (ax.format_coord) and the values of the bin there. bin_at(x, y) gives the bin's row of
+    the data, or None. on_click None turns it off; plotting again on ax replaces it"""
+    def read_out(x, y) -> str:
+        text = ax.format_coord(x, y)
+        row = bin_at(x, y)
+        return text if row is None else f'{text}, {bin_text(row)}'
+
+    def on_press(event): # pragma: no cover
+        if event.inaxes is not ax or event.xdata is None or ax.on_click is None:
+            return
+        toolbar = getattr(ax.figure.canvas, 'toolbar', None)
+        if toolbar is not None and toolbar.mode: # Zooming or panning
+            return
+        ax.on_click(ax.read_out(event.xdata, event.ydata))
+
+    ax.bin_at, ax.read_out, ax.on_click = bin_at, read_out, on_click
+    if getattr(ax, '_click_connection', None) is not None:
+        ax.figure.canvas.mpl_disconnect(ax._click_connection)
+    ax._click_connection = ax.figure.canvas.mpl_connect('button_press_event', on_press)
+
+def _row_at(data, column, value):
+    """Row of a 1D cut whose position (column) is nearest to value"""
+    index = _nearest(np.asarray(data[column], dtype=float), value)
+    return None if index is None else data.iloc[index]
+
+def _map_row_at(data, x_centres, y_centres, x, y):
+    """Row of a Q-E map (rows by energy, then position) at the bin nearest to (x, y)"""
+    x_index, y_index = _nearest(x_centres, x), _nearest(y_centres, y)
+    if x_index is None or y_index is None:
+        return None
+    return data.iloc[y_index*len(x_centres) + x_index]
+
 def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
                 show_energy: bool = True, plot_foreground: bool = False,
-                plot_background: bool = False, **kwargs):
+                plot_background: bool = False, on_click=print, **kwargs):
     """Plot a 1D cut (from Cuts.cut_1d) with error bars against the position along the cut
     (the old DataSet.plotCut1D).
 
@@ -181,6 +240,10 @@ def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, count
         - plot_foreground, plot_background (bool): With background subtraction, also plot the
           foreground and the background (default False)
 
+        - on_click (callable): Called with the read-out text when the plot is clicked: the
+          position and the bin's Int, counts, normalisation, monitor and bin count (default
+          print; None: no read-out). ax.read_out(x, y) gives the same text
+
     Other kwargs go to errorbar (default fmt '.'). The x axis runs from 0 at q1 to 1 at q2;
     the BinDistance column of ax.Data holds each bin's position on it. The returned axes have
     Data, result and to_csv.
@@ -206,12 +269,13 @@ def plot_cut_1d(result: CutResult, sample=None, rlu: bool = True, ax=None, count
     ax.Data = data
     ax.result = result
     ax.to_csv = _to_csv(ax)
+    _connect_read_out(ax, on_click, lambda x, y: _row_at(ax.Data, COLUMNS['plotPosition'], x))
     ax.get_figure().tight_layout()
     return ax
 
 def plot_cut_constant_q(result: CutResult, sample=None, rlu: bool = True, ax=None,
                         counts=False, show_q: bool = True, plot_foreground: bool = False,
-                        plot_background: bool = False, **kwargs):
+                        plot_background: bool = False, on_click=print, **kwargs):
     """Plot an energy scan at constant Q (from Cuts.cut_constant_q) with error bars against
     the energy (the old DataSet.plotCut1DE).
 
@@ -231,6 +295,8 @@ def plot_cut_constant_q(result: CutResult, sample=None, rlu: bool = True, ax=Non
         - counts, plot_foreground, plot_background: As plot_cut_1d
 
         - show_q (bool): Add the Q point to the tick labels and the read-out (default True)
+
+        - on_click: As plot_cut_1d
 
     Other kwargs go to errorbar (default fmt '.'). The BinDistance column of ax.Data holds the
     energy of each bin. The returned axes have Data, result, startPoint (the Q point) and
@@ -289,12 +355,13 @@ def plot_cut_constant_q(result: CutResult, sample=None, rlu: bool = True, ax=Non
     ax.Data = data
     ax.result = result
     ax.to_csv = _to_csv(ax)
+    _connect_read_out(ax, on_click, lambda x, y: _row_at(ax.Data, COLUMNS['plotPosition'], x))
     ax.get_figure().tight_layout()
     return ax
 
 def plot_cut_qe(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
                 log: bool = False, vmin=None, vmax=None, cmap=None, colorbar: bool = False,
-                grid: bool = False, **kwargs):
+                grid: bool = False, on_click=print, **kwargs):
     """Plot a Q-E cut (from Cuts.cut_qe) as a colour map: position along the cut against
     energy (the old DataSet.plotCutQE).
 
@@ -320,6 +387,8 @@ def plot_cut_qe(result: CutResult, sample=None, rlu: bool = True, ax=None, count
         - colorbar (bool): Add a colour bar (default False)
 
         - grid (bool): Show a grid (default False)
+
+        - on_click: As plot_cut_1d
 
     Other kwargs go to pcolormesh. The returned axes have set_clim, get_clim and to_csv. As in
     the old plotCutQE, each energy row is drawn centred on the Energy column, the lower edge
@@ -362,12 +431,14 @@ def plot_cut_qe(result: CutResult, sample=None, rlu: bool = True, ax=None, count
                     f'Shape of data is {(len(ax.X), len(ax.Y))}\n')
         ax.Data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
+    _connect_read_out(ax, on_click, lambda x, y: _map_row_at(ax.Data, ax.X, ax.Y, x, y))
     return ax
 
 def plot_cut_qe_line(result: CutResult, sample=None, rlu: bool = True, ax=None, counts=False,
                      log: bool = False, vmin=None, vmax=None, cmap=None, colorbar: bool = False,
                      ticks: int | None = None, plot_separator: bool = False,
-                     separator_color='k', separator_width=None, grid: bool = False, **kwargs):
+                     separator_color='k', separator_width=None, grid: bool = False,
+                     on_click=print, **kwargs):
     """Plot Q-E cuts along a path of Q points (from Cuts.cut_qe_line) side by side, as colour
     maps against the distance along the path [1/AA] (the old DataSet.plotCutQELine).
 
@@ -383,7 +454,7 @@ def plot_cut_qe_line(result: CutResult, sample=None, rlu: bool = True, ax=None, 
 
         - ax (Axes): Axes to draw on (default None: new figure); not 3D axes
 
-        - counts, log, cmap, colorbar, grid: As plot_cut_qe
+        - counts, log, cmap, colorbar, grid, on_click: As plot_cut_qe
 
         - vmin, vmax (float): Colour scale of all segments (default: the minimum and maximum
           of all segments)
@@ -489,11 +560,21 @@ def plot_cut_qe_line(result: CutResult, sample=None, rlu: bool = True, ax=None, 
                     f'{len(ax.Data)} segments (qCut)\n')
         data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
+
+    def bin_at(x, y):
+        index = int(calculate_index(x)[0])
+        segment = ax.Data[index]
+        shape = (len(result.bins['energy'][index]) - 1, len(result.bins['distance'][index]) - 1)
+        position = (segment[COLUMNS['plotPosition']].to_numpy() + offsets[index]).reshape(shape)
+        energy = segment[COLUMNS['e']].to_numpy().reshape(shape)
+        return _map_row_at(segment, position[0], energy[:, 0], x, y)
+    _connect_read_out(ax, on_click, bin_at)
     ax.get_figure().tight_layout()
     return ax
 
 def plot_cut_powder(result: CutResult, ax=None, counts=False, log: bool = False, vmin=None,
-                    vmax=None, cmap=None, colorbar: bool = True, grid: bool = False, **kwargs):
+                    vmax=None, cmap=None, colorbar: bool = True, grid: bool = False,
+                    on_click=print, **kwargs):
     """Plot a powder map (from Cuts.cut_powder) as a colour map of |Q| against energy (the old
     DataSet.plotCutPowder).
 
@@ -517,6 +598,8 @@ def plot_cut_powder(result: CutResult, ax=None, counts=False, log: bool = False,
         - colorbar (bool): Add a colour bar (default True)
 
         - grid (bool): Show a grid (default False)
+
+        - on_click: As plot_cut_1d
 
     Other kwargs go to pcolormesh. Bins are drawn between their edges. The returned axes have
     set_clim, get_clim, Data, result and to_csv; the read-out gives |q|, E and the value.
@@ -561,9 +644,17 @@ def plot_cut_powder(result: CutResult, ax=None, counts=False, log: bool = False,
     ax.result = result
     ax.type = 'Powder'
     ax.to_csv = _to_csv(ax)
+
+    def bin_at(x, y):
+        q_index, e_index = calculate_index(x, y)
+        if q_index == -1 or e_index == -1:
+            return None
+        return result.data.iloc[q_index*shape[1] + e_index]
+    _connect_read_out(ax, on_click, bin_at)
     return ax
 
-def plot_raw_1d(results: list[CutResult], ax=None, legend=True, grid: bool = True, **kwargs):
+def plot_raw_1d(results: list[CutResult], ax=None, legend=True, grid: bool = True,
+                on_click=print, **kwargs):
     """Plot raw counts (from DataSet.cut_raw_1d) against the first scan variable, one series
     per file (the old DataSet.plotRaw1D).
 
@@ -579,6 +670,9 @@ def plot_raw_1d(results: list[CutResult], ax=None, legend=True, grid: bool = Tru
           (default True)
 
         - grid (bool): Show a grid (default True)
+
+        - on_click (callable): Called with the read-out under the cursor when the plot is
+          clicked (default print; None: no read-out)
 
     Other kwargs go to scatter. The read-out under the cursor gives every scan variable at the
     position (interpolated for variables scanned together, e.g. A3 and A4) and the counts.
@@ -627,10 +721,12 @@ def plot_raw_1d(results: list[CutResult], ax=None, legend=True, grid: bool = Tru
         frames = [result.data.assign(file=result.parameters['file']) for result in results]
         pd.concat(frames, ignore_index=True).to_csv(file_name, index=False)
     ax.to_csv = to_csv
+    _connect_read_out(ax, on_click, lambda x, y: None) # The position alone, as before
     return ax
 
 def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log: bool = False,
-                 vmin=None, vmax=None, cmap=None, colorbar: bool = False, zorder: int = 10):
+                 vmin=None, vmax=None, cmap=None, colorbar: bool = False, zorder: int = 10,
+                 on_click=print):
     """Plot constant-energy planes (from Cuts.cut_q_plane) as colour maps in Qx, Qy, on axes
     with a reciprocal lattice grid (the old DataSet.plotQPlane).
 
@@ -657,6 +753,9 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
 
         - zorder (int): Drawing order of the maps (default 10)
 
+        - on_click: As plot_cut_1d. Where energy ranges overlap, the read-out is of the last
+          range with points in that bin
+
     The returned axes have set_clim, get_clim and to_csv.
     """
     if ax is None:
@@ -668,8 +767,10 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
     data = result.data
     ax.Qx, ax.Qy, ax.Int = [], [], []
     start = 0
+    planes = [] # Edges and first row of each energy range
     for x_edges, y_edges in zip(result.bins['qx'], result.bins['qy']):
         shape = (len(x_edges) - 1, len(y_edges) - 1)
+        planes.append((x_edges, y_edges, start))
         values = np.asarray(data[COLUMNS['int']].values[start:start + np.prod(shape)], dtype=float)
         start += np.prod(shape)
         ax.Qx.append(np.outer(x_edges, np.ones_like(y_edges)))
@@ -712,6 +813,16 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
                     f'{(x_bins, len(data)//max(x_bins, 1))}\n')
         data.fillna(-1).to_csv(file_name, mode='a')
     ax.to_csv = to_csv
+
+    def bin_at(x, y):
+        for x_edges, y_edges, first in reversed(planes):
+            i, j = np.searchsorted(x_edges, x) - 1, np.searchsorted(y_edges, y) - 1
+            if 0 <= i < len(x_edges) - 1 and 0 <= j < len(y_edges) - 1:
+                row = data.iloc[first + i*(len(y_edges) - 1) + j]
+                if row[COLUMNS['binCount']] > 0:
+                    return row
+        return None
+    _connect_read_out(ax, on_click, bin_at)
     return ax
 
 def plot_powder_background(model, ax=None):

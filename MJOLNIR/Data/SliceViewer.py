@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from matplotlib.widgets import Slider
 
-from MJOLNIR.Data import RLUAxes
+from MJOLNIR.Data import Plotting, RLUAxes
 from MJOLNIR.Data.Coordinates import align_to_lattice, convert_to_hkl
 from MJOLNIR.Data.CutResult import CutResult, COLUMNS
 
@@ -56,6 +56,10 @@ class SliceViewer:
 
         - adjustable (bool): Two sliders to set the colour scale (default True)
 
+        - on_click (callable): Called with the read-out text when a slice is clicked outside
+          cutting mode: the position and the voxel's Int, counts, normalisation, monitor and
+          bin count (default print; None: no read-out). read_out(x, y) gives the same text
+
         - on_cut (callable): Called as on_cut(kind, parameters) for every cut drawn, kind one
           of '1d', 'qe', 'constant_q' and parameters the arguments of the DataSet method
           (cut_1d, cut_qe, cut_constant_q) (default None: dataset plots the cut)
@@ -80,7 +84,8 @@ class SliceViewer:
 
     def __init__(self, result: CutResult, sample=None, rlu: bool = True, axis: int = 2,
                  counts=False, log: bool = False, vmin=None, vmax=None, cmap='viridis',
-                 grid: bool = False, adjustable: bool = True, on_cut=None, dataset=None,
+                 grid: bool = False, adjustable: bool = True, on_click=print, on_cut=None,
+                 dataset=None,
                  cut_width: float = 0.1, cut_min_pixel: float = 0.02, spurion_peaks=None,
                  Ei=None, ef_limits=None):
         if result.parameters.get('grid') != ('qx', 'qy', 'energy'):
@@ -96,6 +101,7 @@ class SliceViewer:
         self.edges = [np.asarray(result.bins[name], dtype=float) for name in AXIS_NAMES]
         self.centres = [0.5*(e[1:] + e[:-1]) for e in self.edges]
         self.values = self._values(counts, log)
+        self.on_click = on_click
         self.on_cut = on_cut
         self.dataset = dataset
         self.cut_width, self.cut_min_pixel = cut_width, cut_min_pixel
@@ -284,16 +290,33 @@ class SliceViewer:
         value = self.value_at(qx, qy, energy)
         return f'{position}, E = {energy:.3f}, I = {value:.4e}'
 
-    def value_at(self, qx: float, qy: float, energy: float) -> float:
-        """Shown value of the voxel containing a point, NaN outside the data"""
+    def voxel_at(self, qx: float, qy: float, energy: float) -> tuple[int, int, int] | None:
+        """Index of the voxel containing a point, None outside the data"""
         index = []
         for edges, coordinate in zip(self.edges, (qx, qy, energy)):
             i = np.searchsorted(edges, coordinate) - 1
             if i < 0 or i >= len(edges) - 1:
-                return np.nan
-            index.append(i)
-        value = self.values[tuple(index)]
+                return None
+            index.append(int(i))
+        return tuple(index)
+
+    def value_at(self, qx: float, qy: float, energy: float) -> float:
+        """Shown value of the voxel containing a point, NaN outside the data"""
+        index = self.voxel_at(qx, qy, energy)
+        if index is None:
+            return np.nan
+        value = self.values[index]
         return np.nan if value is np.ma.masked else float(value)
+
+    def read_out(self, x: float, y: float) -> str:
+        """Position of a point (x, y) on the current slice and the values of its voxel (the
+        old click print-out)"""
+        text = self._format_coord(x, y)
+        index = self.voxel_at(*self.position(x, y))
+        if index is None:
+            return text
+        row = self.result.data.iloc[int(np.ravel_multi_index(index, self.values.shape))]
+        return f'{text}, {Plotting.bin_text(row)}'
 
     # Currat-Axe spurions
 
@@ -403,6 +426,10 @@ class SliceViewer:
             self.set_slice(self.index + (1 if event.button == 'up' else -1))
 
     def _on_press(self, event): # pragma: no cover
+        toolbar = getattr(self.figure.canvas, 'toolbar', None)
+        if (not self.cutting and self.on_click is not None and event.inaxes is self.axes
+                and event.button == 1 and not (toolbar is not None and toolbar.mode)):
+            self.on_click(self.read_out(event.xdata, event.ydata))
         if self.cutting and event.inaxes is self.axes and event.button == 1:
             self._cut_start = (event.xdata, event.ydata)
             self._cut_line, = self.axes.plot([event.xdata]*2, [event.ydata]*2, 'r-', zorder=30)
