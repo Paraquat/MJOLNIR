@@ -122,6 +122,9 @@ def test_plot_q_plane_options(dataset, plane):
     assert in_q.get_xlabel() == 'Qx [1/AA]'
     with pytest.raises(AttributeError): # Reciprocal lattice axes need the sample
         Plotting.plot_q_plane(plane)
+    # 3D axes (the old plotQPlane's 3D layers) are refused, not drawn flat
+    with pytest.raises(ValueError, match='not 3D axes'):
+        Plotting.plot_q_plane(plane, ax=plt.figure().add_subplot(projection='3d'))
 
 # 1D cuts
 

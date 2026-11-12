@@ -179,8 +179,8 @@ work is the open items in the sections further down; tick both.
       `cutRaw1D` (`cut_raw_1d`), `cutPowder` (`cut_powder`), measurement errors (`I_err`)
       in every cut. Dropped: raw `extractData`; (2026-11-12) `cutQE` smoothing and scaled
       energy, `plotCoverage`
-- [ ] Plots and axes: 3D axes in `plotQPlane`. Moved to Milestone 3 (2026-11-12): the
-      `_interactiveSettings` modes (cutting from a plot). Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`),
+- [x] Plots and axes. Moved to Milestone 3 (2026-11-12): the `_interactiveSettings` modes
+      (cutting from a plot). Dropped (2026-11-12): 3D axes in `plotQPlane`. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`),
       `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D` (`plot_raw_1d`), `plotCut1DE`
       (`plot_cut_constant_q`), `plotCutPowder` (`plot_cut_powder`), `createQAxis` /
       `createQEAxes` (`create_q_axis`, `create_qe_axes`), `generate1DAxis(E)` (inside the
@@ -621,8 +621,12 @@ runs on the new `DataSet` and readers, and every view works.
       `get_clim`, `calculateIndex`, `Data`, `result`, `to_csv`, `type = 'Powder'`). Plotted
       values, colour limits and labels identical to the old plot. `counts` added as in the
       other maps. Click printout: `on_click`. Not ported: `dataFiles=`
-- [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`; option not ported yet:
-      3D axes)
+- [x] `plotQPlane` (`Cuts.cut_q_plane`, `Plotting.plot_q_plane`)
+- [x] `plotQPlane` on 3D axes (each energy range a `contourf3D` layer at its mean energy):
+      Dropped (2026-11-12). Unused by the GUI, the docs and the tutorials; the read-out,
+      cutting and lattice grid did not work on it; `view_3d` (`SliceViewer`) moves through
+      the energy slices. `plot_q_plane` refuses 3D axes (it would draw every range in one
+      plane)
 - [x] `plotQPlane` `binning='polar'` (bins in angle and |Q|), `enlargen` (adaptive bins) and
       `scaleFunction` (a function applied to the intensity): Dropped (2026-11-12). Unused by
       the GUI and the docs, and broken: `polar` with `enlargen` always raised (`binEdges(x,

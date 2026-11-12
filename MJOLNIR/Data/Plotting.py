@@ -741,7 +741,8 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
         - rlu (bool): Draw on reciprocal lattice axes; the result must then be made from points
           aligned to the lattice (DataSet.gather_q(align_to_lattice=True)) (default True)
 
-        - ax (Axes): Axes to draw on (default None: new axes from RLUAxes.createQAxis)
+        - ax (Axes): Axes to draw on (default None: new axes from RLUAxes.createQAxis); not 3D
+          axes (the old plotQPlane drew 3D layers on them: use DataSet.view_3d)
 
         - log (bool): Plot log10 of the intensity (default False)
 
@@ -758,6 +759,9 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
 
     The returned axes have set_clim, get_clim and to_csv.
     """
+    if getattr(ax, 'name', None) == '3d': # pcolormesh would draw every range in one plane
+        raise ValueError('plot_q_plane draws on 2D axes, not 3D axes; for the energy ranges in '
+                         '3D, see DataSet.view_3d')
     if ax is None:
         if rlu and sample is None:
             raise AttributeError('A sample is needed for reciprocal lattice axes (rlu=True)')
