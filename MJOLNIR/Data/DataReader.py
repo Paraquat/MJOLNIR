@@ -291,6 +291,18 @@ class DataReader(ABC):
             updated.append(binning)
         return updated
 
+    def update_sample_parameters(self, unit_cell):
+        """Use new lattice parameters (a, b, c, alpha, beta, gamma) for the sample, keeping its
+        orientation: UB = U B with the file's U and the new cell's B (Sample.updateSampleParameters).
+        Qx, Qy stay; H, K, L of transformed data are converted again. Nothing is saved"""
+        self._check_not_frozen('change the sample of')
+        unit_cell = np.array(unit_cell, dtype=float)
+        if unit_cell.shape != (6,):
+            raise ValueError(f'A unit cell is a, b, c, alpha, beta, gamma; got {unit_cell}')
+        self.sample.updateSampleParameters(unit_cell)
+        if self.qx is not None:
+            self.h, self.k, self.l = self.sample.calculateQxQyToHKL(self.qx, self.qy)
+
     def rebin(self, binning: int, shape: tuple, bounds: npt.NDArray[np.int32]):
         """Sum the detector pixels between the calibration bounds of each energy bin"""
         intensity = np.zeros(shape, dtype=np.result_type(self.counts.dtype, int))

@@ -53,6 +53,9 @@ class DataSet:
         self._background_settings = None # Method and arguments that fitted the model, to refit
         self._calibration_updates = [] # (calibration files, overwrite), also for later files
         self.absolute_normalization = 1.0 # Factor of absolute_normalize (1: not normalised)
+        # Unit cell of update_sample_parameters (None: the files'), and the files' own cell
+        self._unit_cell = None
+        self._file_unit_cell = None
         if files is not None:
             self.extend(files)
 
@@ -89,6 +92,40 @@ class DataSet:
         if self._binning in updated and len(self) > 0:
             self.set_binning(self._binning)
         return sorted(updated)
+
+    def update_sample_parameters(self, unit_cell):
+        """Use new lattice parameters (a, b, c, alpha, beta, gamma) for the sample of every
+        data file, also those added later (see DataReader.update_sample_parameters): each keeps
+        its orientation and its Qx, Qy, while H, K, L follow the new cell. A mask object is
+        evaluated again and a background model fitted again. Files added later must have the
+        cell of the files or the new one. Nothing is saved"""
+        self._check_not_frozen('change the sample of')
+        unit_cell = np.array(unit_cell, dtype=float)
+        if unit_cell.shape != (6,):
+            raise ValueError(f'A unit cell is a, b, c, alpha, beta, gamma; got {unit_cell}')
+        if self._file_unit_cell is None and len(self) > 0:
+            self._file_unit_cell = self.sample.unitCell.copy()
+        for reader in self._readers:
+            reader.update_sample_parameters(unit_cell)
+        self._unit_cell = unit_cell
+        if self._mask_object is not None and self._mask_reproducible:
+            self.mask = self._mask_object # Masks in H, K, L move with the cell
+        if self.background_model is not None: # The binning is the same: any mask still fits
+            method, settings = self._background_settings
+            getattr(self, method)(**settings)
+
+    def _apply_unit_cell(self, reader: DataReader):
+        """Give a reader to be added the unit cell of update_sample_parameters"""
+        cell = reader.sample.unitCell
+        if np.allclose(cell, self._unit_cell):
+            return
+        if self._file_unit_cell is None: # Updated while empty: the first file sets it
+            self._file_unit_cell = cell.copy()
+        elif not np.allclose(cell, self._file_unit_cell):
+            raise ValueError(f'Sample of "{reader.file.name}" differs from the sample of the '
+                             f'DataSet: its unit cell {cell} is neither the files\' '
+                             f'{self._file_unit_cell} nor the updated {self._unit_cell}')
+        reader.update_sample_parameters(self._unit_cell)
 
     # Absolute normalisation
 
@@ -128,6 +165,8 @@ class DataSet:
         if self.reader_type is not None and type(reader) is not self.reader_type:
             raise TypeError(f'Cannot add {type(reader).__name__} "{reader.file.name}" to a '
                             f'DataSet of {self.reader_type.__name__}')
+        if self._unit_cell is not None:
+            self._apply_unit_cell(reader)
         if len(self) > 0 and not reader.sample == self.sample:
             raise ValueError(f'Sample of "{reader.file.name}" differs from the sample of '
                              f'"{self._readers[0].file.name}"')
@@ -227,6 +266,7 @@ class DataSet:
         result._binning = self._binning
         result._use_default_mask = self._use_default_mask
         result.absolute_normalization = self.absolute_normalization # The copies carry it
+        result._unit_cell, result._file_unit_cell = self._unit_cell, self._file_unit_cell
         result._readers = readers
         result._mask_reproducible = False # The masks are arrays now
         result.frozen = True
@@ -241,6 +281,7 @@ class DataSet:
             subset.reader_type = self.reader_type
             subset._binning = self._binning
             subset.absolute_normalization = self.absolute_normalization # Before the readers
+            subset._unit_cell, subset._file_unit_cell = self._unit_cell, self._file_unit_cell
             subset.extend(self._readers[index])
             subset._mask_object = self._mask_object
             subset._mask_reproducible = self._mask_reproducible

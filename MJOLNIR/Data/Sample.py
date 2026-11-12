@@ -450,6 +450,7 @@ class Sample(object):
         
         self.UB = newUB
         self.orientationMatrix = newUB
+        self.B = newB # Else a second update takes U from the old B
         self.calculateProjections()
 
 

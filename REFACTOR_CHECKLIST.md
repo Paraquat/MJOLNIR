@@ -86,8 +86,8 @@ work is the open items in the sections further down; tick both.
       NICOS log (questions 9, 11, 12, 41, 42 of the refactoring log). Done: CAMEA scan
       parameters, detector and analyser selection (`dasel`), monitor mode, `title`,
       `comment`, `startTime`/`endTime`, counting time (`reader.time`), scan command
-- [ ] Calibration and sample: `updateSampleParameters`. Done: `updateCalibration`,
-      calibration plots
+- [x] Calibration and sample: `updateCalibration`, calibration plots,
+      `updateSampleParameters`
 - [x] Saving: `saveHDF` is replaced by the writers below. Dropped (2026-10-19):
       `saveNXsqom` (with converted files) and DataSet `save`/`load`
 - [x] `NexusLayout` and `CameaLayout` (`MJOLNIR/Data/NexusLayout.py`), not used by anything
@@ -388,7 +388,9 @@ runs on the new `DataSet` and readers, and every view works.
       returns the axes. Normalisation = amp * width * sqrt(2 pi)
       (`Plotting.calibration_normalization`), as before. Old ones failed on NICOS-written files
       (`DataFile` has no `detectors` for them)
-- [ ] `updateSampleParameters`: new unit cell, recalculate UB
+- [x] `updateSampleParameters`: `reader.update_sample_parameters(unit_cell)` keeps U, sets
+      UB = U B(new cell) and converts H, K, L of transformed data from Qx, Qy again (the old
+      method left them until the next conversion). Matches the old code after conversion
 - [x] `calculateCurratAxeMask`: spurion masking, moved to `Mask.py` (works for every reader)
 
 ### Saving
@@ -426,8 +428,11 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] `settings` dict and extra keyword arguments
 - [x] Save converted files (`convertDataFile` with `saveFile`, `saveLocation`,
       `deleteOnConvert`): Dropped (2026-10-19) with converted files
-- [ ] `updateSampleParameters` for the whole set. Done: `updateCalibration`
-      (`DataSet.update_calibration`)
+- [x] `updateSampleParameters` for the whole set: `ds.update_sample_parameters(unit_cell)`.
+      Kept for files added later (with the files' cell or the new one; the old set refused
+      them as a different sample) and slices; masks from a mask object are evaluated again
+      and a background model fitted again. Refused on a difference. Also done:
+      `updateCalibration` (`DataSet.update_calibration`)
 
 ### Combined data
 - [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`
@@ -627,6 +632,9 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] `saveHDF` rebuilds the file from what `DataFile` read, in the pre-NICOS layout: drops
       `detector/data`, `total_counts`, `monitor_2`, the temperature and field logs and
       `qh/qk/ql`; adds fields the source lacks; `CameaDataReader` cannot read the result
+- [x] `Sample.updateSampleParameters` kept the old B, so a second update without a
+      conversion in between took U from the wrong B and turned the crystal (UB off by 0.017
+      for a 2% then 4% change of a). Fixed in `Sample.py`: it now stores the new B
 
 ## Mask.py bugs
 - [x] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
