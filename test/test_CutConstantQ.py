@@ -85,26 +85,6 @@ def data_point(dataset):
             float(np.percentile(energy, 10)), float(np.percentile(energy, 90)))
 
 @needs_data
-@pytest.mark.parametrize('constant_bins', [False, True])
-def test_matches_old_cut1DE(constant_bins):
-    """The old cut1DE with width w (a radius) is cut_constant_q with width 2w"""
-    from MJOLNIR.Data.DataSet_old import DataSet as OldDataSet
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        old = OldDataSet(dataFiles=[str(f) for f in SAMPLE_DATA[:1]])
-        old.convertDataFile(binning=8)
-    dataset = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:1])
-    hkl, energy_min, energy_max = data_point(dataset)
-    old_data, old_bins = old.cut1DE(E1=energy_min, E2=energy_max, q=hkl, width=0.05,
-                                    minPixel=0.05, constantBins=constant_bins)
-    result = dataset.cut_constant_q(hkl, width=0.1, min_pixel=0.05, energy_min=energy_min,
-                                    energy_max=energy_max, constant_bins=constant_bins)
-    assert np.array_equal(result.bins['energy'], np.asarray(old_bins[0][0]))
-    for column in ['Qx', 'Qy', 'H', 'K', 'L', 'Energy', 'intensity', 'Monitor',
-                   'Normalization', 'BinCount', 'Int', 'Int_err']:
-        assert np.array_equal(result.data[column].to_numpy(), old_data[column].to_numpy()), column
-
-@needs_data
 def test_files_aligned_with_rlu():
     dataset = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:2])
     hkl, energy_min, energy_max = data_point(dataset)

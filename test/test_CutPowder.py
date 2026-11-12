@@ -66,21 +66,6 @@ def dataset():
     return DataSet(InstrumentName.CAMEA, files=files[:2])
 
 @needs_data
-def test_matches_old_cutPowder(dataset):
-    import warnings
-    from MJOLNIR.Data.DataSet_old import DataSet as OldDataSet
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        old = OldDataSet(dataFiles=[str(f) for f in files[:2]])
-        old.convertDataFile(binning=8)
-        old_data = old.cutPowder(ENERGY_BINS, Q_BINS) # The old order: energy bins first
-    data = dataset.cut_powder(Q_BINS, ENERGY_BINS).data
-    assert list(data.columns) == list(old_data.columns)
-    for column in data.columns:
-        assert np.array_equal(data[column].to_numpy(dtype=float),
-                              old_data[column].to_numpy(dtype=float), equal_nan=True), column
-
-@needs_data
 def test_dataset_cut_powder_background_and_errors(dataset):
     plain = dataset.cut_powder(Q_BINS, ENERGY_BINS).data
     dataset.generate_background_model()

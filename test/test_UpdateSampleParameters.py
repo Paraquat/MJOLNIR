@@ -61,22 +61,6 @@ def test_reader():
         reader.update_sample_parameters(cell[:3])
 
 @needs_data
-def test_matches_old(dataset):
-    from MJOLNIR.Data.DataSet_old import DataSet as OldDataSet
-    cell = new_cell(dataset.sample)
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        old = OldDataSet(dataFiles=[str(f) for f in files[:2]])
-        old.updateSampleParameters(cell)
-        old.convertDataFile(binning=8)
-    dataset.update_sample_parameters(cell)
-    for reader, converted in zip(dataset, old.convertedFiles):
-        assert np.allclose(reader.sample.UB, converted.sample.UB, rtol=0, atol=1e-14)
-        for name in ['h', 'k', 'l', 'qx', 'qy']:
-            assert np.allclose(getattr(reader, name), getattr(converted, name),
-                               rtol=0, atol=1e-12), name
-
-@needs_data
 def test_dataset_kept_for_later_files(dataset):
     original = dataset.sample.unitCell.copy()
     cell = new_cell(dataset.sample)

@@ -137,22 +137,6 @@ def test_slice_viewer_read_out(dataset):
     assert viewer.read_out(1e3, 1e3) == viewer._format_coord(1e3, 1e3)
 
 @needs_data
-def test_axes_match_old(dataset):
-    from MJOLNIR.Data.DataSet_old import DataSet as OldDataSet
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        old = OldDataSet(dataFiles=[str(f) for f in files[:2]])
-        old.convertDataFile(binning=8)
-    for rlu in (True, False):
-        new, previous = dataset.create_q_axis(rlu=rlu), old.createQAxis(rlu=rlu, withoutOnClick=True)
-        assert (new.get_xlabel(), new.get_ylabel()) == (previous.get_xlabel(), previous.get_ylabel())
-        assert new.format_coord(0.3, 0.2) == previous.format_coord(0.3, 0.2)
-        for axis in (0, 1):
-            new, previous = dataset.create_qe_axes(axis=axis, rlu=rlu), old.createQEAxes(axis=axis, rlu=rlu)
-            assert new.get_xlabel() == previous.get_xlabel()
-            assert new.format_coord(0.3, 1.0) == previous.format_coord(0.3, 1.0)
-
-@needs_data
 def test_q_plane_on_created_axes(dataset):
     ax = dataset.create_q_axis()
     assert dataset.plot_q_plane(energy_min=0.0, energy_max=0.5, ax=ax, on_click=None) is ax

@@ -69,9 +69,25 @@ work is the open items in the sections further down; tick both.
       MJOLNIR-GUI uses (Milestone 3), so nothing the GUI needs is dropped
 
 ### Keep the comparisons with the old code
-- [ ] Save the old code's output as reference test data before deleting it: conversion arrays
-      for each instrument, `cut1D`, `cutQE`, `plotQPlane` values, `binData3D`, the powder and
-      AMBER backgrounds, the milestone plots. The parity checks then run without the old code
+- [x] Save the old code's output as reference test data before deleting it (12 Nov 2026):
+      `test/reference/*.npz` (3.2 MB), written by `test/reference/generate.py` (needs the old
+      code), compared by `test/test_Reference.py` through `test/reference_data.py`.
+      Conversion arrays of CAMEA 2024 (binning 8; binning 3 with an A3 offset), CAMEA 2023,
+      Bambus, MultiFLEXX (synthetic file), Flatcone, Marmot (placeholder table); `cut1D`
+      (three settings), `cut1DE`, `cutQE`, `cutQELine`, `cutPowder`, `cutRaw1D`,
+      `plotQPlane` (data and mesh), `binData3D` (rlu on and off, two step sizes), the powder
+      background (with and without the foreground mask) and AMBER (old conventions; run when
+      AMBER and torch are installed), `updateSampleParameters`, `createQAxis` /
+      `createQEAxes`. The milestone plots: their Q-E cut and Q plane, of the data and of a
+      difference. Large arrays are kept as summaries (shape, NaN count, sum, sum of squares,
+      min, max, 5000 sampled values); cut results whole. Known differences are left out of
+      the comparison where they are: Flatcone counts (the old conversion truncated them),
+      Marmot's single-precision unit cell (UB ~1e-7) and its half-step scan offset, `cut1D`'s
+      truncated `Int_err`, `Int_err` of a difference, `cutRaw1D` with one selection (below).
+      The four tests that imported the old code (`test_CutPowder`, `test_CutConstantQ`,
+      `test_PlotReadOut`, `test_UpdateSampleParameters`) moved to `test_Reference.py`. With
+      the old modules blocked from importing, the whole suite but `test_DataSetSmoke.py`
+      passes
 - [ ] Replace `test/test_DataSetSmoke.py` (smoke tests of `DataSet_old`) with tests of the new
       `DataSet` for every ported operation
 - [ ] Port or delete the tests pytest does not collect (`test/DataFile.py`, `test/DataSet.py`,
@@ -765,6 +781,9 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       background (and measurement errors); now `Int_err` of the cut
 - [x] `generateUFitDataset` along energy labelled x with the Q point and a mean energy as if
       it were a Q cut; now 'E [meV] at (H, K, L) [RLU]'
+- [x] `cutRaw1D` with a single detector or analyser number gave counts for the first file only
+      (the number became a one-element list, zipped with the files); `cut_raw_1d` uses it for
+      every file
 - [x] `cutRaw1D` / `plotRaw1D` failed on Flatcone files (IndexError: counts indexed as 3D);
       `cut_raw_1d` works for every reader
 - [x] `calcualteDataIndexFromDasel` checked the analyser against Bambus's limit for every
