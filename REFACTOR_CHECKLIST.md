@@ -440,8 +440,8 @@ runs on the new `DataSet` and readers, and every view works.
 ### Combined data
 - [x] Drop masked points when extracting data (old `extractData()`), `maskIndices`
       (`gather`; boundaries are `view.offsets[1:]`)
-- [ ] `I_err`: readers have `intensity_error` (set by `ds1 - ds2`); `cut_constant_q` and
-      `cut_powder` use it; `cut_1d`, `cut_qe`, `cut_q_plane`, `bin_3d` do not yet
+- [x] `I_err`: readers have `intensity_error` (set by `ds1 - ds2`); every cut uses it
+      (`cut_1d`, `cut_qe`, `cut_qe_line`, `cut_q_plane`, `bin_3d` since 2026-11-12)
 - [x] Rotate files into the first file's frame when samples differ slightly (`rlu`):
       `gather_q`
 
