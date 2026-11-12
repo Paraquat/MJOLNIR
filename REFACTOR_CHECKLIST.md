@@ -87,13 +87,19 @@ work is the open items in the sections further down; tick both.
       truncated `Int_err`, `Int_err` of a difference, `cutRaw1D` with one selection (below).
       The four tests that imported the old code (`test_CutPowder`, `test_CutConstantQ`,
       `test_PlotReadOut`, `test_UpdateSampleParameters`) moved to `test_Reference.py`. With
-      the old modules blocked from importing, the whole suite but `test_DataSetSmoke.py`
-      passes
-- [ ] Replace `test/test_DataSetSmoke.py` (smoke tests of `DataSet_old`) with tests of the new
-      `DataSet` for every ported operation
-- [ ] Port or delete the tests pytest does not collect (`test/DataFile.py`, `test/DataSet.py`,
-      `test/Sample.py` and the other `test/*.py` not named `test_*.py`); they need camea2018
-      files that are not in `Data/` (question 37)
+      the old modules blocked from importing, the whole suite passes (with the new
+      `test_DataSetSmoke.py`, below)
+- [x] Replace `test/test_DataSetSmoke.py` (smoke tests of `DataSet_old`) with tests of the new
+      `DataSet` for every ported operation (2026-11-12): every public `DataSet` method runs on
+      the sample data (container, sorting, binning, coordinates, masks, subtraction, cuts,
+      plots, 3D viewer, axes, backgrounds with AMBER, calibration, sample, normalisation,
+      ufit export, physics), and `test_every_operation_is_run` fails if a public method is
+      missing from the file. The old file's expected failures were the old code's bugs, all
+      fixed or dropped (see "Bugs in the old code to fix, not port")
+- [ ] Port or delete the tests pytest does not collect (`test/Sample.py`, which builds
+      `DataFile`s in some tests, and the other `test/*.py` not named `test_*.py`, which test
+      kept modules); they need camea2018 files that are not in `Data/` (question 37). Done:
+      `test/DataFile.py` and `test/DataSet.py` (the old architecture) deleted (2026-11-12)
 - [ ] One place for test data, available in CI (question 36); remove the hard-coded paths
       (`/home/zamaan/Projects/bambus` in `test_CameaDataReader.py` and
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
@@ -726,14 +732,8 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `save` / `load`: Dropped (2026-10-19)
 
 ## Bugs in the old code to fix, not port
-- [x] Resolution matrix (`Instrument.calculateResoultionMatrix`), fixed in
-      `Data/Resolution.py`: the analyser (and so the sample-analyser distance) was the Ef bin
-      index // 8, right only at binning 8 (the same point gave a Qx term of 7214 at binning 1,
-      7628 at 2, 8940 at 8); a Qx, Qy position without a sample raised (`if rlu or sample is
-      None` then used the sample); another instrument raised `UnboundLocalError` (a
-      `NotImplementedError` built but not raised); the binning check let 9 and more through
-      (`not binning>0 and binning <9`)
-Recorded as expected failures in `test/test_DataSetSmoke.py`, except the `saveHDF` items,
+Most were recorded as expected failures in the old `test/test_DataSetSmoke.py`
+(replaced by smoke tests of the new `DataSet`, 2026-11-12), except the `saveHDF` items,
 which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] Combined `h/k/l` point at attributes `H/K/L`: Dropped (2026-10-19);
       `gather(ArrayType.H)` etc. replace them
@@ -752,6 +752,13 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] `Sample.updateSampleParameters` kept the old B, so a second update without a
       conversion in between took U from the wrong B and turned the crystal (UB off by 0.017
       for a 2% then 4% change of a). Fixed in `Sample.py`: it now stores the new B
+- [x] Resolution matrix (`Instrument.calculateResoultionMatrix`), fixed in
+      `Data/Resolution.py`: the analyser (and so the sample-analyser distance) was the Ef bin
+      index // 8, right only at binning 8 (the same point gave a Qx term of 7214 at binning 1,
+      7628 at 2, 8940 at 8); a Qx, Qy position without a sample raised (`if rlu or sample is
+      None` then used the sample); another instrument raised `UnboundLocalError` (a
+      `NotImplementedError` built but not raised); the binning check let 9 and more through
+      (`not binning>0 and binning <9`)
 
 ## Mask.py bugs
 - [x] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
