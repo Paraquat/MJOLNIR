@@ -162,9 +162,8 @@ work is the open items in the sections further down; tick both.
       `cutRaw1D` (`cut_raw_1d`), `cutPowder` (`cut_powder`), measurement errors (`I_err`)
       in every cut. Dropped: raw `extractData`; (2026-11-12) `cutQE` smoothing and scaled
       energy, `plotCoverage`
-- [ ] Plots and axes: `_interactiveSettings` modes (cutting from a plot; to the GUI in
-      Milestone 3, with an `on_cut` hook on `plot_q_plane` and `plot_cut_qe`), 3D axes in
-      `plotQPlane`. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`),
+- [ ] Plots and axes: 3D axes in `plotQPlane`. Moved to Milestone 3 (2026-11-12): the
+      `_interactiveSettings` modes (cutting from a plot). Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine` (`plot_cut_qe_line`),
       `View3D` (`view_3d`, `SliceViewer`), `plotRaw1D` (`plot_raw_1d`), `plotCut1DE`
       (`plot_cut_constant_q`), `plotCutPowder` (`plot_cut_powder`), `createQAxis` /
       `createQEAxes` (`create_q_axis`, `create_qe_axes`), `generate1DAxis(E)` (inside the
@@ -174,21 +173,19 @@ work is the open items in the sections further down; tick both.
       (`absolute_normalize`, `undo_absolute_normalize`). Dropped (2026-11-11): `symmetrize`
 - [ ] Physics: resolution matrices, `findEi`, `checkSecondOrderElastic`
 - [x] Export: `generateUFitDataset` (`ds.generate_ufit_dataset`, `Export.to_ufit`)
-- [ ] DataFile module constants the GUI and scripts read: `detectorLimits`,
-      `analyzerLimits`. Done: `supportedRawFormats` is `DataReaderFactory().file_extensions()`
+- [x] DataFile module constants the GUI and scripts read. Moved to Milestone 3 (2026-11-12):
+      `detectorLimits`, `analyzerLimits`. Done: `supportedRawFormats` is `DataReaderFactory().file_extensions()`
       (each reader's `file_extensions`; `CommandLineScripts/_tools.py` builds its file dialog
       filter from it and no longer imports `DataFile`). `possibleAttributes` is now
       `shallow_keys()` per reader; `supportedConvertedFormats` is dropped with converted files
 
 ### Move the rest of MJOLNIR off the old API
-- [ ] `Viewer1D.py`, `RLUAxes.py`, `DraggableShapes.py`, `_interactiveSettings.py`
+- [ ] `RLUAxes.py`. Moved to Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`,
+      `_interactiveSettings.py` (none imports the old code)
 - [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions): delete
       `Viewer3D.py` with the old code (replaced by `SliceViewer.py`); move
       `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails with pyqtgraph
       0.13: `QtGui.QWidget` and `QtGui.QMainWindow` moved to `QtWidgets`)
-- [ ] `_interactiveSettings.py` imports PyQt5 at import only to choose mouse cursors; use
-      matplotlib's `canvas.set_cursor` (any backend) so MJOLNIR does not need Qt (PyQt5 is not
-      in `install_requires`)
 - [ ] `Statistics/CutObject.py`
 - [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
       `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
@@ -245,6 +242,19 @@ runs on the new `DataSet` and readers, and every view works.
       index, display names
 - [ ] Messages raised while reading (e.g. masked broken tubes) delivered through `warnings` or
       logging, which the GUI can show (it passed a `printFunction`)
+
+### Moved from Milestone 2 (2026-11-12)
+- [ ] `detectorLimits` / `analyzerLimits` (old `DataFile` module constants, read by the Raw 1D
+      view): drop; the GUI uses `reader.n_detectors` / `reader.n_analysers` (`raw_counts`
+      checks the range)
+- [ ] Interactive cutting from plots (the `_interactiveSettings` modes: drawing rectangles and
+      circles on Q-plane, Q-E and 3D plots to make cuts) in the GUI; the library plots get an
+      `on_cut(kind, parameters)` hook on `plot_q_plane` and `plot_cut_qe`, as `SliceViewer`
+- [ ] `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`: on the new API, or moved
+      to MJOLNIR-GUI. `_interactiveSettings.py` imports PyQt5 at import only to choose mouse
+      cursors: use matplotlib's `canvas.set_cursor` (any backend), or move it to the GUI, so
+      MJOLNIR does not need Qt (PyQt5 is not in `install_requires`). None of the three imports
+      the old code, so deleting it in Milestone 2 does not break them
 
 ### File information the GUI shows
 - [ ] Reader metadata for the file info panel and subtraction check: sample name, title,
@@ -638,9 +648,8 @@ runs on the new `DataSet` and readers, and every view works.
       shape is replaced by the toolbar mode; on a Q plane with overlapping energy ranges the
       read-out is of the last range with points there (the old one always used the first);
       counts of derived data are not truncated to integers
-- [ ] `_interactiveSettings` modes (drawing cuts on plots): to the GUI in Milestone 3; the
-      plots get an `on_cut(kind, parameters)` hook as `SliceViewer`. CSV export and hover:
-      done
+- [x] CSV export and hover: done. The `_interactiveSettings` modes (drawing cuts on plots):
+      moved to Milestone 3 (2026-11-12)
 
 ### Instrument physics
 - [ ] `calculateResolutionMatrix`, `calculateResolutionMatrixAndVectors`
@@ -795,8 +804,8 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       `DataSet.mask`. Still to do: the bugs listed under "Mask.py bugs"
 - [x] `BackgroundModel.py`: the powder model is the new `BackgroundModel.py`; the old file
       is kept as `BackgroundModel_old.py` for `DataSet_old`
-- [ ] `Viewer1D.py`, `Viewer3D.py`, `RLUAxes.py`, `DraggableShapes.py`
-- [ ] `_interactiveSettings.py`
+- [ ] `Viewer3D.py` (deleted with the old code), `RLUAxes.py`. Moved to Milestone 3
+      (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
 - [ ] `Statistics/CutObject.py`
 - [ ] `_tools.py` (`PointerArray`)
 - [x] Command line scripts: 3DView, History, CalibrationInspector. Convert: Dropped
