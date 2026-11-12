@@ -156,9 +156,10 @@ work is the open items in the sections further down; tick both.
       unchanged
 - [x] Full-file mode: Dropped (2026-10-19). Only `createEmptyDataFile` and NXsqom output
       needed it, and both are dropped
-- [ ] Cuts: measurement errors (`I_err`), `cutQE` smoothing and scaled energy,
-      `plotCoverage`. Done: `cut1DE` (`cut_constant_q`), `cutQELine` (`cut_qe_line`),
-      `cutRaw1D` (`cut_raw_1d`), `cutPowder` (`cut_powder`). Dropped: raw `extractData`
+- [x] Cuts: done: `cut1DE` (`cut_constant_q`), `cutQELine` (`cut_qe_line`),
+      `cutRaw1D` (`cut_raw_1d`), `cutPowder` (`cut_powder`), measurement errors (`I_err`)
+      in every cut. Dropped: raw `extractData`; (2026-11-12) `cutQE` smoothing and scaled
+      energy, `plotCoverage`
 - [ ] Plots and axes: `createQAxis` / `createQEAxes`, `generate1DAxis(E)`,
       polar binning and `enlargen` in `plotQPlane`, click handlers and
       `_interactiveSettings` modes. Done: `plotCut1D` (`plot_cut_1d`), `plotCutQELine`
@@ -498,9 +499,19 @@ runs on the new `DataSet` and readers, and every view works.
       `ds.generate_ufit_dataset(result)`), `dataFiles=`; an empty cut returns an empty
       result instead of raising; no `BinDistance` column (as `cut_1d`)
 - [x] `cutQE` (`Cuts.cut_qe`; identical to the old code)
-- [ ] Cut options not ported yet: measurement errors (`I_err`),
-      `cutQE` smoothing and scaled energy, `plotCoverage`. ufit output: no `ufit=True`
-      option; `ds.generate_ufit_dataset(result)` exports any 1D cut
+- [x] Measurement errors (`I_err`): every cut takes `intensity_error` (`cut_1d`, `cut_qe`,
+      `cut_qe_line`, `cut_q_plane`, `bin_3d` added 2026-11-12), and the `DataSet` cuts pass
+      the readers' errors (`ds1 - ds2`). Without them the results are unchanged
+- [x] `cutQE` `smoothing` (a Gaussian filter of `Int` after binning): Dropped (2026-11-12).
+      Display only; it returned smoothed `Int` with the unsmoothed errors. Smooth
+      `result.grid('Int')` or the plotted image instead
+- [x] `cutQE` `scaledEnergy` (bins even in sqrt(|E|/f)): Dropped (2026-11-12). The scaling is
+      monotonic, so the same bins come from passing `energy_bins` = `_tools.rescale(
+      np.linspace(_tools.scale(E_min, f), _tools.scale(E_max, f), n), f)` to `cut_qe`
+- [x] `cut1D` `plotCoverage` (debug figure of the points and the cut's box in Qx, Qy):
+      Dropped (2026-11-12). The `CutResult` bins hold the box if a plot is wanted later
+- [x] ufit output: no `ufit=True` option; `ds.generate_ufit_dataset(result)` exports any 1D
+      cut
 - [x] `cutQELine`: `Cuts.cut_qe_line`, `ds.cut_qe_line(q_points, energy_bins, width=0.1,
       min_pixel=0.01, rlu, background_subtraction)`: one `cut_qe` per segment, in one
       `CutResult` (`qCut`, `BinDistance` from the segment start; bins `q_points`, `offsets`,
@@ -682,8 +693,9 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       `intensity_error` (None: counting statistics), `ds1 - ds2` sets it to
       sqrt(e1^2 + (e2 M1/M2)^2), and `cut_constant_q` sums the variances per bin and takes
       the root: `Int_err = sqrt(sum e^2) BinCount / (Monitor Normalization)`, with the
-      background added to the variance when subtracted. `cut_1d`, `cut_qe`, `cut_q_plane`
-      and `bin_3d` do not use `intensity_error` yet (see "Cut options not ported yet")
+      background added to the variance when subtracted. Every other cut does the same
+      (2026-11-12): on a difference of the sample files, `cut_1d` gave NaN `Int_err` in 74
+      of 88 bins (the root of negative counts); now none
 - [x] `cut1DE` with background: `intensity` held counts minus background (as `cutQE`); now
       the measured counts, as `cut1D`
 - [x] `plotCut1D` with an unknown `counts` value built an `AttributeError` without raising

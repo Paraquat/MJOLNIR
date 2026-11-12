@@ -632,7 +632,8 @@ class DataSet:
         with rlu. With background_subtraction, the background model is subtracted. See
         Cuts.cut_1d"""
         q1, q2 = self._cut_positions(q1, q2, rlu)
-        points = self._points(rotate=rlu, background_subtraction=background_subtraction)
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction,
+                              errors=True)
         return Cuts.cut_1d(**points, q1=q1, q2=q2, width=width, min_pixel=min_pixel,
                            energy_min=energy_min, energy_max=energy_max, sample=self.sample,
                            extend=extend, constant_bins=constant_bins)
@@ -663,7 +664,8 @@ class DataSet:
         into the first file's frame only with rlu. With background_subtraction, the background
         model is subtracted. See Cuts.cut_qe"""
         q1, q2 = self._cut_positions(q1, q2, rlu)
-        points = self._points(rotate=rlu, background_subtraction=background_subtraction)
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction,
+                              errors=True)
         return Cuts.cut_qe(**points, q1=q1, q2=q2, width=width, min_pixel=min_pixel,
                            energy_bins=energy_bins, energy_min=energy_min,
                            energy_max=energy_max, energy_step=energy_step,
@@ -682,7 +684,8 @@ class DataSet:
                              f'{q_points.shape}')
         if rlu:
             q_points = np.array([self.convert_to_qxqy(q) for q in q_points])
-        points = self._points(rotate=rlu, background_subtraction=background_subtraction)
+        points = self._points(rotate=rlu, background_subtraction=background_subtraction,
+                              errors=True)
         return Cuts.cut_qe_line(**points, q_points=q_points, energy_bins=energy_bins,
                                 width=width, min_pixel=min_pixel, sample=self.sample)
 
@@ -704,7 +707,7 @@ class DataSet:
         Cuts.cut_q_plane"""
         sample = align_to_lattice(self.sample) if rlu else self.sample
         points = self._points(rotate=rlu, align_to_lattice=True,
-                              background_subtraction=background_subtraction)
+                              background_subtraction=background_subtraction, errors=True)
         return Cuts.cut_q_plane(**points,
                                 energy_bins=energy_bins, energy_min=energy_min,
                                 energy_max=energy_max, x_bin_tolerance=x_bin_tolerance,
@@ -718,7 +721,7 @@ class DataSet:
         subtracted. result.grid(column) gives a column as a 3D array. See Cuts.bin_3d"""
         sample = align_to_lattice(self.sample) if rlu else self.sample
         points = self._points(rotate=rlu, align_to_lattice=True,
-                              background_subtraction=background_subtraction)
+                              background_subtraction=background_subtraction, errors=True)
         return Cuts.bin_3d(**points, dx=dx, dy=dy, dz=dz, sample=sample)
 
     def plot_cut_1d(self, q1, q2, width: float, min_pixel: float, energy_min: float,
