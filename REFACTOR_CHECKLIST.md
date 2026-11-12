@@ -56,8 +56,10 @@ the test suite passes. Every old feature is either ported or dropped on purpose.
 work is the open items in the sections further down; tick both.
 
 ### Decide what to port
-- [ ] Answer the scope questions of the refactoring log: which old methods must keep working
-      and for how long (questions 3 and 6)
+- [x] Answer the scope questions of the refactoring log (questions 3 and 6, 12 Nov 2026).
+      3: no aliases for the old method names; MJOLNIR-GUI is changed to call the new API in
+      Milestone 3. 6: `DataFile.py` and `DataSet_old.py` are deleted at the end of this
+      milestone, with no deprecation release
 - [x] Broken or unused features (questions 29-35), decided 2026-10-19. Dropped: combined
       `h/k/l`, `cutELine`/`plotCutELine`, `plotA3A4`, DataSet `save`/`load`, converted
       `.nxs` files (reading, `saveNXsqom`, saving converted files), `createEmptyDataFile`,
@@ -230,6 +232,9 @@ the old classes (`GuiDataSet(DataSet)`, `GuiDataFile(DataFile)` in
 runs on the new `DataSet` and readers, and every view works.
 
 ### Design
+- [ ] Change the GUI code to call the new API (`cut_1d`, `plot_cut_qe`, `view_3d`, ...,
+      snake_case arguments, results as `CutResult` or axes): MJOLNIR keeps no aliases for the
+      old method names (question 3, 12 Nov 2026)
 - [ ] Decide the boundary: the GUI wraps the new `DataSet` and readers instead of subclassing
       them, or MJOLNIR offers a small GUI-facing layer
 - [ ] Instrument detection for files opened in the GUI: a factory helper that tries each
