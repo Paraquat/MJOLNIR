@@ -233,7 +233,8 @@ work is the open items in the sections further down; tick both.
       tutorial page (reasons in the refactoring log). History prints the whole `scanCommand`,
       which in NICOS-era CAMEA files is the batch script, as the old script did
 - [ ] `_tools.PointerArray`: remove once nothing uses it
-- [ ] `Mask.py`: plotting combinations with `indexMask` or `CurratAxeMask`
+- [x] `Mask.py`: plotting combinations with `indexMask` or `CurratAxeMask` (12 Nov 2026: the
+      other parts are drawn, see "Mask.py bugs"; drawing those two: Milestone 3)
 
 ### Documentation and release
 - [ ] Rewrite the docs that use the old API: the 10 notebooks in `docs/notebooks`, the pages in
@@ -300,6 +301,10 @@ runs on the new `DataSet` and readers, and every view works.
       `CameaDataWriter` saves to a new file, so the GUI must choose a name (e.g. a suffix) and
       open the new file. The "Converted" filter of the add-files dialog goes (converted files
       are dropped)
+- [ ] Draw `CurratAxeMask` (and decide on `indexMask`) on plots, for the mask view (question 43):
+      e.g. circles at the spurion positions for one energy on a constant-energy plot, from the
+      data set's Ei and the analysers' Ef. Until then a combined mask draws its other parts
+      and warns (`MultiMask.plot`)
 - [ ] Mask manager: Mask objects on the new DataSet (`ds.mask`, `append_mask`); saving masks
 - [ ] Subtraction manager: `ds1 - ds2` (a frozen DataSet) and its A3/2θ/Ei match check
 - [ ] Cut 1D manager: `cut_1d`, `cut_constant_q` (was `cut1DE`; `width` is now the
@@ -767,7 +772,12 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] Combining masks (`+`, `*`) renames the input masks (now names copies)
 - [x] `boxMask` without `corner4` cannot be cloned (NaN corners), so `-box` etc. fail
 - [x] `RotationMatrix3D` without an axis crashes (`np.eye((3,3))`)
-- [ ] `indexMask` / `CurratAxeMask` `plot` raise, so plotting combinations containing them fails
+- [x] `indexMask` / `CurratAxeMask` `plot` raise, so plotting combinations containing them failed
+      (the old code too). For now (2026-11-12) `MultiMask.plot` draws the parts that have a
+      shape and warns once, naming the parts left out; a single `indexMask` or
+      `CurratAxeMask` still raises. Test: `test_MaskBehaviour.py`. Question 43 of the
+      refactoring log (should they be drawn, and is mask drawing used at all); a fix is in
+      Milestone 3
 - [x] `test/Mask.py` is not collected by pytest, and defines `test_CurratAxeMask` twice
       (renamed to `test/test_Mask.py`; regression tests for the fixed bugs are in
       `test/test_MaskBehaviour.py`)
@@ -873,10 +883,10 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       and `sampleFormFactor`, which were not parameters
 
 ## Code still using the old API
-- [ ] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
+- [x] `Mask.py`: imports switched to `DataReader` / new `DataSet` (masks on `qx/qy`,
       `h/k/l`, `energy`, `A3` work); metaclass replaced by `ABC`; coordinates accept
       `ArrayType` or strings. `CurratAxeMask` works on readers; masks apply through
-      `DataSet.mask`. Still to do: the bugs listed under "Mask.py bugs"
+      `DataSet.mask`. The bugs listed under "Mask.py bugs" are fixed
 - [x] `BackgroundModel.py`: the powder model is the new `BackgroundModel.py`; the old file
       is kept as `BackgroundModel_old.py` for `DataSet_old`
 - [ ] `Viewer3D.py` (deleted with the old code), `RLUAxes.py`. Moved to Milestone 3

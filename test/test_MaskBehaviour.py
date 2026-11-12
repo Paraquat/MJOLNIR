@@ -1,4 +1,5 @@
 import pytest
+import warnings
 
 import numpy as np
 
@@ -58,3 +59,26 @@ def test_box_without_corner4_clones():
 
 def test_rotation_matrix_without_axis():
     assert np.array_equal(Mask.RotationMatrix3D(30), np.eye(3))
+
+def test_combined_plot_skips_parts_without_a_shape():
+    """indexMask and CurratAxeMask cannot be drawn: a combination containing them draws its
+    other parts and warns, instead of raising"""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    circle = Mask.circleMask(center=[0, 0], radius=0.5, name='circle')
+    rectangle = Mask.rectangleMask(corner1=[0, 0], corner2=[1, 0], corner3=[1, 1], name='box')
+    combined = (circle + Mask.indexMask(0, 3, axis=1, name='first')) * (
+        rectangle - Mask.CurratAxeMask([[1, 0, 0]], dqx=0.1, dqy=0.1, name='spurion'))
+    ax = plt.figure().add_subplot()
+    with pytest.warns(UserWarning, match='indexMask first, CurratAxeMask spurion'):
+        combined.plot(ax)
+    assert len(ax.lines) == 2 # The circle and the rectangle
+    plain = plt.figure().add_subplot()
+    with warnings.catch_warnings():
+        warnings.simplefilter('error') # Nothing skipped: no warning
+        (circle + rectangle).plot(plain)
+    assert len(plain.lines) == 2
+    with pytest.raises(NotImplementedError): # A single one still says it cannot be drawn
+        Mask.indexMask(0, 3).plot(ax)
+    plt.close('all')

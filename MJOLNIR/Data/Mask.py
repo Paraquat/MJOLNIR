@@ -244,9 +244,19 @@ class MultiMask(MaskingObject):
         newMask.negated = not newMask.negated
         return newMask
 
-    def plot(self,ax,transformation=None,*args,**kwargs):# pragma: no cover
-        for m in self.masks:
-            m.plot(ax,transformation,*args,**kwargs)
+    def plot(self,ax,transformation=None,*args,**kwargs):
+        """Draw every part that has a shape. Parts that cannot be drawn (indexMask: index
+        ranges; CurratAxeMask: positions that depend on each file's energies) are skipped with
+        one warning naming them, rather than stopping the whole plot"""
+        skipped = []
+        for m in self._leaves(self.masks):
+            try:
+                m.plot(ax,transformation,*args,**kwargs)
+            except NotImplementedError:
+                skipped.append(f'{type(m).__name__} {m.name}')
+        if skipped:
+            warnings.warn('These parts of the combined mask cannot be drawn and are not shown: '
+                          + ', '.join(skipped))
 
 
 def RotationMatrix(theta,deg=True):
