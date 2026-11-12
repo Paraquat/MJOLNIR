@@ -146,6 +146,22 @@ class DataReader(ABC):
         self.background = None
         self.environment = SampleEnvironment()
 
+    def __repr__(self) -> str:
+        """Class, file name, scan steps, incoming energy and binning (once calibrated), e.g.
+        CameaDataReader('camea2024n001486.hdf', 135 steps, Ei 4.00 meV, binning 8)"""
+        parts = [repr(getattr(getattr(self, 'file', None), 'name', '?'))]
+        if getattr(self, 'n_steps', None) is not None:
+            parts.append(f'{self.n_steps} steps')
+        Ei = np.asarray(getattr(self, 'Ei', []), dtype=float).ravel()
+        Ei = Ei[np.isfinite(Ei)]
+        if Ei.size:
+            low, high = Ei.min(), Ei.max()
+            parts.append(f'Ei {low:.2f} meV' if np.isclose(low, high, atol=5e-3)
+                         else f'Ei {low:.2f}-{high:.2f} meV')
+        if getattr(self, 'calibration', None) is not None:
+            parts.append(f'binning {self.binning}')
+        return f'{type(self).__name__}({", ".join(parts)})'
+
     # Keys shallow_read gives for every reader: the file's name and folder, and 2θ (A4 - A4Offset)
     _shallow_extras = ('name', 'fileLocation', 'twoTheta')
     # Reader attributes shallow_read gives for readers without a file layout

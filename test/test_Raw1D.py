@@ -141,3 +141,13 @@ def test_raw_counts_flatcone():
     result = dataset.cut_raw_1d(detector=30)[0]
     assert np.array_equal(result.data['intensity'], dataset._readers[0].counts[:, 30, 0])
     assert result.parameters['scan_parameters'] == ['a3p']
+
+@needs_data
+def test_reader_repr():
+    reader = CameaDataReader(files[0])
+    assert repr(reader) == f"CameaDataReader('{files[0].name}', 135 steps, Ei 4.00 meV)"
+    reader.set_instrument_calibration(8)
+    assert repr(reader).endswith('Ei 4.00 meV, binning 8)')
+    reader.Ei = np.linspace(4.0, 5.0, reader.n_steps) # An Ei scan: the range
+    assert 'Ei 4.00-5.00 meV' in repr(reader)
+    assert repr(CameaDataReader.__new__(CameaDataReader)) == "CameaDataReader('?')" # Half built

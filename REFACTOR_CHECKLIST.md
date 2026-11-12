@@ -438,8 +438,18 @@ runs on the new `DataSet` and readers, and every view works.
       `CameaDataWriter(reader).save(new_path)` per file
 
 ### Utilities
-- [ ] Compare files (`__eq__`, `difference`)
-- [ ] `__str__`, `shape` / `size`
+- [x] Compare files (`DataFile.__eq__`, `difference`; `DataSet.__eq__`): Dropped (2026-11-12).
+      Unused by MJOLNIR and the GUI (its subtraction check compares A3, 2θ and Ei itself: see
+      Milestone 3). `difference` failed on arrays with NaN (`np.all(np.isnan(a),
+      np.isnan(b))` passes b as the axis) and fell back to another comparison; the old
+      `DataSet.__eq__` compared attribute names only. Samples compare by unit cell
+      (`Sample.__eq__`, as `append` checks)
+- [x] `__str__`: readers have a `__repr__` (2026-11-12): class, file name, scan steps, Ei (a
+      range for Ei scans), binning once calibrated, e.g. `CameaDataReader(
+      'camea2024n001486.hdf', 135 steps, Ei 4.00 meV, binning 8)`; `DataSet.__repr__` lists
+      the files. `shape` / `size` (of the counts): Dropped (2026-11-12): use
+      `reader.counts.shape` / `reader.intensity.shape`. The old `DataSet.__str__` printed
+      the settings and every attribute: dropped with them
 - [x] Lists of supported instruments and formats: `InstrumentName` (old
       `supportedInstruments`); `file_extensions` on each reader, all of them from
       `DataReaderFactory().file_extensions()` (old `supportedRawFormats`): CAMEA `hdf`,
@@ -460,9 +470,15 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `AxisView`: clear `ValueError` when built from no arrays
 
 ### Files and setup
-- [ ] Normalisation and calibration files as inputs. Converted files as inputs: Dropped
+- [x] Normalisation and calibration files as inputs (`DataSet(normalizationfiles=...,
+      calibrationfiles=...)`): Dropped (2026-11-12). The old constructor stored them and
+      nothing read them: conversion always used the files' own calibration. New calibrations:
+      `ds.update_calibration(files, overwrite)`. Converted files as inputs: Dropped
       (2026-10-19)
-- [ ] `settings` dict and extra keyword arguments
+- [x] `settings` dict and extra keyword arguments: Dropped (2026-11-12). Extra keywords (only
+      `Author` passed the keyword check) were stored in `ds.settings`, read only by
+      `__str__`; the conversion of array values never ran (`hasattr(kwargs, 'shape')`
+      tested the dict). The GUI's `.settings` are on its own figures
 - [x] Save converted files (`convertDataFile` with `saveFile`, `saveLocation`,
       `deleteOnConvert`): Dropped (2026-10-19) with converted files
 - [x] `updateSampleParameters` for the whole set: `ds.update_sample_parameters(unit_cell)`.
