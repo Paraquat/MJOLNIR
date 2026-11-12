@@ -1,31 +1,22 @@
+"""Axes in reciprocal lattice units: the data is drawn in Qx, Qy [1/AA] (and energy), while the
+grid, ticks and read-out follow the sample's lattice (H, K, L). create_q_axis makes the Qx, Qy
+plane, create_qe_axes Q along a direction against energy. The tick spacing follows zooming."""
 import copy
 import functools
-import os
-import sys
+import warnings
 from operator import sub
 
-pythonVersion = sys.version_info[0]
-
-sys.path.append('.')
-sys.path.append('..')
-sys.path.append('../..')
-
-import matplotlib.pyplot as plt
-#if pythonVersion == 3: # Only for python 3
-import matplotlib.ticker as mticker
-
 import numpy as np
-from MJOLNIR import _tools
-from matplotlib.patches import Ellipse
-from mpl_toolkits.axisartist import SubplotHost#,axislines
-import warnings
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+from mpl_toolkits.axisartist import SubplotHost
 try:
-    from mpl_toolkits.axisartist.grid_helper_curvelinear import \
-        GridHelperCurveLinear
+    from mpl_toolkits.axisartist.grid_helper_curvelinear import GridHelperCurveLinear
 except ImportError:
-    from mpl_toolkits.axisartist.floating_axes.grid_helper_curvelinear import \
-        GridHelperCurveLinear
+    from mpl_toolkits.axisartist.floating_axes.grid_helper_curvelinear import GridHelperCurveLinear
 
+from MJOLNIR import _tools
+from MJOLNIR.Data.Coordinates import align_to_lattice
 
 
 def calculateBase(l,span,ticks):
@@ -82,15 +73,12 @@ class MaxNLocator(mticker.MaxNLocator):
         self.create_dummy_axis()
         self._factor = 1#0.0#None
 
-    def __call__(self, v1, v2): # pragma: no cover
-        if self._factor is not None:
-            self.set_bounds(v1*self._factor, v2*self._factor)
-            locs = mticker.MaxNLocator.__call__(self)
-            return np.array(locs), len(locs), self._factor
-        else:
-            self.set_bounds(v1, v2)
-            locs = mticker.MaxNLocator.__call__(self)
-            return np.array(locs), len(locs)
+    def __call__(self, v1, v2):
+        # tick_values: matplotlib no longer has the set_bounds this used, so a fixed number of
+        # ticks (set_xticks_number) failed when drawn
+        factor = 1 if self._factor is None else self._factor
+        locs = self.tick_values(v1*factor, v2*factor)
+        return np.array(locs), len(locs), self._factor
 
     def set_factor(self, f):
         self._factor = f
@@ -208,58 +196,37 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
 
 
 
-def createQAxis(self,rlu = True, withoutOnClick = False, figure=None,ids=[1, 1, 1],basex=None,basey=None):#,ax=None):
-    """Create a reciprocal lattice plot for a given DataSet object.
-    
-    Args:
-        
-        - Dataset (DataSet): DataSet object for which the RLU plot is to be made.
+def create_q_axis(sample, rlu: bool = True, figure=None, ids=(1, 1, 1), basex=None, basey=None):
+    """Axes of the Qx, Qy plane for sample (the old createQAxis).
+
+    With rlu, a reciprocal lattice grid along the sample's projection vectors (slanted for
+    non-orthogonal lattices), labelled in RLU, with the position read out in H, K, L. Data drawn
+    on them must be in the lattice-aligned frame (Coordinates.align_to_lattice, as
+    DataSet.gather_q(align_to_lattice=True) gives). Without rlu, plain Qx, Qy axes.
 
     Kwargs:
 
-        - rlu (bool): If true, plot in reciprocal lattice units, else in Qx, Qy (default True)
+        - rlu (bool): Reciprocal lattice axes, else Qx, Qy (default True)
 
-        - withoutOnClick (bool): If False, utilize the updated onClick method (default False)
+        - figure: Figure to put the axes in (default None: a new figure)
 
-        - figure: Matplotlib figure in which the axis is to be put (default None)
+        - ids (tuple): Subplot position, as SubplotHost takes it (default (1, 1, 1))
 
-        - ids (array): List of integer numbers provided to the SubplotHost ids attribute (default [1,1,1])
+        - basex, basey (float): Ticks at multiples of these values along x and y (default None:
+          chosen when zooming)
 
-        - basex (float): Ticks are positioned at multiples of this value along x (default None)
-
-        - basey (float): Ticks are positioned at multiples of this value along y (default None)
-
-    Returns:
-        
-        - ax (Matplotlib axes): Axes containing the RLU plot.
-
-    .. note::
-        When rlu axis is created, the orientation of Qx and Qy is assumed to be rotated as well. 
-        This is to be done in the self.View3D method call!
-
-    .. note::
-        When using python 2 the changing of tick marks is not supported due to limitations in matplotlib. However, if python 3 is used, the number 
-        of ticks and their location can be change after the initialization using the set_xticks_number, set_yticks_number chaning the wanted number 
-        of tick marks, or the set_xticks_base or set_yticks_base to change the base number, see RLU tutorial under Tools. As default a sufficient base
-        number is found and will update when zooming.
-        
+    The returned axes have sample (the aligned copy), rlu and, with rlu, set_axis(v1, v2, ...)
+    to show given points, set_xticks_base / set_yticks_base and set_xticks_number /
+    set_yticks_number to fix the tick marks, and forceGridUpdate.
     """
-    
-    sample = copy.deepcopy(self.sample)
     if rlu:
-        for samp in sample:
-            samp.convert = np.einsum('ij,j...->i...',samp.RotMat,samp.convert)
-            #sample.convert = np.einsum('ij,j...->i...',sample.RotMat,sample.convert)
-            samp.convertinv = np.linalg.inv(samp.convert) # Convert from Qx, Qy to projX, projY
-
-            samp.orientationMatrix = np.dot(samp.RotMat3D,samp.orientationMatrix)
-            samp.orientationMatrixINV = np.linalg.inv(samp.orientationMatrix)
-            samp.theta = 0.0
-
-    if figure is None:# and ax is None:
-        fig = plt.figure(figsize=(7, 4))
+        if sample is None:
+            raise AttributeError('A sample is needed for reciprocal lattice axes (rlu=True)')
+        sample = align_to_lattice(sample)
     else:
-        fig = figure#ax.get_figure()
+        sample = copy.deepcopy(sample)
+
+    fig = plt.figure(figsize=(7, 4)) if figure is None else figure
     if rlu:
         def calculateTicks(ticks,angle,round=True):
             val = ticks/np.tan(angle/2.0)
@@ -268,43 +235,24 @@ def createQAxis(self,rlu = True, withoutOnClick = False, figure=None,ids=[1, 1, 
             else:
                 return val
 
-        
-        if  not basex is None or not basey is None: # Either basex or basey is provided (or both)
+        if basex is not None or basey is not None: # Either basex or basey is provided (or both)
             if basex is None:
-                basex = calculateTicks(basey,sample[0].projectionAngle,round=False)
+                basex = calculateTicks(basey,sample.projectionAngle,round=False)
             elif basey is None:
-                basey = basex/calculateTicks(1.0,sample[0].projectionAngle,round=False)
-
-            grid_locator1 = MultipleLocator(base=basex)
-            grid_locator2 = MultipleLocator(base=basey)
+                basey = basex/calculateTicks(1.0,sample.projectionAngle,round=False)
         else:
             basex = 0.5
             basey = 0.5
-
-            grid_locator1 = MultipleLocator(base=basex)
-            grid_locator2 = MultipleLocator(base=basey)
-            
-        grid_helper = GridHelperCurveLinear((sample[0].inv_tr, sample[0].tr),grid_locator1=grid_locator1,grid_locator2=grid_locator2)
-        
-
-        #if not ax is None:
-        #    if not isinstance(ax,axislines.Axes):
-        #        subargs=ax.get_subplotspec()
-        #        fig.delaxes(ax)
-        #        ax = SubplotHost(fig, subargs, grid_helper=grid_helper)
-        #        
-        #else:
-        #    #ax2=ax1
+        grid_locator1 = MultipleLocator(base=basex)
+        grid_locator2 = MultipleLocator(base=basey)
+        grid_helper = GridHelperCurveLinear((sample.inv_tr, sample.tr),grid_locator1=grid_locator1,grid_locator2=grid_locator2)
         ax = SubplotHost(fig, *ids, grid_helper=grid_helper)
-        #fig.add_subplot(ax)
     else:
-        ax = fig.add_subplot(111)
-    ax.sample = sample[0]
+        ax = fig.add_subplot(*ids)
+    ax.sample = sample
     ax.rlu = rlu
-    
-    
+
     if ax.rlu:
-        
         ax.basex = basex
         ax.basey = basey
 
@@ -313,34 +261,28 @@ def createQAxis(self,rlu = True, withoutOnClick = False, figure=None,ids=[1, 1, 
                 points = np.concatenate([[v1,v2],[x for x in args]],axis=0)
             else:
                 points = np.array([v1,v2])
-                
+
             if points.shape[1] == 3:
                 points = ax.sample.calculateHKLtoProjection(points[:,0],points[:,1],points[:,2]).T
             boundaries = np.array([ax.sample.inv_tr(x[0],x[1]) for x in points])
             ax.set_xlim(boundaries[:,0].min(),boundaries[:,0].max())
             ax.set_ylim(boundaries[:,1].min(),boundaries[:,1].max())
-            if pythonVersion == 3: # Only possible in python 3
-                ax.forceGridUpdate()
-
+            ax.forceGridUpdate()
 
         fig.add_subplot(ax)
         ax.set_aspect(1.)
     ax.grid(True, zorder=0)
-    
+
     if ax.rlu:
         if not np.isclose(ax.sample.projectionAngle,np.pi/2.0,atol=0.001):
             ax.axis["top"].major_ticklabels.set_visible(True)
             ax.axis["right"].major_ticklabels.set_visible(True)
-
-    if rlu:
         ax.format_coord = ax.sample.format_coord
     else:
         def format_coord(x,y):
             return ', '.join([label+' = {:.3f}'.format(val) for val,label in zip([x,y],['qx','qy'])])
-
         ax.format_coord = format_coord
-    
-    
+
     if ax.rlu:
         ax.set_axis = lambda v1,v2,*args: set_axis(ax,v1,v2,*args)
 
@@ -350,56 +292,9 @@ def createQAxis(self,rlu = True, withoutOnClick = False, figure=None,ids=[1, 1, 
 
         ax.set_xlabel(beautifyLabel(ax.sample.projectionVector1))
         ax.set_ylabel(beautifyLabel(ax.sample.projectionVector2))
-
     else:
         ax.set_xlabel('Qx [1/AA]')
         ax.set_ylabel('Qy [1/AA]')
-    
-    def onclick(ax, event,Qx,Qy,data,outputFunction): # pragma: no cover
-        if event.xdata is not None and ax.in_axes(event):
-            try:
-                C = ax.get_figure().canvas.cursor().shape() # Only works for pyQt5 backend
-            except:
-                pass
-            else:
-                if C != 0:# or ax.drawState != States.INACTIVE:
-                    return
-        if not ax.in_axes(event):
-            return
-        printString = ''
-        printString+=ax.format_coord(event.xdata, event.ydata)+', '
-        QX = np.array(Qx[0])
-        QY = np.array(Qy[0])
-        
-        Qx = 0.25*(QX[1:,1:]+QX[:-1,:-1]+QX[1:,:-1]+QX[:-1,1:])
-        Qy = 0.25*(QY[1:,1:]+QY[:-1,:-1]+QY[1:,:-1]+QY[:-1,1:])
-
-        arg = np.argmin(np.linalg.norm(np.array([Qx,Qy])-np.array([event.xdata,event.ydata]).reshape(2,1,1),axis=0))
-        arg2D = np.unravel_index(arg,Qx.shape)
-        
-        cts = data[0][0][arg2D[0],arg2D[1]]
-        Norm = data[1][0][arg2D[0],arg2D[1]]
-        Mon = data[2][0][arg2D[0],arg2D[1]]
-        NC = data[3][0][arg2D[0],arg2D[1]]
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            Intensity = np.divide(cts*NC,Norm*Mon)
-
-        localSize = np.linalg.norm(np.array([QX[arg2D[0],arg2D[1]]-Qx[arg2D[0],arg2D[1]],QY[arg2D[0],arg2D[1]]-Qy[arg2D[0],arg2D[1]]]))
-
-        if not np.isfinite(Intensity) or np.linalg.norm(np.array([Qx[arg2D[0],arg2D[1]]-event.xdata,Qy[arg2D[0],arg2D[1]]-event.ydata]))>localSize:
-            printString+='I = NaN'
-        else:
-            printString+='I = {:.4E}'.format(Intensity)
-            printString+=', Cts = {:d}, Norm = {:.3f}, Mon = {:d}, NormCount = {:d}'.format(cts,Norm,int(Mon),NC)
-        if not ax.suppressPrint:
-            outputFunction(printString)
-
-    if not withoutOnClick:
-        ax.onClick = lambda x: onclick(ax,x,ax.Qx,ax.Qy,[ax.intensity,ax.monitorCount,ax.Normalization,ax.NormCount],outputFunction=ax.outputFunction)
-        ax._button_press_event = ax.figure.canvas.mpl_connect('button_press_event', ax.onClick)
-    
-
 
     if ax.rlu: # 
         ax.calculateTicks = lambda value:calculateTicks(value,ax.sample.projectionAngle)
@@ -481,40 +376,31 @@ def createQAxis(self,rlu = True, withoutOnClick = False, figure=None,ids=[1, 1, 
 
 
 
-def createQEAxes(DataSet=None,axis=0,figure = None, projectionVector1 = None, projectionVector2 = None, rlu = True, figurePos=[1,1,1]):
-    """Function to create Q E plot
+def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=None,
+                   projection_vector2=None, rlu: bool = True, figure_position=(1, 1, 1)):
+    """Axes of Q along a direction against energy (the old createQEAxes): x along
+    projection_vector1 (axis 0) or the direction orthogonal to it in the plane (axis 1), in RLU
+    with rlu, else in Qx, Qy; y the energy [meV]. Without projection vectors, those of sample
+    (needed then); with rlu=False and none given, Qx and Qy.
 
-    Kwargs:
-
-        - DataSet (DataSet): If provided and no projections vectors creates QE axis for main direction (default None)
-
-        - axis (int): Whether to create axis 0 or 1 (projection vector 0 or orthogonal to this, default 0)
-
-        - figure (figure): If provided, this is used to create the axis within (default None)
-
-        - projectionVector1 (vec): Projection vector along which data is plotted. If not provided sample vector is used (default None)
-
-        - projectionVector2 (vec): Projection vector orthogonal to data. If not provided sample vector is used (default None)
-        
-        - rlu (Bool): Boolean to control if rlu or qxqy (default True)
-
-
-    """
-        
-    if projectionVector1 is None or projectionVector2 is None:
+    The returned axes have calculateRLU (position along the axis from x), plotDirection,
+    set_xticks_base, set_xticks_number and forceGridUpdate."""
+    if projection_vector1 is None or projection_vector2 is None:
         if rlu is True:
-            v1 = DataSet.sample[0].projectionVector1
-            v2 = DataSet.sample[0].projectionVector2
-            angle = DataSet.sample[0].projectionAngle
-            orientationMatrix = DataSet.sample[0].orientationMatrix
+            if sample is None:
+                raise AttributeError('A sample, or both projection vectors, are needed')
+            v1 = sample.projectionVector1
+            v2 = sample.projectionVector2
+            angle = sample.projectionAngle
+            orientationMatrix = sample.orientationMatrix
         else:
             v1 = np.array([1.0,0.0])
             v2 = np.array([0.0,1.0])
             angle = np.pi/2.0
             orientationMatrix = np.ones(2)
     else:
-        v1 = np.array(projectionVector1)
-        v2 = np.array(projectionVector2)
+        v1 = np.array(projection_vector1)
+        v2 = np.array(projection_vector2)
 
         if not np.all([x.shape==(3,) for x in [v1,v2]])\
         or not np.all([len(x.shape)==1 for x in [v1,v2]])\
@@ -526,9 +412,7 @@ def createQEAxes(DataSet=None,axis=0,figure = None, projectionVector1 = None, pr
         else:
             orientationMatrix = np.ones(2)
 
-
-    sample = copy.deepcopy(DataSet.sample)
-
+    sample = copy.deepcopy(sample)
 
     v2Length = np.linalg.norm(v2)/np.linalg.norm(v1)
     projectionMatrix = np.linalg.inv(np.array([[1,0],[np.cos(angle)*v2Length,np.sin(angle)*v2Length]]).T)
@@ -579,12 +463,12 @@ def createQEAxes(DataSet=None,axis=0,figure = None, projectionVector1 = None, pr
     else:
         labels = ['qx','qy']
 
-    ax = SubplotHost(figure, *figurePos, grid_helper=grid_helper)
+    ax = SubplotHost(figure, *figure_position, grid_helper=grid_helper)
     
     ax.inv_tr = lambda x,y:inv_tr(projectionVectorLength,x,y)
     ax.tr = lambda x,y:tr(projectionVectorLength,x,y)
     
-    ax.sample = sample[0]
+    ax.sample = sample
 
     figure.add_subplot(ax)
     #ax.set_aspect(1.)
@@ -691,7 +575,61 @@ def createQEAxes(DataSet=None,axis=0,figure = None, projectionVector1 = None, pr
     return ax
 
 
+# The old names, with the old arguments (a data set with a list of samples), for DataSet_old,
+# Geometry/Instrument.py and Statistics/CutObject.py: removed with the old code
 
+def _old_click(ax, event, Qx, Qy, data, outputFunction): # pragma: no cover
+    """The old read-out of DataSet_old.plotQPlane, on the bins it stored on the axes"""
+    if event.xdata is not None and ax.in_axes(event):
+        try:
+            C = ax.get_figure().canvas.cursor().shape() # Only works for pyQt5 backend
+        except:
+            pass
+        else:
+            if C != 0:
+                return
+    if not ax.in_axes(event):
+        return
+    printString = ''
+    printString+=ax.format_coord(event.xdata, event.ydata)+', '
+    QX = np.array(Qx[0])
+    QY = np.array(Qy[0])
 
+    Qx = 0.25*(QX[1:,1:]+QX[:-1,:-1]+QX[1:,:-1]+QX[:-1,1:])
+    Qy = 0.25*(QY[1:,1:]+QY[:-1,:-1]+QY[1:,:-1]+QY[:-1,1:])
 
+    arg = np.argmin(np.linalg.norm(np.array([Qx,Qy])-np.array([event.xdata,event.ydata]).reshape(2,1,1),axis=0))
+    arg2D = np.unravel_index(arg,Qx.shape)
 
+    cts = data[0][0][arg2D[0],arg2D[1]]
+    Norm = data[1][0][arg2D[0],arg2D[1]]
+    Mon = data[2][0][arg2D[0],arg2D[1]]
+    NC = data[3][0][arg2D[0],arg2D[1]]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        Intensity = np.divide(cts*NC,Norm*Mon)
+
+    localSize = np.linalg.norm(np.array([QX[arg2D[0],arg2D[1]]-Qx[arg2D[0],arg2D[1]],QY[arg2D[0],arg2D[1]]-Qy[arg2D[0],arg2D[1]]]))
+
+    if not np.isfinite(Intensity) or np.linalg.norm(np.array([Qx[arg2D[0],arg2D[1]]-event.xdata,Qy[arg2D[0],arg2D[1]]-event.ydata]))>localSize:
+        printString+='I = NaN'
+    else:
+        printString+='I = {:.4E}'.format(Intensity)
+        printString+=', Cts = {:d}, Norm = {:.3f}, Mon = {:d}, NormCount = {:d}'.format(cts,Norm,int(Mon),NC)
+    if not ax.suppressPrint:
+        outputFunction(printString)
+
+def createQAxis(self,rlu = True, withoutOnClick = False, figure=None,ids=[1, 1, 1],basex=None,basey=None):
+    """Old name of create_q_axis, taking a data set (its first sample). Without withoutOnClick,
+    the old DataSet_old.plotQPlane read-out is connected (it needs that method's bins)"""
+    ax = create_q_axis(self.sample[0], rlu=rlu, figure=figure, ids=ids, basex=basex, basey=basey)
+    if not withoutOnClick:
+        ax.onClick = lambda x: _old_click(ax,x,ax.Qx,ax.Qy,[ax.intensity,ax.monitorCount,ax.Normalization,ax.NormCount],outputFunction=ax.outputFunction)
+        ax._button_press_event = ax.figure.canvas.mpl_connect('button_press_event', ax.onClick)
+    return ax
+
+def createQEAxes(DataSet=None,axis=0,figure = None, projectionVector1 = None, projectionVector2 = None, rlu = True, figurePos=[1,1,1]):
+    """Old name of create_qe_axes, taking a data set (its first sample)"""
+    return create_qe_axes(DataSet.sample[0] if DataSet is not None else None, axis=axis,
+                          figure=figure, projection_vector1=projectionVector1,
+                          projection_vector2=projectionVector2, rlu=rlu, figure_position=figurePos)

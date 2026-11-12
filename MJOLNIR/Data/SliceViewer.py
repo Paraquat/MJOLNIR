@@ -12,7 +12,6 @@ slicing axis; c switches cutting on and off.
 """
 import warnings
 from pathlib import Path
-from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -124,9 +123,7 @@ class SliceViewer:
         self.figure = plt.figure(figsize=(8, 6))
         position = [0.12, 0.2, 0.62, 0.72]
         if rlu:
-            # createQAxis reads the sample(s) of a data set: the first one sets the frame
-            self.plane_ax = RLUAxes.createQAxis(SimpleNamespace(sample=[sample]), rlu=True,
-                                                withoutOnClick=True, figure=self.figure)
+            self.plane_ax = RLUAxes.create_q_axis(sample, rlu=True, figure=self.figure)
         else:
             self.plane_ax = self.figure.add_subplot(111)
             self.plane_ax.set_aspect('equal')

@@ -6,7 +6,6 @@ as the old outputFunction did. Not ported yet from the old DataSet plots: the in
 of _interactiveSettings (cutting from a plot).
 """
 import warnings
-from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -741,7 +740,7 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
         - rlu (bool): Draw on reciprocal lattice axes; the result must then be made from points
           aligned to the lattice (DataSet.gather_q(align_to_lattice=True)) (default True)
 
-        - ax (Axes): Axes to draw on (default None: new axes from RLUAxes.createQAxis); not 3D
+        - ax (Axes): Axes to draw on (default None: new axes from RLUAxes.create_q_axis); not 3D
           axes (the old plotQPlane drew 3D layers on them: use DataSet.view_3d)
 
         - log (bool): Plot log10 of the intensity (default False)
@@ -765,8 +764,7 @@ def plot_q_plane(result: CutResult, sample=None, rlu: bool = True, ax=None, log:
     if ax is None:
         if rlu and sample is None:
             raise AttributeError('A sample is needed for reciprocal lattice axes (rlu=True)')
-        # createQAxis reads the sample(s) of a data set: the first one sets the frame
-        ax = RLUAxes.createQAxis(SimpleNamespace(sample=[sample]), rlu=rlu, withoutOnClick=True)
+        ax = RLUAxes.create_q_axis(sample, rlu=rlu)
 
     data = result.data
     ax.Qx, ax.Qy, ax.Int = [], [], []

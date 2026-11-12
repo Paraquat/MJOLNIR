@@ -22,7 +22,7 @@ def convert_to_hkl(sample, qxqy) -> np.ndarray:
 
 def align_to_lattice(sample):
     """Copy of sample in the frame rotated by its RotMat, in which Qx, Qy follow the reciprocal
-    lattice (the frame of RLUAxes.createQAxis, and of DataSet.gather_q(align_to_lattice=True))"""
+    lattice (the frame of RLUAxes.create_q_axis, and of DataSet.gather_q(align_to_lattice=True))"""
     aligned = copy.deepcopy(sample)
     aligned.convert = np.einsum('ij,j...->i...', aligned.RotMat, aligned.convert)
     aligned.convertinv = np.linalg.inv(aligned.convert)

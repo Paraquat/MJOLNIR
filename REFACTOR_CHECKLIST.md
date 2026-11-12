@@ -204,8 +204,20 @@ work is the open items in the sections further down; tick both.
       `shallow_keys()` per reader; `supportedConvertedFormats` is dropped with converted files
 
 ### Move the rest of MJOLNIR off the old API
-- [ ] `RLUAxes.py`. Moved to Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`,
-      `_interactiveSettings.py` (none imports the old code)
+- [x] `RLUAxes.py` (2026-11-12): `create_q_axis(sample, rlu, figure, ids, basex, basey)` and
+      `create_qe_axes(sample, axis, figure, projection_vector1, projection_vector2, rlu,
+      figure_position)` take a `Sample` (the old ones a data set with a list of samples, which
+      the new code faked with `SimpleNamespace`); the lattice frame from
+      `Coordinates.align_to_lattice`; no click handler (the old default one read the old
+      `plotQPlane`'s bins; the plots have `on_click`); no `sys.path` additions or Python 2
+      checks; `ids` used without the lattice too (the old code put those axes at 111);
+      `create_qe_axes` works with projection vectors and no sample (the old one needed a data
+      set anyway). Grid, locators and zoom updates unchanged: labels and read-out identical to
+      the old axes (`test_Reference.py`), tests in `test_RLUAxes.py`. `createQAxis` /
+      `createQEAxes` stay as wrappers with the old arguments (and the old click handler) for
+      `DataSet_old`, `Instrument.py` and `CutObject.py`: remove them with those. Moved to
+      Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
+      (none imports the old code)
 - [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions): delete
       `Viewer3D.py` with the old code (replaced by `SliceViewer.py`); move
       `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails with pyqtgraph
@@ -764,6 +776,9 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       None` then used the sample); another instrument raised `UnboundLocalError` (a
       `NotImplementedError` built but not raised); the binning check let 9 and more through
       (`not binning>0 and binning <9`)
+- [x] RLU axes with a fixed number of ticks (`set_xticks_number`, `set_yticks_number`) failed
+      when drawn: their locator called `set_bounds`, which matplotlib no longer has. Fixed in
+      `RLUAxes.MaxNLocator` with `tick_values` (also for the old code, which shares it)
 
 ## Mask.py bugs
 - [x] `parse()` fails on Python 3.13+ (writes to `locals()` before `eval`)
@@ -889,8 +904,8 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       `DataSet.mask`. The bugs listed under "Mask.py bugs" are fixed
 - [x] `BackgroundModel.py`: the powder model is the new `BackgroundModel.py`; the old file
       is kept as `BackgroundModel_old.py` for `DataSet_old`
-- [ ] `Viewer3D.py` (deleted with the old code), `RLUAxes.py`. Moved to Milestone 3
-      (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
+- [ ] `Viewer3D.py` (deleted with the old code). Done: `RLUAxes.py` (2026-11-12). Moved to
+      Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
 - [ ] `Statistics/CutObject.py`
 - [ ] `_tools.py` (`PointerArray`)
 - [x] Command line scripts: 3DView, History, CalibrationInspector. Convert: Dropped
