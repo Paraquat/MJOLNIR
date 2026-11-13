@@ -1,8 +1,10 @@
 """Save the old code's output (DataFile.py, DataSet_old.py, BackgroundModel_old.py) as reference
 data for test_Reference.py, so the comparisons keep running after the old code is deleted.
 
-Run from the repository root, with the old code still present, and the input files of
-test/reference_data.py available:
+The old code was deleted on 2026-11-13: this script no longer runs on the current code. It is
+kept as the record of how the reference data was made. To run it again, check out commit
+15909fd (the last with the old code) and run it there, from the repository root, with the
+input files of test/reference_data.py available:
 
     python test/reference/generate.py [name ...]
 

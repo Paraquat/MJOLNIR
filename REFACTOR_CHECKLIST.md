@@ -96,10 +96,11 @@ work is the open items in the sections further down; tick both.
       ufit export, physics), and `test_every_operation_is_run` fails if a public method is
       missing from the file. The old file's expected failures were the old code's bugs, all
       fixed or dropped (see "Bugs in the old code to fix, not port")
-- [ ] Port or delete the tests pytest does not collect (`test/Sample.py`, which builds
-      `DataFile`s in some tests, and the other `test/*.py` not named `test_*.py`, which test
-      kept modules); they need camea2018 files that are not in `Data/` (question 37). Done:
-      `test/DataFile.py` and `test/DataSet.py` (the old architecture) deleted (2026-11-12)
+- [ ] Port or delete the tests pytest does not collect (`test/Sample.py` and the other
+      `test/*.py` not named `test_*.py`, which test kept modules); some need camea2018 files
+      that are not in `Data/` (question 37). Done: `test/DataFile.py` and `test/DataSet.py`
+      (the old architecture) deleted (2026-11-12); `test/Sample.py` reads its samples with
+      `CameaDataReader` instead of `DataFile` (2026-11-13)
 - [ ] One place for test data, available in CI (question 36); remove the hard-coded paths
       (`/home/zamaan/Projects/bambus` in `test_CameaDataReader.py` and
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
@@ -218,17 +219,18 @@ work is the open items in the sections further down; tick both.
       `DataSet_old` and `Instrument.py`: remove them with those. Moved to
       Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
       (none imports the old code)
-- [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions): delete
-      `Viewer3D.py` with the old code (replaced by `SliceViewer.py`); move
-      `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails with pyqtgraph
-      0.13: `QtGui.QWidget` and `QtGui.QMainWindow` moved to `QtWidgets`)
+- [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions). Still to do:
+      move `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails on import
+      with pyqtgraph 0.13: `QtGui.QWidget` and `QtGui.QMainWindow` moved to `QtWidgets`).
+      Done: `Viewer3D.py` deleted with the old code (2026-11-13; replaced by `SliceViewer.py`,
+      also on the docs page `docs/Data/Gui.rst`)
 - [x] `Statistics/CutObject.py`: Dropped (2026-11-13), see "Code still using the old API"
 - [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
       `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
 - [ ] `Geometry/Instrument.py`. Still to do: `generateCalibration` (writes the `.calib`
       files the readers load; keep): a test pytest collects, once a vanadium scan is available
-      (question 44); `calculateResoultionMatrix` (ported to `Data/Resolution.py`): drop with
-      `DataSet_old`, its only caller. Done (2026-11-13):
+      (question 44). Done (2026-11-13): `calculateResoultionMatrix` (ported to
+      `Data/Resolution.py`) dropped with `DataSet_old`, its only caller;
       - Kept for MJOLNIR-GUI's prediction tool: `prediction` (now on
         `RLUAxes.create_q_axis(sample)`), `converterToA3A4`, `converterToQxQy`,
         `predictionInstrumentSupport`, with their helpers `getInstrumentInfo` and
@@ -254,7 +256,8 @@ work is the open items in the sections further down; tick both.
       deleted. Convert: Dropped (2026-11-10) with converted files, with its entry point and
       tutorial page (reasons in the refactoring log). History prints the whole `scanCommand`,
       which in NICOS-era CAMEA files is the batch script, as the old script did
-- [ ] `_tools.PointerArray`: remove once nothing uses it
+- [x] `_tools.PointerArray`: removed with the old code (2026-11-13), and
+      `_tools.overWritingFunctionDecorator` (only `DataSet_old` used it)
 - [x] `Mask.py`: plotting combinations with `indexMask` or `CurratAxeMask` (12 Nov 2026: the
       other parts are drawn, see "Mask.py bugs"; drawing those two: Milestone 3)
 
@@ -267,7 +270,15 @@ work is the open items in the sections further down; tick both.
       `generateBackgroundModel` → `generate_background_model`; result columns unchanged
 - [ ] Replace `.travis.yml` with CI testing Python 3.11-3.14 (also in "Project setup")
 - [ ] New major version, as the API changes
-- [ ] Delete `DataFile.py`, `DataSet_old.py`, `BackgroundModel_old.py`; full test suite passes
+- [x] Delete `DataFile.py`, `DataSet_old.py`, `BackgroundModel_old.py`; full test suite passes
+      (2026-11-13; commit 15909fd is the last with them). Deleted with them: `Viewer3D.py`,
+      `_tools.PointerArray` and `overWritingFunctionDecorator`, the `RLUAxes.createQAxis` /
+      `createQEAxes` wrappers (with the old `plotQPlane` read-out),
+      `Instrument.calculateResoultionMatrix`, the docs page `docs/Data/DataFile.rst`. The
+      uncollected `test/Sample.py` takes its samples from `CameaDataReader`.
+      `test/reference/generate.py` no longer runs: it is kept as the record of how the
+      reference data was made (run it at 15909fd). Every module imports except
+      `Viewer3DPyQtGraph` (see the 3D viewer split); 371 tests pass
 
 ## Milestone 3: interface with MJOLNIR-GUI
 
@@ -914,7 +925,7 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       `DataSet.mask`. The bugs listed under "Mask.py bugs" are fixed
 - [x] `BackgroundModel.py`: the powder model is the new `BackgroundModel.py`; the old file
       is kept as `BackgroundModel_old.py` for `DataSet_old`
-- [ ] `Viewer3D.py` (deleted with the old code). Done: `RLUAxes.py` (2026-11-12). Moved to
+- [x] `Viewer3D.py`: deleted with the old code (2026-11-13). Done: `RLUAxes.py` (2026-11-12). Moved to
       Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
 - [x] `Statistics/CutObject.py` and the `_tools.cutObject` decorator: Dropped (2026-11-13).
       Meant to wrap an old cut's results with its data set, function and parameters, to
@@ -927,7 +938,7 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       and the deprecated `scipy.ndimage.filters`. A `CutResult` keeps the cut's `parameters`:
       re-run with `ds.cut_1d(**{**result.parameters, 'width': 0.2})`. Fitting: ufit
       (`generate_ufit_dataset`); `Statistics/FittingFunction.py` stays
-- [ ] `_tools.py` (`PointerArray`)
+- [x] `_tools.py` (`PointerArray`): removed with the old code (2026-11-13)
 - [x] Command line scripts: 3DView, History, CalibrationInspector. Convert: Dropped
 - [x] Command line scripts take an `--instrument` option instead of detecting it
 

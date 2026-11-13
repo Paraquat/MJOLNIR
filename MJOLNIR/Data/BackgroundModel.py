@@ -6,7 +6,8 @@ Both models describe the background as a function of |Q| and energy, binned in q
 energy_bins (RadialBackground): PowderBackground averages the points without signal,
 AMBERBackground separates signal and background in voxels with the AMBER package.
 
-The old model, written for the original DataSet, is in BackgroundModel_old.py.
+The old model, written for the original DataSet, was BackgroundModel_old.py (deleted with the
+old code on 2026-11-13; see git history).
 """
 import numpy as np
 import numpy.typing as npt

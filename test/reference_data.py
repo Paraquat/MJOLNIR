@@ -1,5 +1,6 @@
 """Reference outputs of the old code (DataFile.py, DataSet_old.py, BackgroundModel_old.py),
-saved by test/reference/generate.py before the old code is deleted, and helpers to compare
+saved by test/reference/generate.py before the old code was deleted (commit 15909fd is the
+last with it), and helpers to compare
 the new code with them (test_Reference.py).
 
 Arrays too large to store (converted data, 3D bins, per-point backgrounds) are kept as a

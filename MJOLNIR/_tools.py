@@ -500,13 +500,6 @@ def invert(M):
         return np.dot(M.T,np.linalg.inv(np.dot(M,M.T)))
 
 
-def overWritingFunctionDecorator(overWritingFunction):
-    def overWriter(func):
-        return overWritingFunction
-    return overWriter
-
-
-
 def calRefVector(points):# pragma: no cover
     """ Calcualte reference vector as vector pointing from mean point to geometric center. For half moon shape this is anti-radially.
     
@@ -1322,93 +1315,6 @@ def histogramdd(sample, bins, weights, returnCounts = False):
 
     return histograms
 
-
-class PointerArray():
-    """Array-like object designed to facilitate data acquisition from a list of differently sized list of data files having the same attributes.    
-
-    Args:
-
-        - attribute (str): Name of wanted attribute existing on the data
-
-        - datafiles (list): List of pointers to the data files
-
-        - function (func): Function to be run on the attribute of a datafile before it is returned
-
-    """
-    def __init__(self,attribute,datafiles,function=None):
-        self._attribute = attribute
-        self._datafiles = datafiles
-        if function is None:
-            function = lambda x: x
-        self._function = function
-        self._shape = None
-        self._multiD = None
-
-    def __getitem__(self,index):
-        gotten = self._datafiles[index]
-        if isinstance(gotten,type(self._datafiles[0])):
-            
-            return self._function(getattr(gotten,self._attribute))
-        else:
-        
-            return [self._function(getattr(df,self._attribute)) for df in gotten]
-    
-    def __iter__(self):
-        self._index=0
-        return self
-    
-    def __next__(self):
-        if self._index >= len(self):
-            raise StopIteration
-        result = self._function(getattr(self._datafiles[self._index],self._attribute))
-        self._index += 1
-        return result
-
-    def next(self):
-        return self.__next__()
-    
-    def __len__(self):
-        return len(self._datafiles)
-    
-    @property
-    def shape(self):
-        return [self._function(getattr(df,self._attribute).shape) for df in self._datafiles]
-    
-    
-    @property
-    def mask(self):
-        return [df.mask for df in self._datafiles]
-    
-    @mask.setter
-    def mask(self,mask):
-        for m,df in zip(mask,self._datafiles):
-            df.mask = m
-    
-    @property
-    def size(self):
-        return np.sum([self._function(getattr(df,self._attribute)).size for df in self._datafiles])
-    
-    def extractData(self):
-        if self._multiD is None: # State is unknown
-            self._multiD = len(self._function(getattr(self._datafiles[0],self._attribute)).shape)>1 # 
-
-        if self._multiD:
-            return np.concatenate([self._function(getattr(df,self._attribute))[np.logical_not(df.mask)] for df in self._datafiles])
-        else:
-            return np.concatenate([self._function(getattr(df,self._attribute))[np.logical_not(np.all(df.mask))] for df in self._datafiles])
-        
-    @property
-    def data(self):
-        return np.concatenate([self._function(getattr(df,self._attribute)) for df in self._datafiles])
-    
-    
-    def min(self):
-        return np.min(self.extractData())
-    
-    def max(self):
-        return np.max(self.extractData())
-    
-    
 
 def findFlattenedIndex(sample,bins):
     """Rewriting of numpy binning algorithm
