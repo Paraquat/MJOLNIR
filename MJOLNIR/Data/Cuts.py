@@ -124,6 +124,8 @@ def cut_1d(qx, qy, energy, intensity, normalization, monitor, q1, q2, width: flo
 
     inside_width = np.logical_and(projected[1] < orthogonal_edges[1],
                                   projected[1] > orthogonal_edges[0])
+    if not inside_width.any(): # Points in the energy range, but none along the cut
+        return empty(np.array([]))
     start, end = _tools.minMax(projected[0][inside_width])
     if constant_bins:
         length_edges = np.arange(start, end + 0.5*min_pixel, min_pixel)

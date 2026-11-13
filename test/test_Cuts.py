@@ -65,6 +65,9 @@ def test_cut_1d_options(points, q1q2):
     # No points in the energy range
     empty = Cuts.cut_1d(**{**common, 'energy_min': 50, 'energy_max': 60})
     assert len(empty) == 0
+    # Points in the energy range, but none along the cut (the old cut1D raised from np.min)
+    far = np.array([100.0, 100.0])
+    assert len(Cuts.cut_1d(**{**common, 'q1': far, 'q2': far + [1.0, 0.0]})) == 0
     with pytest.raises(AttributeError): # q1 == q2
         Cuts.cut_1d(**{**common, 'q2': q1q2[0]})
 

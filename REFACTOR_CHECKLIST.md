@@ -262,8 +262,17 @@ work is the open items in the sections further down; tick both.
       other parts are drawn, see "Mask.py bugs"; drawing those two: Milestone 3)
 
 ### Documentation and release
-- [ ] Rewrite the docs that use the old API: the 10 notebooks in `docs/notebooks`, the pages in
-      `docs/Data`, the command line script pages
+- [ ] Rewrite the docs that use the old API: the pages in `docs/Data`, the command line script
+      pages. Done (2026-11-13): the notebooks in `docs/notebooks` (all 10 that used the old
+      API, and the import in `_toolsOverview`), with the same data files and text, the old
+      method and argument names replaced (`DataSet(InstrumentName.CAMEA, files=...)`,
+      `view_3d` / `SliceViewer`, `plot_cut_qe`, `plot_cut_qe_line`, `plot_q_plane`,
+      `cut_constant_q` with the width doubled, `bin_3d`, `create_q_axis`, ...). The polar
+      binning cell of `ConstantEnergy` is removed (dropped feature). Saved outputs are the
+      old code's until the notebooks are re-run with the original data (question 45 asks
+      for it). Every code cell was run against stand-in files (camea_test, with the
+      tutorials' (H,0,L) points moved into its (H,K,0) plane): all new API calls run; only
+      the tutorials' own peak fits fail, for lack of data where they fit
 - [ ] API documentation of the new modules
 - [ ] Migration guide, old to new: `DataSet(dataFiles=...)` + `convertDataFile` → `DataSet(
       instrument, files=...)`; `extractData()` → `gather`; `cut1D` → `cut_1d`;
@@ -822,6 +831,9 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       methods, trailing whitespace
 
 ## Cut bugs fixed in the port
+- [x] `cut1D` / `cut_1d` raised `zero-size array to reduction operation minimum` when the
+      energy range had points but none within the cut's width (found porting the notebooks);
+      it now returns an empty result, as for an empty energy range
 - [x] `cut1D` truncated `Int_err` to whole counts (column types one place out of line), and
       stored `BinCount` as float
 - [x] `plotCutQE` ignored its `counts` option (the values were overwritten with `Int`)
