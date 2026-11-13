@@ -225,15 +225,25 @@ work is the open items in the sections further down; tick both.
 - [x] `Statistics/CutObject.py`: Dropped (2026-11-13), see "Code still using the old API"
 - [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
       `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
-- [ ] `Geometry/Instrument.py`, port or drop (nothing in the package imports it at run time):
-      `generateCalibration` (writes the `.calib` files the readers load; keep, add a test
-      pytest collects), `prediction`, `converterToA3A4`, `converterToQxQy`,
-      `predictionInstrumentSupport` (keep: MJOLNIR-GUI's prediction tool),
-      `calculateResoultionMatrix` (ported to `Data/Resolution.py`; drop with `DataSet_old`,
-      its only caller besides the interactive modes),
-      `convertToHDF` (unused: drop?), the `Instrument` class and XML geometry
-      (`InstrumentXML.py`; only the uncollected `test/Instrument.py`, `test/InstrumentXML.py`:
-      drop?), `getInstrumentInfo`, `timeEstimate`, `simpleDataSet`
+- [ ] `Geometry/Instrument.py`. Still to do: `generateCalibration` (writes the `.calib`
+      files the readers load; keep): a test pytest collects, once a vanadium scan is available
+      (question 44); `calculateResoultionMatrix` (ported to `Data/Resolution.py`): drop with
+      `DataSet_old`, its only caller. Done (2026-11-13):
+      - Kept for MJOLNIR-GUI's prediction tool: `prediction` (now on
+        `RLUAxes.create_q_axis(sample)`), `converterToA3A4`, `converterToQxQy`,
+        `predictionInstrumentSupport`, with their helpers `getInstrumentInfo` and
+        `simpleDataSet` (still `ax.ds`, for the interactive modes). They work with the new
+        readers' samples for CAMEA, MultiFLEXX and Bambus, with and without sample
+        environment pillars; tests in `test/test_Prediction.py`
+      - Kept: the `Instrument` class and its XML geometry (`InstrumentXML.py`, `Analyser`,
+        `Detector`, `Wedge`, `GeometryConcept`), which `generateCalibration` belongs to; their
+        tests are among the uncollected ones. `Instrument(wedges=...)` no longer has a mutable
+        default
+      - Dropped (reasons in the refactoring log): `convertToHDF` (McStas text output to HDF,
+        unused; also removed from `docs/Geometry/Instrument.rst`), `plotSetup`,
+        `timeEstimate` (with its counting-time tables), `GaussianNormalized`
+      - Imports: no `pytest` or `_interactiveSettings` (Qt) at import any more, no
+        `sys.path` additions; the module loads without either
 - [x] Command line scripts (3DView, History, CalibrationInspector) and
       `CommandLineScripts/_tools.py` on the new API, each with `-i`/`--instrument` (default
       CAMEA). 3DView: `ds.view_3d` (`-b` defaults to the instrument's binning, not 8 for all);

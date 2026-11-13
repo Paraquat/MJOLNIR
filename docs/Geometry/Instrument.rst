@@ -17,7 +17,6 @@ Instrument
     Instrument.Instrument.saveXML
     Instrument.Instrument.generateCAMEAXML
     Instrument.Instrument.generateCalibration
-    Instrument.convertToHDF
 
 	
 
@@ -34,5 +33,3 @@ Instrument Object and Methods
     :members:
 
     .. automethod:: __init__
-
-.. autofunction:: Instrument.convertToHDF
