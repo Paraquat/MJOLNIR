@@ -215,14 +215,14 @@ work is the open items in the sections further down; tick both.
       set anyway). Grid, locators and zoom updates unchanged: labels and read-out identical to
       the old axes (`test_Reference.py`), tests in `test_RLUAxes.py`. `createQAxis` /
       `createQEAxes` stay as wrappers with the old arguments (and the old click handler) for
-      `DataSet_old`, `Instrument.py` and `CutObject.py`: remove them with those. Moved to
+      `DataSet_old` and `Instrument.py`: remove them with those. Moved to
       Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
       (none imports the old code)
 - [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions): delete
       `Viewer3D.py` with the old code (replaced by `SliceViewer.py`); move
       `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails with pyqtgraph
       0.13: `QtGui.QWidget` and `QtGui.QMainWindow` moved to `QtWidgets`)
-- [ ] `Statistics/CutObject.py`
+- [x] `Statistics/CutObject.py`: Dropped (2026-11-13), see "Code still using the old API"
 - [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
       `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
 - [ ] `Geometry/Instrument.py`, port or drop (nothing in the package imports it at run time):
@@ -906,7 +906,17 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       is kept as `BackgroundModel_old.py` for `DataSet_old`
 - [ ] `Viewer3D.py` (deleted with the old code). Done: `RLUAxes.py` (2026-11-12). Moved to
       Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
-- [ ] `Statistics/CutObject.py`
+- [x] `Statistics/CutObject.py` and the `_tools.cutObject` decorator: Dropped (2026-11-13).
+      Meant to wrap an old cut's results with its data set, function and parameters, to
+      re-run the cut after changing a parameter (`recalculateData`) and to fit it
+      (`fitFunction`, `p0`, `lock`, `fittingIterator`). Unused: the decorator (marked
+      `#Unused`) decorated nothing, nothing imported the class, the GUI has its own
+      `Gui1DCutObject`; the fitting was never written (the properties only stored values);
+      `__getitem__` returned nothing past index 0 on plotted cuts; it could not work with the
+      new `DataSet` (whose cuts return a `CutResult`); it imported `Viewer3D` (Qt), `pytest`
+      and the deprecated `scipy.ndimage.filters`. A `CutResult` keeps the cut's `parameters`:
+      re-run with `ds.cut_1d(**{**result.parameters, 'width': 0.2})`. Fitting: ufit
+      (`generate_ufit_dataset`); `Statistics/FittingFunction.py` stays
 - [ ] `_tools.py` (`PointerArray`)
 - [x] Command line scripts: 3DView, History, CalibrationInspector. Convert: Dropped
 - [x] Command line scripts take an `--instrument` option instead of detecting it

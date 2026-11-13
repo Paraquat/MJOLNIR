@@ -575,8 +575,8 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
     return ax
 
 
-# The old names, with the old arguments (a data set with a list of samples), for DataSet_old,
-# Geometry/Instrument.py and Statistics/CutObject.py: removed with the old code
+# The old names, with the old arguments (a data set with a list of samples), for DataSet_old
+# and Geometry/Instrument.py: removed with the old code
 
 def _old_click(ax, event, Qx, Qy, data, outputFunction): # pragma: no cover
     """The old read-out of DataSet_old.plotQPlane, on the bins it stored on the axes"""

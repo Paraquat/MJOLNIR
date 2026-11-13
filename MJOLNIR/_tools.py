@@ -23,35 +23,6 @@ factorsqrtEK = 1/np.sqrt(hbar**2*(1e20)/(2*m*eV/1000)) #
 
 MPLKwargs = ['agg_filter','alpha','animated','antialiased','aa','clip_box','clip_on','clip_path','color','c','contains','dash_capstyle','dash_joinstyle','dashes','drawstyle','figure','fillstyle','gid','label','linestyle','ls','linewidth','lw','marker','markeredgecolor','mec','markeredgewidth','mew','markerfacecolor','mfc','markerfacecoloralt','mfcalt','markersize','ms','markevery','path_effects','picker','pickradius','rasterized','sketch_params','snap','solid_capstyle','solid_joinstyle','transform','url','visible','xdata','ydata','zorder','linewidth','rasterized']
 
-#Unused
-def cutObject(func): # pragma: no cover
-    import MJOLNIR.Statistics.CutObject
-    @functools.wraps(func)
-    def newFunction(*args,**kwargs):
-        if 'internal' in kwargs:
-            if kwargs['internal'] is True:
-                del kwargs['internal']
-                return func(*args,**kwargs)
-        fittingKwargs = ['fitFunction','p0','costFunction','lock']
-        temp = {}
-        for fitKwarg in fittingKwargs:
-            if fitKwarg in kwargs:
-                temp[fitKwarg] = kwargs[fitKwarg]
-                del kwargs[fitKwarg]
-            else:
-                temp[fitKwarg] = None
-
-        ds = args[0]
-        if len(args)>1:
-            otherArgs = args[1:]
-        else:
-            otherArgs = None
-        co = MJOLNIR.Statistics.CutObject.CutObject(*func(*args,**kwargs),dataSet = ds,cutFunction = func,kwargs = kwargs,args = otherArgs)
-        for fitKwarg in fittingKwargs:
-            setattr(co,fitKwarg,temp[fitKwarg])
-        return co
-    return newFunction
-
 def deprecateKwarg(argChanges):
     """Given a dictionary {old:new} with deprecated kwargs warn the user about a possible upcoming change but allow the old name for now."""
     def decorator(func):
