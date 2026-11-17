@@ -2,6 +2,7 @@ import numpy as np
 from MJOLNIR._tools import *
 
 import os
+import pytest
 
 def test_minMax():
     L = np.random.rand(10,3,2)
@@ -187,6 +188,9 @@ def test_molarMassCalculation():
     assert(np.all([np.isclose(elem[key],elements[key],atol=1e-8) for key in elem.keys()]))
 
     
+@pytest.mark.xfail(strict=True, reason='gives 4.0e-7 for MnF2, twice the expected value, as on '
+                   'master before the refactor: is the test out of date or formulaUnitsPerUnitCell '
+                   'counted twice? (question 46 of the refactoring log)')
 def test_absoluteNormalization():
     sampleMass = 6.2
     normFactor = calculateAbsoluteNormalization(sampleChemicalFormula='MnF2',formulaUnitsPerUnitCell=2,sampleMass=sampleMass,correctVanadium=True)

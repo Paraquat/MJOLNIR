@@ -96,11 +96,21 @@ work is the open items in the sections further down; tick both.
       ufit export, physics), and `test_every_operation_is_run` fails if a public method is
       missing from the file. The old file's expected failures were the old code's bugs, all
       fixed or dropped (see "Bugs in the old code to fix, not port")
-- [ ] Port or delete the tests pytest does not collect (`test/Sample.py` and the other
-      `test/*.py` not named `test_*.py`, which test kept modules); some need camea2018 files
-      that are not in `Data/` (question 37). Done: `test/DataFile.py` and `test/DataSet.py`
-      (the old architecture) deleted (2026-11-12); `test/Sample.py` reads its samples with
-      `CameaDataReader` instead of `DataFile` (2026-11-13)
+- [x] Port or delete the tests pytest does not collect (2026-11-17): the 10 files renamed
+      to `test_*.py` (`_tools.py` to `test_tools.py`), 90 tests, none deleted; the suite
+      is now 467 passed, 1 skipped, 1 xfailed. `test/DataFile.py` and `test/DataSet.py` (the
+      old architecture) were deleted earlier (2026-11-12). Without the camea2018 files
+      (question 37): `test_Sample.py` reads the 2024 sample file for the UB, conversion and
+      (H,K,0) projection tests, and builds a cubic (H,H,0)-(0,0,L) sample from two
+      reflections for the other projection test; `test_Sample_CurratAxe` checks the spurion
+      positions against the scattering geometry (length of Q from the nominal ki, kf and
+      the angles of the elastic Bragg reflection; the Bragg peak itself when Ei = Ef)
+      instead of numbers taken from a 2018 file. `test_Instrument.py`: the
+      `generateCalibration` argument checks run on the 2024 sample file; the full
+      calibration is a separate test, skipped until a vanadium scan is available (question
+      44). `test_tools.py::test_absoluteNormalization` is marked xfail (strict): it fails
+      on master as well, by a factor of 2 (question 46). `test_Instrument_error` no longer
+      returns a value (pytest warning)
 - [ ] One place for test data, available in CI (question 36); remove the hard-coded paths
       (`/home/zamaan/Projects/bambus` in `test_CameaDataReader.py` and
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
