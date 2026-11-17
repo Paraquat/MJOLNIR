@@ -111,7 +111,8 @@ work is the open items in the sections further down; tick both.
       44). `test_tools.py::test_absoluteNormalization` is marked xfail (strict): it fails
       on master as well, by a factor of 2 (question 46). `test_Instrument_error` no longer
       returns a value (pytest warning)
-- [ ] One place for test data, available in CI (question 36); remove the hard-coded paths
+- [ ] One place for test data (question 36; available to a CI too, should one be set up);
+      remove the hard-coded paths
       (`/home/zamaan/Projects/bambus` in `test_CameaDataReader.py` and
       `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
 
@@ -289,7 +290,8 @@ work is the open items in the sections further down; tick both.
 - [ ] Migration guide, old to new: `DataSet(dataFiles=...)` + `convertDataFile` → `DataSet(
       instrument, files=...)`; `extractData()` → `gather`; `cut1D` → `cut_1d`;
       `generateBackgroundModel` → `generate_background_model`; result columns unchanged
-- [ ] Replace `.travis.yml` with CI testing Python 3.11-3.14 (also in "Project setup")
+- [x] CI: Dropped from this milestone (2026-11-17): the remote has no CI at the moment.
+      `.travis.yml` (Python 3.5-3.9) is left as it is, see "Project setup"
 - [ ] New major version, as the API changes
 - [x] Delete `DataFile.py`, `DataSet_old.py`, `BackgroundModel_old.py`; full test suite passes
       (2026-11-13; commit 15909fd is the last with them). Deleted with them: `Viewer3D.py`,
@@ -999,7 +1001,8 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] Python 3.11 or newer required (`setup.cfg`, Read the Docs, docs/Introduction.rst);
       new code tested on Python 3.11, 3.12, 3.13 and 3.14. Needed `StrEnum`; the
       `np.NDArray` annotations (only working on 3.14) replaced by `numpy.typing.NDArray`
-- [ ] `.travis.yml` still tests Python 3.5-3.9 on Travis CI: replace or remove
+- [ ] `.travis.yml` still tests Python 3.5-3.9 on Travis CI: replace or remove. Not part of
+      Milestone 2 (2026-11-17): the remote has no CI at the moment
 - [x] numpy 2.3 or newer required (`setup.cfg`, `requirements.txt`, docs/Introduction.rst);
       the old `numpy<2.0` pin let Python 3.14 run with numpy 1.26, which does not support
       it and computes wrong results there (`b -= 0.5*a` inside a function also changed `a`
