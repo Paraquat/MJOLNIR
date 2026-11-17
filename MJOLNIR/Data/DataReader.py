@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 from MJOLNIR import _tools
+from MJOLNIR.Data.LegacyFixes import LegacyFix
 from MJOLNIR.Data.Metadata import Metadata
 from MJOLNIR.Data.Sample import Sample
 from MJOLNIR import TasUBlibDEG as TasUBlib
@@ -115,6 +116,10 @@ class DataReader(ABC):
     # Frozen readers hold derived data (e.g. a difference of two data sets): transforming them
     # again would rebuild intensity from the raw counts
     frozen: bool = False
+
+    # Corrections for files written with a known fault (LegacyFixes), run by
+    # apply_legacy_fixes once a file is read
+    legacy_fixes: tuple[LegacyFix, ...] = ()
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         if not filepath.exists():
@@ -456,6 +461,16 @@ class DataReader(ABC):
     def scan_monitor(self) -> npt.NDArray[np.float64]:
         """Monitor counts per scan step, used to normalise the data"""
         return self.monitor1
+
+    def apply_legacy_fixes(self):
+        """Run the reader's legacy fixes that apply to its file, each with a warning, and list
+        them in metadata['legacy_fixes']"""
+        self._metadata['legacy_fixes'] = []
+        for fix in self.legacy_fixes:
+            if fix.applies(self):
+                fix.apply(self)
+                self._metadata['legacy_fixes'].append(fix.description)
+                warnings.warn(f'"{self.file.name}": {fix.description} (legacy fix)')
 
     def default_mask(self) -> npt.NDArray[np.bool_]:
         """Points that cannot be used, for every instrument: pixels with a NaN in their

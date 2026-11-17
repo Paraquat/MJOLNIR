@@ -108,10 +108,10 @@ work is the open items in the sections further down; tick both.
 ### Port the remaining features (items further down)
 - [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
-- [ ] File metadata: the 2018 monitor fix, `absoluteTime`, temperature from the NICOS log
-      (questions 11, 41, 42 of the refactoring log). Done: count mode and preset as
-      metadata for every instrument (question 9, 2026-11-17), the fix for running scans
-      (question 12, 2026-11-17), CAMEA scan
+- [ ] File metadata: `absoluteTime`, temperature from the NICOS log (questions 41, 42 of
+      the refactoring log). Done: count mode and preset as metadata for every instrument
+      (question 9, 2026-11-17), files of running scans (question 12) and the 2018 monitor
+      fix (question 11, the first legacy fix), both 2026-11-17, CAMEA scan
       parameters, detector and analyser selection (`dasel`), monitor mode, `title`,
       `comment`, `startTime`/`endTime`, counting time (`reader.time`), scan command
 - [x] Calibration and sample: `updateCalibration`, calibration plots,
@@ -438,9 +438,20 @@ runs on the new `DataSet` and readers, and every view works.
       normalisation monitor only. Any other mismatch is still refused by `transform`.
       Tests: `test/test_UnfinishedScan.py`, on copies of a sample file (no real file of a
       running scan yet, question 42)
-- [ ] 2018 monitor fix (question 11: kept for backward compatibility; proposed 2026-11-17,
-      not implemented yet). The old check `not MonitorMode == 't'` compared bytes with a
-      string, so it also ran on time-mode files: apply it in monitor mode only
+- [x] 2018 monitor fix (2026-11-17; question 11: kept for backward compatibility), the first
+      legacy fix. Legacy fixes (`MJOLNIR/Data/LegacyFixes.py`) correct files written with a
+      known fault, tied to where the file came from, apart from the readers: a `LegacyFix`
+      has `description`, `applies(reader)` and `apply(reader)`; a reader lists its fixes in
+      `legacy_fixes` and runs them with `DataReader.apply_legacy_fixes()` once the file is
+      read (each with a warning, listed in `metadata['legacy_fixes']`, `[]` for none).
+      `shallow_read` still gives the values as stored. Handling current files can need (a
+      running scan) stays in the reader. `CameaMonitor2018`: in a file from 2018 with more
+      than one step whose first monitor value differs from the preset, the normalisation
+      monitor (`CameaDataReader.scan_monitor_key()`) is replaced by the preset, as the old
+      DataFile did. Not in time mode: the old check `not MonitorMode == 't'` compared
+      bytes with a string, so it also ran on time-mode files (a file without a mode still
+      counts as monitor mode). Tests: `test/test_LegacyFixes.py`, on copies of a sample
+      file (no real 2018 file yet, question 42)
 - [x] `Time` (counting time per step): `reader.time` [s], as the Marmot and NICOS readers;
       identical to the old `DataFile` for all 20 CAMEA files. `totalCounts`: Dropped
       (2026-10-19)

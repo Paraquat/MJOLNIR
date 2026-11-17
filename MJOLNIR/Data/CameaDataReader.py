@@ -4,6 +4,7 @@ import numpy.typing as npt
 from pathlib import Path
 
 from MJOLNIR.Data.DataReader import InstrumentCalibration
+from MJOLNIR.Data.LegacyFixes import CameaMonitor2018
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
 from MJOLNIR.Data.NexusLayout import CameaLayout
 
@@ -16,6 +17,7 @@ class CameaDataReader(NexusDataReader):
     file_extensions = ('hdf',)
     default_binning = 8 # As chosen by the old DataFile conversion
     layout = CameaLayout
+    legacy_fixes = (CameaMonitor2018(),)
 
     def __init__(self, filepath: Path):
         super().__init__(filepath)
@@ -33,6 +35,7 @@ class CameaDataReader(NexusDataReader):
             if value is not None:
                 setattr(self, attribute, int(np.asarray(value).ravel()[0]))
         self.scan_parameters, self.scan_values, self.scan_units = self.get_scan_parameters()
+        self.apply_legacy_fixes()
 
     # entry/data entries that are not scan variables (old getScanParameter)
     _not_scanned = {'counts', 'summed_counts', 'en', 'h', 'intensity', 'k', 'l', 'monitor',
@@ -119,14 +122,17 @@ class CameaDataReader(NexusDataReader):
         warnings.warn(f'"{self.file.name}" has one monitor value more than its {self.n_steps} '
                       f'scan steps: the scan is unfinished; the step without counts is dropped')
 
-    def scan_monitor(self) -> npt.NDArray[np.float64]:
+    def scan_monitor_key(self) -> str:
         """Monitor used for normalisation, chosen as the old DataFile did: files written by
-        NICOS (which have entry/data/data) use entry/monitor_2/data if present, older files
-        entry/control/data"""
+        NICOS (which have entry/data/data) use entry/monitor_2/data if present ('monitor2'),
+        older files entry/control/data ('monitor1')"""
         written_by_nicos = self.get(self.layout.group('data').path + '/data') is not None
         if written_by_nicos and self.getValue('monitor2') is not None:
-            return self.monitor2
-        return self.monitor1
+            return 'monitor2'
+        return 'monitor1'
+
+    def scan_monitor(self) -> npt.NDArray[np.float64]:
+        return getattr(self, self.scan_monitor_key())
 
     def default_mask(self) -> npt.NDArray[np.bool_]:
         """The general default mask, and at binning 8 the first two energy bins (as the old
