@@ -108,9 +108,10 @@ work is the open items in the sections further down; tick both.
 ### Port the remaining features (items further down)
 - [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
-- [ ] File metadata: monitor fixes, `absoluteTime`, temperature from the NICOS log
-      (questions 11, 12, 41, 42 of the refactoring log). Done: count mode and preset as
-      metadata for every instrument (question 9, 2026-11-17), CAMEA scan
+- [ ] File metadata: the 2018 monitor fix, `absoluteTime`, temperature from the NICOS log
+      (questions 11, 41, 42 of the refactoring log). Done: count mode and preset as
+      metadata for every instrument (question 9, 2026-11-17), the fix for running scans
+      (question 12, 2026-11-17), CAMEA scan
       parameters, detector and analyser selection (`dasel`), monitor mode, `title`,
       `comment`, `startTime`/`endTime`, counting time (`reader.time`), scan command
 - [x] Calibration and sample: `updateCalibration`, calibration plots,
@@ -426,7 +427,20 @@ runs on the new `DataSet` and readers, and every view works.
       `modestring`, `preset`; Bambus and MultiFLEXX the header's `det_mode`, `det_preset`
       (preset as a number). Also in `shallow_read`. Tests: the reader tests and
       `test_NexusLayout.py`. The 2018 monitor fix (question 11) would read it from there
-- [ ] Monitor fixes: 2018 wrong monitor, extra value in files of running scans
+- [x] Files of scans still running (2026-11-17; question 12: kept). Not a legacy fix: it
+      happens with current CAMEA files, so it stays in the reader, apart from any legacy
+      fixes. `CameaDataReader._trim_unfinished_step`: a file holding exactly one monitor
+      value more than scan steps (`monitor1` or `monitor2`) is a scan NICOS was still
+      writing (it writes a step's monitors and time before its counts): the step without
+      counts is dropped from `monitor1`, `monitor2` and `time` (each only if it has the
+      extra value), with a warning. `reader._metadata['unfinished']` is True for such a
+      file and False otherwise (for the GUI to show). The old code dropped it from the
+      normalisation monitor only. Any other mismatch is still refused by `transform`.
+      Tests: `test/test_UnfinishedScan.py`, on copies of a sample file (no real file of a
+      running scan yet, question 42)
+- [ ] 2018 monitor fix (question 11: kept for backward compatibility; proposed 2026-11-17,
+      not implemented yet). The old check `not MonitorMode == 't'` compared bytes with a
+      string, so it also ran on time-mode files: apply it in monitor mode only
 - [x] `Time` (counting time per step): `reader.time` [s], as the Marmot and NICOS readers;
       identical to the old `DataFile` for all 20 CAMEA files. `totalCounts`: Dropped
       (2026-10-19)

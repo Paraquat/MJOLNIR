@@ -24,6 +24,7 @@ class CameaDataReader(NexusDataReader):
         self.monitor2 = np.array(self.getValue('monitor2'))
         time = self.getValue('time') # Counting time per scan step [s]
         self.time = None if time is None else np.asarray(time, dtype=float)
+        self._trim_unfinished_step()
         self.get_possible_binnings()
         # Detector and analyser monitored during the scan (NICOS SelectDetectorAnalyser)
         for attribute, key in [('detector_selection', 'detectorSelection'),
@@ -99,6 +100,24 @@ class CameaDataReader(NexusDataReader):
         self.binning = binning
         return InstrumentCalibration(**{key: np.array(self.get(field.path))
                                         for key, field in fields.items()})
+
+    def _trim_unfinished_step(self):
+        """A file opened while NICOS is still scanning holds one monitor value more than
+        counts: NICOS writes the monitors and counting time of a step before its counts (as
+        the old DataFile). The step without counts is dropped from the monitors and the
+        counting time, and metadata['unfinished'] says whether the scan was still running.
+        Any other mismatch is left for transform to refuse"""
+        self._metadata['unfinished'] = any(
+            values is not None and values.ndim == 1 and values.size == self.n_steps + 1
+            for values in (self.monitor1, self.monitor2))
+        if not self._metadata['unfinished']:
+            return
+        for attribute in ('monitor1', 'monitor2', 'time'):
+            values = getattr(self, attribute)
+            if values is not None and values.ndim == 1 and values.size == self.n_steps + 1:
+                setattr(self, attribute, values[:-1])
+        warnings.warn(f'"{self.file.name}" has one monitor value more than its {self.n_steps} '
+                      f'scan steps: the scan is unfinished; the step without counts is dropped')
 
     def scan_monitor(self) -> npt.NDArray[np.float64]:
         """Monitor used for normalisation, chosen as the old DataFile did: files written by
