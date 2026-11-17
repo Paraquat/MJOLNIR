@@ -332,11 +332,20 @@ runs on the new `DataSet` and readers, and every view works.
 - [ ] Interactive cutting from plots (the `_interactiveSettings` modes: drawing rectangles and
       circles on Q-plane, Q-E and 3D plots to make cuts) in the GUI; the library plots get an
       `on_cut(kind, parameters)` hook on `plot_q_plane` and `plot_cut_qe`, as `SliceViewer`
-- [ ] `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`: on the new API, or moved
-      to MJOLNIR-GUI. `_interactiveSettings.py` imports PyQt5 at import only to choose mouse
-      cursors: use matplotlib's `canvas.set_cursor` (any backend), or move it to the GUI, so
-      MJOLNIR does not need Qt (PyQt5 is not in `install_requires`). None of the three imports
+- [x] `Viewer1D.py`: Dropped (2026-11-17), with `Statistics/FittingFunction.py`, see "Code
+      still using the old API"
+- [ ] `DraggableShapes.py`, `_interactiveSettings.py`: on the new API, or moved to
+      MJOLNIR-GUI. The GUI imports the `extractCut1DProperties*` functions of
+      `DraggableShapes` (`QPlaneManager`, `QELineManager`, `View3DManager`), so it is ported,
+      not dropped; the GUI does not import `_interactiveSettings` itself, only through the
+      interactive plot modes. `_interactiveSettings.py` imports PyQt5 at import only to choose
+      mouse cursors: use matplotlib's `canvas.set_cursor` (any backend), or move it to the
+      GUI, so MJOLNIR does not need Qt (PyQt5 is not in `install_requires`). Neither imports
       the old code, so deleting it in Milestone 2 does not break them
+- [ ] `pyperclip`: only MJOLNIR-GUI uses it now (`NormalizationManager`,
+      `PredictionToolManager`), but the GUI does not list it in its own requirements and gets
+      it through MJOLNIR's `install_requires`. Add it to the GUI's requirements, then remove it
+      from MJOLNIR's `setup.cfg` and `requirements.txt`
 
 ### File information the GUI shows
 - [ ] Reader metadata for the file info panel and subtraction check: sample name, title,
@@ -981,7 +990,8 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
 - [x] `BackgroundModel.py`: the powder model is the new `BackgroundModel.py`; the old file
       is kept as `BackgroundModel_old.py` for `DataSet_old`
 - [x] `Viewer3D.py`: deleted with the old code (2026-11-13). Done: `RLUAxes.py` (2026-11-12). Moved to
-      Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
+      Milestone 3 (2026-11-12): `DraggableShapes.py`, `_interactiveSettings.py`; `Viewer1D.py`
+      too, since dropped (below)
 - [x] `Statistics/CutObject.py` and the `_tools.cutObject` decorator: Dropped (2026-11-13).
       Meant to wrap an old cut's results with its data set, function and parameters, to
       re-run the cut after changing a parameter (`recalculateData`) and to fit it
@@ -992,7 +1002,24 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       new `DataSet` (whose cuts return a `CutResult`); it imported `Viewer3D` (Qt), `pytest`
       and the deprecated `scipy.ndimage.filters`. A `CutResult` keeps the cut's `parameters`:
       re-run with `ds.cut_1d(**{**result.parameters, 'width': 0.2})`. Fitting: ufit
-      (`generate_ufit_dataset`); `Statistics/FittingFunction.py` stays
+      (`generate_ufit_dataset`); `Statistics/FittingFunction.py` stays (dropped since, with
+      `Viewer1D`, below)
+- [x] `Data/Viewer1D.py` and `Statistics/FittingFunction.py`: Dropped (2026-11-17).
+      `Viewer1D` was an interactive matplotlib window for 1D data: plot one or more series
+      against a scan parameter (arrow keys switch it), pick a model (Gaussian, Lorentzian,
+      sloped line from `FittingFunction`) with number keys, set start values by clicking,
+      fit with `scipy.optimize.curve_fit` (`e`), copy the parameters to the clipboard
+      (`pyperclip`). Unused: nothing in MJOLNIR, the tests, the docs or the notebooks used
+      it, and MJOLNIR-GUI imports neither module (checked against
+      `~/projects/MJOLNIR-GUI` at c246c1c); `FittingFunction` had no other user. Untested
+      (`# pragma: no cover`); its docstring example used the old API (marked "TODO:
+      REDO!!") and linked a docs page that no longer exists; at import it added `.`, `..`,
+      `../..` to `sys.path`, used the deprecated `distutils.find_executable`, and switched
+      matplotlib to LaTeX text for the whole session when LaTeX was installed. The new code
+      covers its plotting (`plot_cut_1d`, `plot_raw_1d`, `on_click` read-outs); fitting:
+      ufit (`generate_ufit_dataset`) or scipy, as in the tutorials. The `Statistics` package
+      is now empty (its docs page only lists planned methods). `pyperclip` stays in
+      `install_requires` for the GUI (see Milestone 3)
 - [x] `_tools.py` (`PointerArray`): removed with the old code (2026-11-13)
 - [x] Command line scripts: 3DView, History, CalibrationInspector. Convert: Dropped
 - [x] Command line scripts take an `--instrument` option instead of detecting it

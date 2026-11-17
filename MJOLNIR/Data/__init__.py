@@ -2,7 +2,6 @@
 """
 import sys
 sys.path.append('.')
-#import Viewer1D
 try: # Imports needed for Windows generation of installers of MJOLNIRGui
     import numpy.random.common
     import numpy.random.bounded_integers
