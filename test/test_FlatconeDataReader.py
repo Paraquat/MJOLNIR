@@ -38,6 +38,8 @@ def test_read(datareader):
     metadata = flatcone_file._metadata
     assert metadata['startTime'] == '02-Sep-25 14:20:58'
     assert metadata['proposalUser'] == 'internal use'
+    assert metadata['mode'] == 'time'
+    assert metadata['preset'] == 0.0
 
 def test_transform(datareader):
     flatcone_file = datareader

@@ -38,6 +38,8 @@ def test_read(datareader):
     metadata = camea_file._metadata
     assert metadata['proposal'] == '20240261'
     assert metadata['sampleName'] == 'TbFeO3'
+    assert metadata['mode'] == 'monitor'
+    assert metadata['preset'] == 62500
 
 def test_transform(datareader):
     camea_file = datareader

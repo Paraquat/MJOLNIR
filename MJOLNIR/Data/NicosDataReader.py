@@ -25,6 +25,9 @@ class NICOSDataReader(DataReader):
         'localContact': 'Exp_localcontact',
         'user': 'Exp_users',
         'scanCommand': 'info',
+        # Count mode ('time' or 'monitor') and preset: information only
+        'mode': 'det_mode',
+        'preset': 'det_preset',
     }
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
@@ -161,7 +164,15 @@ class NICOSDataReader(DataReader):
         for key in self.nicos_meta_keys:
             value = self.parameters.get(self.nicos_meta_keys[key])
             if value is not None:
-                self._metadata[key] = value
+                self._metadata[key] = self.parse_preset(value) if key == 'preset' else value
+
+    @staticmethod
+    def parse_preset(value: str) -> float | str:
+        """'2' -> 2.0; kept as text if it is not a number"""
+        try:
+            return float(value.split()[0])
+        except (ValueError, IndexError):
+            return value
 
     def rebin(self, binning: int, shape: tuple, bounds: npt.NDArray[np.int32]):
         # Channels are already one per analyser, so there are no pixels to sum

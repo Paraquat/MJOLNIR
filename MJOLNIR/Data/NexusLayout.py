@@ -202,7 +202,6 @@ class CameaLayout(NexusLayout):
         'planeNormal': Field('{entry}/sample/plane_normal', dtype='float32'),
         'azimuthalAngle': Field('{entry}/sample/azimuthal_angle', dtype='float32'),
         'monitor1': Field('{entry}/control/data', units='counts', dtype='float32'),
-        'preset': Field('{entry}/control/preset', dtype='float32'),
         'time': Field('{entry}/control/time', units='seconds', dtype='float32'),
         'absoluteTime': Field('{entry}/control/absolute_time', dtype='float64'),
         'scanVariables': Field('{entry}/scanvars'),
@@ -273,7 +272,10 @@ class CameaLayout(NexusLayout):
         'email': Field('{entry}/user/email'),
         'address': Field('{entry}/user/address'),
         'affiliation': Field('{entry}/user/affiliation'),
+        # Count mode ('monitor' or 'time') and preset: information only, not used in processing
         'mode': Field('{entry}/control/mode'),
+        # NICOS writes the preset once, followed by zeros
+        'preset': Field('{entry}/control/preset', dtype='float32'),
     }
 
     # Where NICOS and older CAMEA files store the sample environment (as the old DataFile)
@@ -329,6 +331,9 @@ class IllLayout(NexusLayout):
         'localContact': Field('{entry}/user/namelocalcontact'),
         'proposalUser': Field('{entry}/user/name'),
         'proposal': Field('{entry}/experiment_identifier'),
+        # Count mode ('time' or 'monitor') and preset: information only
+        'mode': Field('{entry}/modestring'),
+        'preset': Field('{entry}/preset', dtype='float32'),
     }
 
     environment = {

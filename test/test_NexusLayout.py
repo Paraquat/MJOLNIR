@@ -120,8 +120,8 @@ def test_camea_matches_files(data_file):
         assert f[CameaLayout.path('counts')].ndim == 3
 
 @pytest.mark.skipif(not ILL_DATA.exists(), reason='marmot+flatcone data not available')
-@pytest.mark.parametrize('layout, file_name, n_fields', [(FlatconeLayout, '043555_pastis.nxs', 18),
-                                                         (MarmotLayout, '054724.nxs', 17)],
+@pytest.mark.parametrize('layout, file_name, n_fields', [(FlatconeLayout, '043555_pastis.nxs', 20),
+                                                         (MarmotLayout, '054724.nxs', 19)],
                          ids=['Flatcone', 'Marmot'])
 def test_ill_matches_files(layout, file_name, n_fields):
     """Every field but the magnetic and electric fields, which these files do not record"""
@@ -153,3 +153,5 @@ def test_camea_reader_uses_layout():
         assert np.array_equal(reader.monitor2, f['entry/monitor_2/data'][()])
     assert reader.environment.units['temperature'] == 'K'
     assert reader._metadata['sampleName'] == 'TbFeO3'
+    assert reader._metadata['mode'] == 'monitor'
+    assert reader._metadata['preset'] == 62500

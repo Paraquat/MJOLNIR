@@ -35,6 +35,8 @@ def test_read(datareader):
     metadata = bambus_file._metadata
     assert metadata['startTime'] == '2026-09-09 15:33:22'
     assert metadata['sampleName'] == 'CoRh2O4'
+    assert metadata['mode'] == 'time'
+    assert metadata['preset'] == 2.0
 
 def test_transform(datareader):
     bambus_file = datareader

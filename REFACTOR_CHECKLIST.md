@@ -108,8 +108,9 @@ work is the open items in the sections further down; tick both.
 ### Port the remaining features (items further down)
 - [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
-- [ ] File metadata: monitor preset, monitor fixes, `absoluteTime`, temperature from the
-      NICOS log (questions 9, 11, 12, 41, 42 of the refactoring log). Done: CAMEA scan
+- [ ] File metadata: monitor fixes, `absoluteTime`, temperature from the NICOS log
+      (questions 11, 12, 41, 42 of the refactoring log). Done: count mode and preset as
+      metadata for every instrument (question 9, 2026-11-17), CAMEA scan
       parameters, detector and analyser selection (`dasel`), monitor mode, `title`,
       `comment`, `startTime`/`endTime`, counting time (`reader.time`), scan command
 - [x] Calibration and sample: `updateCalibration`, calibration plots,
@@ -418,8 +419,13 @@ runs on the new `DataSet` and readers, and every view works.
 ### CAMEA data not read yet
 - [x] `MonitorMode`: `reader._metadata['mode']` (e.g. 'monitor'), with `title`, `comment`,
       `startTime`, `endTime` and the other `CameaLayout.metadata` entries
-- [ ] `MonitorPreset` (`control/preset`, one value followed by zeros in NICOS files): only
-      the 2018 monitor fix would use it (questions 9 and 11)
+- [x] `MonitorPreset` (`control/preset`, one value followed by zeros in NICOS files):
+      `reader._metadata['preset']` (2026-11-17). Question 9 answered: count mode and preset
+      are not used in processing, only recorded as metadata. Every reader now keeps both as
+      `mode` and `preset`: CAMEA `control/mode`, `control/preset`; Flatcone and Marmot
+      `modestring`, `preset`; Bambus and MultiFLEXX the header's `det_mode`, `det_preset`
+      (preset as a number). Also in `shallow_read`. Tests: the reader tests and
+      `test_NexusLayout.py`. The 2018 monitor fix (question 11) would read it from there
 - [ ] Monitor fixes: 2018 wrong monitor, extra value in files of running scans
 - [x] `Time` (counting time per step): `reader.time` [s], as the Marmot and NICOS readers;
       identical to the old `DataFile` for all 20 CAMEA files. `totalCounts`: Dropped

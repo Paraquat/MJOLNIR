@@ -44,6 +44,8 @@ def test_read(datareader):
     metadata = marmot_file._metadata
     assert metadata['startTime'] == '13-Jun-26 23:32:11'
     assert metadata['proposalUser'] == 'steffens'
+    assert metadata['mode'] == 'time'
+    assert metadata['preset'] == 15.0
 
 def test_no_calibration():
     marmot_file = MarmotDataReader(data_file)
