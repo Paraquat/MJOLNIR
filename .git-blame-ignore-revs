@@ -1,0 +1,5 @@
+# Bulk formatting commits ignored by git blame.
+# Enable locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Ruff whitespace cleanup (W291, W293, W292)
+deea1b88c25391f8fbe41b4372293e67fc0a2a4b
