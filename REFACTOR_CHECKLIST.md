@@ -334,14 +334,25 @@ runs on the new `DataSet` and readers, and every view works.
       `on_cut(kind, parameters)` hook on `plot_q_plane` and `plot_cut_qe`, as `SliceViewer`
 - [x] `Viewer1D.py`: Dropped (2026-11-17), with `Statistics/FittingFunction.py`, see "Code
       still using the old API"
-- [ ] `DraggableShapes.py`, `_interactiveSettings.py`: on the new API, or moved to
-      MJOLNIR-GUI. The GUI imports the `extractCut1DProperties*` functions of
-      `DraggableShapes` (`QPlaneManager`, `QELineManager`, `View3DManager`), so it is ported,
-      not dropped; the GUI does not import `_interactiveSettings` itself, only through the
-      interactive plot modes. `_interactiveSettings.py` imports PyQt5 at import only to choose
-      mouse cursors: use matplotlib's `canvas.set_cursor` (any backend), or move it to the
-      GUI, so MJOLNIR does not need Qt (PyQt5 is not in `install_requires`). Neither imports
-      the old code, so deleting it in Milestone 2 does not break them
+- [x] `DraggableShapes.py`: ported (2026-11-18). It now holds only what the GUI imports, the
+      `extractCut1DProperties*` functions (`QPlaneManager`, `QELineManager`, `View3DManager`),
+      with `corner2center`/`center2corner`; no Qt, no `_interactiveSettings`, `pkg_resources`
+      or `pydoc` import (`test/test_DraggableShapes.py`). Its draggable classes were an older
+      copy of those in `_interactiveSettings`, used by nothing, and are dropped, with the
+      commented-out cutting code. The returned keys are the DataSet cut names: `min_pixel`,
+      `constant_bins`, `energy_min`/`energy_max` (were `minPixel`, `constantBins`,
+      `Emin`/`Emax`, `E1`/`E2`); `ufit` is gone (the GUI chooses ufit export itself, with
+      `generate_ufit_dataset(result)`). The circle's `width` is still the diameter, which is
+      now what `cut_constant_q` expects (the old `cut1DE` took it as the radius, so a drawn
+      circle cut twice its radius). Energy ranges are ordered when a rectangle is drawn
+      downwards. GUI side: rename the keys it reads; on Q-E plots the positions are still
+      plot coordinates (fraction along the cut), and the perpendicular `width` is in those
+      units too, so the GUI must scale it by the cut length (it passed it as a Q width)
+- [ ] `_interactiveSettings.py`: on the new API, or moved to MJOLNIR-GUI. The GUI does not
+      import it itself, only through the interactive plot modes. It imports PyQt5 at import
+      only to choose mouse cursors: use matplotlib's `canvas.set_cursor` (any backend), or
+      move it to the GUI, so MJOLNIR does not need Qt (PyQt5 is not in `install_requires`).
+      It does not import the old code, so deleting that in Milestone 2 does not break it
 - [ ] `pyperclip`: only MJOLNIR-GUI uses it now (`NormalizationManager`,
       `PredictionToolManager`), but the GUI does not list it in its own requirements and gets
       it through MJOLNIR's `install_requires`. Add it to the GUI's requirements, then remove it
