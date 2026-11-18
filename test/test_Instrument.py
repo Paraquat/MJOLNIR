@@ -190,8 +190,7 @@ def test_Instrument_Initialization():
 
 
 
-def test_Instrument_saveload():
-    import os
+def test_Instrument_saveload(tmp_path):
     Instr = Instrument(position=(0,1,0))
     Instr2 = Instrument()
 
@@ -203,19 +202,18 @@ def test_Instrument_saveload():
     wedge.append([Det,Ana])
     Instr.append(wedge)
 
-    tempFile = 'temp.bin'
+    tempFile = str(tmp_path / 'temp.bin')
     Instr.save(tempFile)
     Instr2.load(tempFile)
-    os.remove(tempFile)
 
 
     assert(Instr==Instr2)
 
 
 
-def test_parseXML(): # Improve this test!
+def test_parseXML(tmp_path): # Improve this test!
 
-    tempFileName = '__temp__.xml'
+    tempFileName = str(tmp_path / '__temp__.xml')
 
     Instr = Instrument()
     Instr.settings['Author'] = 'Jakob Lass'
@@ -231,12 +229,11 @@ def test_parseXML(): # Improve this test!
     Instr.saveXML(tempFileName)
 
     InstrLoaded = Instrument(fileName=tempFileName)
-    os.remove(tempFileName)
 
     assert(Instr==InstrLoaded)
 
 
-def test_XML_errors():
+def test_XML_errors(tmp_path):
 
     fileString = ""
     fileString+="<?xml version='1.0'?>"
@@ -247,7 +244,7 @@ def test_XML_errors():
     fileString+="</Wedge>"
     fileString+="</Instrument>"
 
-    temp_file = 'Tempfile.xml'
+    temp_file = str(tmp_path / 'Tempfile.xml')
     f = open(temp_file,'w')
     f.write(fileString)
     f.close()
@@ -292,7 +289,6 @@ def test_XML_errors():
         assert False
     except ValueError:
         assert True
-    os.remove(temp_file)
 
 def test_instrument_string_dummy(): # Todo: Improve test!
     Instr = Instrument()
@@ -301,14 +297,13 @@ def test_instrument_string_dummy(): # Todo: Improve test!
     del string
     assert True
 
-def test_instrument_create_xml():
+def test_instrument_create_xml(tmp_path):
 
     Instr = Instrument()
-    filename = 'temp'
+    filename = str(tmp_path / 'temp')
     Instr.generateCAMEAXML(filename)
 
     Instr2 = Instrument(fileName=filename+'.xml')
-    os.remove(filename+'.xml')
     assert(len(Instr2.wedges)==8)
 
 
