@@ -8,7 +8,7 @@ Created on Wed Jul 14 13:03:12 2021
 Tool to replace batch in order to fully port development to windows
 """
 
-import os,sys,shutil
+import os
 
 DIR = os.path.join(str(os.path.dirname(__file__)),'notebooks')
 RESULTDIR = os.path.join(str(os.path.dirname(__file__)),r'..\build','notebooks')

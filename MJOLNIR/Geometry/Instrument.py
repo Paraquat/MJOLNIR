@@ -5,15 +5,12 @@ from MJOLNIR import _tools
 import MJOLNIR
 from MJOLNIR import TasUBlibDEG
 from MJOLNIR.Data import RLUAxes
-from MJOLNIR.TasUBlibDEG import factorsqrtEK
 import warnings
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import scipy.optimize
 from scipy.stats import norm
 import h5py as hdf
 import datetime
-from MJOLNIR.Geometry.eck_Flipped import get_E, get_scattering_angle,get_mono_angle,get_angle_ki_Q,get_angle_kf_Q,calc_eck
 
 NumberOfSigmas= 3.0 # Defining the active area of a peak on a detector as \pm n*sigma
 predictionInstrumentSupport = ['CAMEA','MultiFLEXX','Bambus'] # Instrument supported in prediction function

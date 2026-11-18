@@ -5,11 +5,8 @@ Created on Mon Mar 26 16:49:34 2018
 
 @author: lass
 """
-from MJOLNIR.Geometry import Detector,Analyser,Wedge,Instrument
+from MJOLNIR.Geometry import Instrument
 from MJOLNIR.Data import DataSet
-import numpy as np
-import h5py as hdf
-import matplotlib.pylab as plt
 
 Instr = Instrument.Instrument(filename='/home/lass/Dropbox/PhD/Software/CAMEA_Full.xml')
 Instr.initialize()

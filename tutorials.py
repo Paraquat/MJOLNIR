@@ -6,7 +6,7 @@ Created on Fri Apr 28 16:36:22 2023
 """
 
 
-import os,sys,shutil
+import os
 
 DIR = r'docs\notebooks'
 

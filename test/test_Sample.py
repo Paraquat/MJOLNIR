@@ -1,9 +1,7 @@
-from MJOLNIR import TasUBlibDEG
 from MJOLNIR.Data.Sample import Sample
 from pathlib import Path
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR import _tools
-import os
 import numpy as np
 import MJOLNIR.TasUBlibDEG as TasUBlib
 from MJOLNIR.Data.DataReader import DataReader

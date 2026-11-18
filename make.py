@@ -9,7 +9,6 @@ Tool to replace makefile in order to fully port development to windows
 """
 
 import argparse
-from ntpath import join
 
 import os,glob
 import re, numpy as np

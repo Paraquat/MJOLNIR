@@ -8,7 +8,6 @@ import math
 #from MJOLNIR.Marray import *
 import os
 import inspect
-import matplotlib
 import regex as re
 import warnings
 

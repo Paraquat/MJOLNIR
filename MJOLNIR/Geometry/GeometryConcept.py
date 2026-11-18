@@ -2,10 +2,7 @@ import sys
 sys.path.append('.')
 sys.path.append('..')
 sys.path.append('../..')
-import math
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import pickle as pickle
 from MJOLNIR import _tools
 

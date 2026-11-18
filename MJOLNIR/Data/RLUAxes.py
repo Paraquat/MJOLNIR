@@ -3,7 +3,6 @@ grid, ticks and read-out follow the sample's lattice (H, K, L). create_q_axis ma
 plane, create_qe_axes Q along a direction against energy. The tick spacing follows zooming."""
 import copy
 import functools
-import warnings
 from operator import sub
 
 import numpy as np

@@ -1,8 +1,6 @@
 import pytest
 
-import numpy as np
 from pathlib import Path
-from pdb import set_trace
 
 from MJOLNIR.Data.InstrumentName import InstrumentName
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory

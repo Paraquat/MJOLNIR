@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mayavi import mlab
-from matplotlib.colors import ListedColormap
 cmap = plt.cm.jet
 #my_cmap = cmap(np.arange(cmap.N))
 #my_cmap[:,-1] = np.linspace(0, 1, cmap.N)

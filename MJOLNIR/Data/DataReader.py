@@ -7,7 +7,6 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from MJOLNIR import _tools
 from MJOLNIR.Data.LegacyFixes import LegacyFix
 from MJOLNIR.Data.Metadata import Metadata
 from MJOLNIR.Data.Sample import Sample

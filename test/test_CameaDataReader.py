@@ -1,6 +1,5 @@
 import pytest
 
-import numpy as np
 from pathlib import Path
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader

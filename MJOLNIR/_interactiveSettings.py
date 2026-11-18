@@ -1,17 +1,12 @@
 """Settings for the interactive plotting used in the MJOLNIR package. Collected here for a common reference and easier adaptability and future-proofing."""
 
-import matplotlib as mpl
 import numpy as np
 from enum import Enum
 from matplotlib.patches import Ellipse,Rectangle,Circle
 from matplotlib.backend_bases import MouseButton
 
-from  matplotlib.backend_tools import Cursors as cursors
 
-import MJOLNIR
-import os
 import PyQt5.QtCore
-from PyQt5.QtGui import QCursor, QPixmap
 
 import sys
 from collections import defaultdict

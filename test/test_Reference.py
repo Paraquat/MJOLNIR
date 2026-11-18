@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 
 import reference_data as R
 from MJOLNIR.Data import Mask, Plotting
-from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
