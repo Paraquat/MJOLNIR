@@ -65,8 +65,11 @@ work is the open items in the sections further down; tick both.
       `.nxs` files (reading, `saveNXsqom`, saving converted files), `createEmptyDataFile`,
       the metadata-only fields. Ported: `shallowRead`. Replaced: `saveHDF` (by
       `CameaDataWriter`). McStas: later (see "Later"). Reasons in the refactoring log
-- [ ] Mark every open item in this file as "port" or "drop", checking each against what
-      MJOLNIR-GUI uses (Milestone 3), so nothing the GUI needs is dropped
+- [x] Mark every open item in this file as "port" or "drop", checking each against what
+      MJOLNIR-GUI uses (Milestone 3), so nothing the GUI needs is dropped. Done (2026-11-18):
+      the open items left are Milestone 3 work (all ports for the GUI), "Later" (new
+      features), or listed under "Open issues" in the refactoring log (ILL A4 offset,
+      `generateCalibration` test, `.travis.yml`)
 
 ### Keep the comparisons with the old code
 - [x] Save the old code's output as reference test data before deleting it (12 Nov 2026):
@@ -316,9 +319,17 @@ work is the open items in the sections further down; tick both.
       (the old release, without these modules): `.readthedocs.yaml` now installs it from the
       repository. Not documented: `bambus_calibration.py` (a script that writes a file when
       imported)
-- [ ] Migration guide, old to new: `DataSet(dataFiles=...)` + `convertDataFile` → `DataSet(
-      instrument, files=...)`; `extractData()` → `gather`; `cut1D` → `cut_1d`;
-      `generateBackgroundModel` → `generate_background_model`; result columns unchanged
+- [x] Migration guide, old to new (2026-11-18): `docs/Migration.rst`, in the docs index after
+      the introduction. What changed (no conversion step, instrument in the `DataSet`,
+      `CutResult`, plots return the axes, `gather`), a before/after script, the argument
+      renames, tables old → new for data sets, cuts and plots, masks / background /
+      normalisation, the results that change (bugs fixed), the removed features with what
+      to use instead, and the command line scripts. The old signatures were taken from the
+      last commit with the old code (15909fd); the new calls were run on the sample data.
+      Found while checking: `result.parameters` holds the cut function's arguments
+      (positions in Qx, Qy, no `rlu`), so `ds.cut_1d(**result.parameters)` with H, K, L
+      fails; the claim that a cut can be re-run that way is removed from `docs/Data/Cuts.rst`
+      and corrected in the refactoring log
 - [x] CI: Dropped from this milestone (2026-11-17): the remote has no CI at the moment.
       `.travis.yml` (Python 3.5-3.9) is left as it is, see "Project setup"
 - [ ] New major version, as the API changes

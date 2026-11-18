@@ -18,6 +18,7 @@ tutorials and guides on how to make use of MJOLNIR.
    :maxdepth: 1
 
    Introduction
+   Migration
    faq
    tutorials
    ShortCuts
