@@ -332,7 +332,12 @@ work is the open items in the sections further down; tick both.
       and corrected in the refactoring log
 - [x] CI: Dropped from this milestone (2026-11-17): the remote has no CI at the moment.
       `.travis.yml` (Python 3.5-3.9) is left as it is, see "Project setup"
-- [ ] New major version, as the API changes
+- [x] New major version, as the API changes: 2.0.0 (2026-11-18, was 1.3.5), in
+      `MJOLNIR/__init__.py` (read by `setup.cfg`) and `docs/conf.py`, set with `Update.py`
+      (the file edits of `make version`; not committed, tagged, built or pushed). Before
+      releasing it: MJOLNIR-GUI requires `MJOLNIR>=1.2.1` with no upper bound
+      (`pyproject.toml`, `setup.py`), so a new GUI install would get 2.0.0 and break until
+      Milestone 3: pin `MJOLNIR<2` there first
 - [x] Delete `DataFile.py`, `DataSet_old.py`, `BackgroundModel_old.py`; full test suite passes
       (2026-11-13; commit 15909fd is the last with them). Deleted with them: `Viewer3D.py`,
       `_tools.PointerArray` and `overWritingFunctionDecorator`, the `RLUAxes.createQAxis` /
