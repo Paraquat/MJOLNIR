@@ -402,7 +402,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 #print(monitor.shape)
                 
                 Data = np.array(intensities).transpose(2,0,1).astype(float)/monitor[np.newaxis,:,np.newaxis]
-                if sampleMass != None: # A sample mass has been proivided
+                if sampleMass is not None: # A sample mass has been proivided
 
                     sampleMolarMass = _tools.calculateMolarMass(sample,formulaUnitsPerUnitCell)
                     
@@ -540,7 +540,7 @@ class Instrument(GeometryConcept.GeometryConcept):
 
                 extendedSplit=np.zeros((split.shape[0],split.shape[1]+2))
                 extendedSplit[:,1:-1] = split
-                extendedSplit[:,-1]=np.ones((split.shape[0]))*pixels
+                extendedSplit[:,-1]=np.ones(split.shape[0])*pixels
 
                 x=np.arange(pixels)
                 activePixels = np.zeros((detectors,analysers,pixels),dtype=bool)
@@ -643,7 +643,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                                         if not os.path.exists(savelocation+f'/{detpixels}_pixels'):
                                             os.makedirs(savelocation+f'/{detpixels}_pixels')
                                         if not plot:
-                                            plt.ioff
+                                            plt.ioff()
                                         plt.figure()
                                         plt.scatter(EiLocal,binPixelData)
                                         plt.plot(Ei,fitFunc(Ei,*guess))
@@ -702,7 +702,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                                     MeanA4Instr[i,j*detpixels+k] = np.mean(A4[i,PixelEdge[i,j,k,0]:PixelEdge[i,j,k,1]])
                                     
                         x = A4FileValue
-                        A4FitValue = np.zeros((A4.shape[0]))
+                        A4FitValue = np.zeros(A4.shape[0])
 
                         
                         if plot==True:
@@ -928,7 +928,7 @@ def converterToQxQy(A3,A4,Ei,Ef):
 
 
 # Mock-up data set
-class simpleDataSet():
+class simpleDataSet:
     def __init__(self,sample,Ei):
         self.sample = [sample]
         self.Ei = np.array([Ei])

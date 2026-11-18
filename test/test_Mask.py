@@ -1,6 +1,7 @@
 import numpy as np
 from MJOLNIR.Data.Mask import MaskingObject, lineMask, rectangleMask, circleMask, boxMask, indexMask, MultiMask, CurratAxeMask, parse, extract, load
-import sympy,os
+import sympy
+import os
 
 def test_subclass_MaskingObject():
     # Generate a subclass of MaskingObect that is missing stuff

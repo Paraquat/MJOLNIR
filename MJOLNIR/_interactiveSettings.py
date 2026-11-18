@@ -1188,7 +1188,7 @@ def prepareInteractiveCuttingView3D(self,draggables, draggableFunctions,draggabl
 
 #### All the shapes... ############################################################################
 
-class DraggableShape(): # pragma: no cover
+class DraggableShape: # pragma: no cover
     lock = None  # only one can be moved at a time
     selectedShape = None # Only one can be selected at one point
     cidkeypress = None

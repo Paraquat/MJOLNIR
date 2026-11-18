@@ -7,7 +7,6 @@ from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
-from PyQt5.Qt import QApplication
 from PyQt5 import Qt
 
 from os.path import expanduser

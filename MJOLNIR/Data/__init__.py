@@ -5,6 +5,6 @@ sys.path.append('.')
 try: # Imports needed for Windows generation of installers of MJOLNIRGui
     import numpy.random.common
     import numpy.random.bounded_integers
-    import numpy.random.entropy
+    import numpy.random.entropy  # noqa: F401  needed for MJOLNIRGui Windows installer
 except ImportError:
     pass

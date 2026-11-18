@@ -183,7 +183,7 @@ def my_timer_N(N=0): # pragma: no cover
             if N ==0:
                 returnval = func(*args,**kwargs)
             else:
-                for i in range(N):
+                for _ in range(N):
                     startT = time.time()
                     returnval = func(*args,**kwargs)
                     stopT = time.time()
@@ -204,11 +204,11 @@ def beautifyArgs(args=(),kwargs=None): # pragma: no cover
     returnStr = ''
     if not args == ():
         args = list(args)
-        returnStr =', '.join([str(x) if type(x)!=str else f'"{x}"' for x in args])
+        returnStr =', '.join([str(x) if type(x) is not str else f'"{x}"' for x in args])
         if not kwargs == {}:
             returnStr+=', '
     if not kwargs == {}:
-        kwformat = [f'{key}={kwargs[key]}' if type(kwargs[key])!=str else f'{key}="{kwargs[key]}"'  for key in kwargs]
+        kwformat = [f'{key}={kwargs[key]}' if type(kwargs[key]) is not str else f'{key}="{kwargs[key]}"'  for key in kwargs]
         returnStr+=', '.join([str(x) for x in kwformat])
     return returnStr
 
@@ -265,7 +265,7 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
                     x = self._Instance.__getattribute__(s)
                     skip = False
                 if skip and s[0]!='_':
-                    if type(x) == type(self.__init__):# and x != self.__init__: # it is an instance method
+                    if type(x) is type(self.__init__):# and x != self.__init__: # it is an instance method
                         return logMethod(self,x)                 # this is equivalent of just decorating the method with logMethod
                     logAttribute(self,s)
                 return x
@@ -281,7 +281,7 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
             if key=='__dict__' or key in ['__getattribute__','__init__']: #  Check if the value in dict is a function
                 continue
             
-            if type(d[key])==type(Cls.__init__):
+            if type(d[key]) is type(Cls.__init__):
                 if hasattr(d[key],'_original'):
 
                     setattr(NewCls, key, KwargChecker(d[key]._function,d[key]._include)(d[key]._original))
@@ -1210,8 +1210,7 @@ def getNext(l,delete=True):
             yield l[0]
             del l[0]
     else:
-        for entry in l:
-            yield entry
+        yield from l
 
 def histogramdd(sample, bins, weights, returnCounts = False):
     """

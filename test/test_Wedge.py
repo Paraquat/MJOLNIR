@@ -1,4 +1,3 @@
-from MJOLNIR.Geometry.Detector import Detector
 from MJOLNIR.Geometry.Wedge import Wedge
 import MJOLNIR.Geometry.Detector as Detector
 import MJOLNIR.Geometry.Analyser as Analyser

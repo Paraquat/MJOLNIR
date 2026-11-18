@@ -4,7 +4,7 @@ import warnings
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  registers 3d projection on old matplotlib
 
 def test_init():
     GenericAnalyser = Analyser(position=(0.0,1.0,0.0),direction=(1.0,0,0),d_spacing=3.35,mosaicity=60.0)

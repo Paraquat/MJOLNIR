@@ -69,7 +69,7 @@ class GeometryConcept:
     def save(self, filename):
         try:                                # Opening the given file with an error catch
             fileObject = open(filename, 'wb')
-        except IOError as e:   # pragma: no cover
+        except OSError as e:   # pragma: no cover
             print(f"Error in opening file:\n{e}")
         else:
                 pickle.dump(self, fileObject, -1)
@@ -79,7 +79,7 @@ class GeometryConcept:
         """Method to load an object from a pickled file."""
         try:                                # Opening the given file with an error catch
             fileObject = open(filename, 'rb')
-        except IOError as e: # pragma: no cover
+        except OSError as e: # pragma: no cover
             print(f"Error in opening file:\n{e}")
         else:
             tmp_dict = pickle.load(fileObject)

@@ -48,7 +48,7 @@ class Sample:
                 self.plane_vector2 = np.delete(self.plane_vector2,3)
                 self.plane_vector2[5:7] = 0.0
                 self.orientationMatrix = TasUBlib.calcTasUBFromTwoReflections(self.cell, self.plane_vector1, self.plane_vector2)
-            elif recalculateUB == 0 and type(recalculateUB) == bool:
+            elif recalculateUB == 0 and type(recalculateUB) is bool:
                 self.orientationMatrix = np.array(sample.get('orientation_matrix'))*2*np.pi
             else:
                 self.orientationMatrix = np.array(sample.get('orientation_matrix'))

@@ -1,7 +1,7 @@
 from MJOLNIR.Data import DataSet
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  registers 3d projection on old matplotlib
 from mayavi import mlab
 cmap = plt.cm.jet
 #my_cmap = cmap(np.arange(cmap.N))
@@ -47,7 +47,7 @@ if False:
     #pc = ax.pcolormesh(Qx[:,:,Eslice].T,Qy[:,:,Eslice].T,Int[:,:,Eslice].T,vmin=VMIN,vmax=VMAX,zorder=10,cmap=my_cmap)
     ax.set_ylabel('$Q_y$ [1/AA]')
     ax.set_xlabel('$Q_x$ [1/AA]')
-    plt.title(f'$\hbar \omega =$ {np.mean(energy_bin[:,:,Eslice]):.02f}' + ' meV')
+    plt.title(rf'$\hbar \omega =$ {np.mean(energy_bin[:,:,Eslice]):.02f}' + ' meV')
 
 else:
     for Eslice in range(len(energy_bin[0,0])-1):

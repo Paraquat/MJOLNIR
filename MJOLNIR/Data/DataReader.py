@@ -390,7 +390,7 @@ class DataReader(ABC):
         self.monitor = monitor.reshape(-1, 1, 1) * np.ones((1, *self.intensity.shape[1:]))
         A3 = np.deg2rad(self.A3) + np.deg2rad(self.A3Offset)
         if A3.shape[0]==1:
-            A3 = A3*np.ones((self.n_steps))
+            A3 = A3*np.ones(self.n_steps)
         A3 = A3.reshape((self.n_steps, 1, 1))
         Ei = self.Ei.copy().reshape(-1, 1, 1)
         self.energy = (Ei - EfMean) * np.ones((self.n_steps, 1, 1))

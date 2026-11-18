@@ -9,8 +9,10 @@ Tool to replace makefile in order to fully port development to windows
 
 import argparse
 
-import os,glob
-import re, numpy as np
+import os
+import glob
+import re
+import numpy as np
 from MJOLNIR.Data.DataSet import OxfordList
 
 DEBUG = False

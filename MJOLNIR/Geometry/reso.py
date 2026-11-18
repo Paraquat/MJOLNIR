@@ -188,7 +188,7 @@ def calc_ellipses(Qres_Q, verbose=True):
 # shows the 2d ellipses
 #
 def plot_ellipses(ellis, verbose=True, plot_results=True, file="", dpi=600, ellipse_points=128):
-	import mpl_toolkits.mplot3d as mplot3d
+	import mpl_toolkits.mplot3d as mplot3d  # noqa: F401  registers 3d projection on old matplotlib
 	import matplotlib.pyplot as plot
 
 	ellfkt = lambda rad, rot, phi : \

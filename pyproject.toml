@@ -2,7 +2,50 @@
 requires = ["setuptools <= 80.10.2"]
 build-backend = "setuptools.build_meta"
 
-[tools.pytest.ini_options]
-testpaths = ["tests"]
+[tool.pytest.ini_options]
+testpaths = ["test"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py311"  # matches python_requires in setup.cfg
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = [
+    "F",     # pyflakes: unused imports/variables, undefined names
+    "E4",    # import placement
+    "E7",    # statement-level issues (bare except, == True, ...)
+    "E9",    # syntax / IO errors
+    "W605",  # invalid escape sequences
+    "B",     # flake8-bugbear: likely bugs
+    "UP",    # pyupgrade: outdated syntax
+    "T10",   # debugger calls left in code
+]
+ignore = [
+    # Style choices that don't fit this codebase
+    "E741",  # ambiguous names like l, I: common in physics code
+    "E731",  # lambda assignment
+    "E701",  # one-line if/for bodies
+
+    # Existing debt: remove an entry once its violations are fixed
+    "E712",  # == True/False: autofix is unsafe on numpy arrays, fix by hand
+    "E722",  # bare except
+    "F405",  # names from star imports (test/test_tools.py)
+    "F403",  # star imports
+    "F841",  # unused local variables
+    "B011",  # assert False in tests, should use pytest.fail / pytest.raises
+    "B023",  # closures capturing loop variables
+    "B028",  # warnings.warn without stacklevel
+    "B904",  # raise without from inside except
+    "B905",  # zip() without strict=
+    "UP031", # %-formatting
+    "B008",  # function call (np.array) in argument default
+    "B017",  # pytest.raises(Exception)
+    "B020",  # loop variable shadows the iterable (Data/DataSet.py)
+    "B027",  # empty method in abstract base class without @abstractmethod
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Command-line tools configure matplotlib/Qt before importing MJOLNIR
+"MJOLNIR/CommandLineScripts/*" = ["E402"]

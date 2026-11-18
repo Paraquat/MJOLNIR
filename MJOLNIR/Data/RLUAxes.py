@@ -515,7 +515,7 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
 
         elif isinstance(locator,MaxNLocator):
             if hasattr(axis,'xTicks'):
-                ticks = getattr(axis,'xTicks')
+                ticks = axis.xTicks
             else:
                 ticks = 7
             locator.set_params(nbins = ticks)
