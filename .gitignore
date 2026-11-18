@@ -43,6 +43,6 @@ Report/
 */.coverage*
 
 coverage_html_report
-samlpedata/*
+sampledata/*
 docs/Commissioning/*
 MJOLNIR/MJOLNIR.egg-info/*

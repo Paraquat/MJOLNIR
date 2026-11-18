@@ -119,8 +119,8 @@ work is the open items in the sections further down; tick both.
 ### Port the remaining features (items further down)
 - [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
       `createEmptyDataFile`. McStas is not ported here (see "Later")
-- [ ] File metadata: `absoluteTime`, temperature from the NICOS log (questions 41, 42 of
-      the refactoring log). Done: count mode and preset as metadata for every instrument
+- [x] File metadata. Done: temperature from the NICOS log (question 41, 2026-11-18, see
+      "CAMEA data not read yet"), count mode and preset as metadata for every instrument
       (question 9, 2026-11-17), files of running scans (question 12) and the 2018 monitor
       fix (question 11, the first legacy fix), both 2026-11-17, CAMEA scan
       parameters, detector and analyser selection (`dasel`), monitor mode, `title`,
@@ -497,10 +497,27 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `Time` (counting time per step): `reader.time` [s], as the Marmot and NICOS readers;
       identical to the old `DataFile` for all 20 CAMEA files. `totalCounts`: Dropped
       (2026-10-19)
-- [ ] `absoluteTime`: only the temperature-from-log fallback would use it (question 41)
+- [x] `absoluteTime`: read by the temperature-from-log fallback (below), not kept on the
+      reader. In NICOS files it is the Unix time at the end of each step (its last value is
+      `end_time`), not the start
 - [x] `temperature`, `magneticField`, `electricField`: `SampleEnvironment` (measured and
       setpoints, units from the file), identical to the old DataFile for all CAMEA test files
-- [ ] Temperature from the NICOS log when no temperature is stored
+- [x] Temperature from the NICOS log when no temperature is stored (2026-11-18, question
+      41: needed). `CameaDataReader._temperature_from_log`: when the file stores no
+      temperature per step, `environment.temperature` is the time average of
+      `temperature_log` (or `T_log`), linearly interpolated, over each step's counting time,
+      `absolute_time - time` to `absolute_time`; `metadata['temperature_from_log']` says
+      whether it was used. The log's times count from its `start` attribute, local time at
+      PSI (`CameaDataReader.timezone`, Europe/Zurich), `absolute_time` is Unix time. The old
+      DataFile's fallback never ran (`np.array(None) is None` is false, and it read
+      `absoluteTime` after using it); its windows also ran from the end of one step to the
+      end of the next, measured from the first step's end, not the log's start. NICOS logs
+      about every 10 s, so 12 s steps often hold no log value: hence the interpolated
+      average, not the mean of the points in the step. Tests (`test/test_TemperatureLog.py`)
+      on copies of the 2024 sample files with the stored temperature removed: within 0.003 K
+      RMS of the stored values (their spread 0.006-0.015 K; with the wrong time zone the
+      difference is 0.015 K, so the test pins it). Also checked on the 2023 camea_test files
+      (`T_log`). `shallow_read('temperature')` still gives only a stored temperature
 - [x] Scan parameters (`getScanParameter`: parameters, values, units):
       `CameaDataReader.get_scan_parameters` -> `scan_parameters`, `scan_values`, `scan_units`
       (as the other readers): variables in `entry/data`, else named in `entry/scanvars`
