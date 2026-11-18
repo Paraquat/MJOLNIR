@@ -120,8 +120,8 @@ def test_camea_matches_files(data_file):
         assert f[CameaLayout.path('counts')].ndim == 3
 
 @pytest.mark.skipif(not ILL_DATA.exists(), reason='marmot+flatcone data not available')
-@pytest.mark.parametrize('layout, file_name, n_fields', [(FlatconeLayout, '043555_pastis.nxs', 20),
-                                                         (MarmotLayout, '054724.nxs', 19)],
+@pytest.mark.parametrize('layout, file_name, n_fields', [(FlatconeLayout, '043555_pastis.nxs', 21),
+                                                         (MarmotLayout, '054724.nxs', 20)],
                          ids=['Flatcone', 'Marmot'])
 def test_ill_matches_files(layout, file_name, n_fields):
     """Every field but the magnetic and electric fields, which these files do not record"""

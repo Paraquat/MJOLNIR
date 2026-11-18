@@ -19,6 +19,10 @@ class FlatconeDataReader(NexusDataReader):
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)
+        # The A4 offset the file stores ({instrument}/A4/offset_value, -178.65 degrees in
+        # 043555_pastis.nxs) is read into metadata['A4OffsetStored'] but not applied:
+        # A4Offset stays 0, as in the old code, until ILL confirms what it is (an open issue
+        # of the refactoring log)
         self.A3 = self.A3.flatten()
         self.monitor1 = np.array(self.getValue('monitor1'))
         self.temperature = np.array(self.getValue('temperature')).flatten()

@@ -159,10 +159,12 @@ work is the open items in the sections further down; tick both.
       fallback and `__init_subclass__` are removed from `NexusDataReader`, and the readers'
       `entry` attributes with them. Reader output identical before and after on both ILL
       files and all 20 CAMEA files, and every reader's `can_read` unchanged on every file
-- [ ] ILL files store `{instrument}/A4/offset_value` (-178.65 and -179.8 degrees in the two
-      test files), not read: `A4Offset` is 0 for Flatcone and Marmot. The old `loadMarmot`
-      read it but then set `_A4Off = 0.0`. Confirm with ILL that it is not a correction to
-      apply
+- [x] ILL files store `{instrument}/A4/offset_value` (-178.65 and -179.8 degrees in the two
+      test files). Read, not applied (2026-11-18): `metadata['A4OffsetStored']` (in
+      `FlatconeLayout` and `MarmotLayout`, whose files give it different units), while
+      `A4Offset` stays 0 for Flatcone and Marmot, as before (the old `loadMarmot` read it but
+      then set `_A4Off = 0.0`). A note in each reader file says so. Whether it is a
+      correction to apply waits on ILL: listed under "Open issues" in the refactoring log
 - [x] In `CameaLayout`: the lists of `environment_keys` are aliases; old CAMEA
       `detector/counts` is an alias of `detector/data`
 - [x] In the layouts: no duplicate keys (`monitor1`, `monitor2` replace `hdfMonitor`,

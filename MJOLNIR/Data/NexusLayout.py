@@ -305,7 +305,8 @@ class CameaLayout(NexusLayout):
 class IllLayout(NexusLayout):
     """What the ILL (NOMAD) files of Flatcone and Marmot share. Not a complete layout: the
     instrument and the counts come from the subclasses. The files also store
-    {instrument}/A4/offset_value, which the readers do not use (A4Offset is 0, as before)"""
+    {instrument}/A4/offset_value, read as metadata (A4OffsetStored) but not applied: A4Offset
+    is 0, as before (an open issue of the refactoring log)"""
 
     entry = 'entry0'
 
@@ -362,6 +363,13 @@ class FlatconeLayout(IllLayout):
         'monitor1': Field('{entry}/monitor/data', dtype='int32'),
     }
 
+    metadata = {
+        **IllLayout.metadata,
+        # Read, not applied (see IllLayout)
+        'A4OffsetStored': Field('{entry}/{instrument}/A4/offset_value', units='degree',
+                                dtype='float32'),
+    }
+
     environment = {
         **IllLayout.environment,
         'temperature': Field('{entry}/sample/temperature', dtype='float64'),
@@ -384,6 +392,13 @@ class MarmotLayout(IllLayout):
         'A4': Field('{entry}/{instrument}/A4/value', units='deg', dtype='float32'),
         # 'marmot' when THALES runs with Marmot; files without it share the layout
         'instrumentMode': Field('{entry}/instrument_mode'),
+    }
+
+    metadata = {
+        **IllLayout.metadata,
+        # Read, not applied (see IllLayout)
+        'A4OffsetStored': Field('{entry}/{instrument}/A4/offset_value', units='deg',
+                                dtype='float32'),
     }
 
     environment = {

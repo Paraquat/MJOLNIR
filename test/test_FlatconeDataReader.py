@@ -40,6 +40,8 @@ def test_read(datareader):
     assert metadata['proposalUser'] == 'internal use'
     assert metadata['mode'] == 'time'
     assert metadata['preset'] == 0.0
+    # Read, not applied: A4Offset stays 0
+    assert metadata['A4OffsetStored'] == pytest.approx(-178.65, abs=1e-4)
 
 def test_transform(datareader):
     flatcone_file = datareader

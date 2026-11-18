@@ -19,6 +19,10 @@ class MarmotDataReader(NexusDataReader):
 
     def __init__(self, filepath: Path, calibration_file: str | None = None):
         super().__init__(filepath, calibration_file)
+        # The A4 offset the file stores ({instrument}/A4/offset_value, -179.8 degrees in
+        # 054724.nxs) is read into metadata['A4OffsetStored'] but not applied: A4Offset stays
+        # 0, as in the old loadMarmot (which read it, then set _A4Off = 0.0), until ILL
+        # confirms what it is (an open issue of the refactoring log)
         self.A3 = self.get_scanned_variable('A3')
         self.monitor1 = self.get_scanned_variable('Monitor1')
         self.monitor2 = self.get_scanned_variable('Monitor2')
