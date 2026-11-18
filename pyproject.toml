@@ -29,13 +29,8 @@ dependencies = [
     "numpy>=2.3",
     "h5py>=2.5",
     "scipy",
-    "datetime",
-    "pytest>=4.6",
-    "pyperclip",
-    "decorator",
     "pandas",
     "sympy",
-    "pip>=20",
     "ufit>=1.4.0",
     "regex",
 ]
@@ -43,6 +38,13 @@ dependencies = [
 [project.optional-dependencies]
 AMBER = ["AMBER-ds4ms"]
 gui = ["MJOLNIRGui"]
+
+[dependency-groups]
+# Development only, not installed with the package; uv sync installs the dev group by default
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+]
 
 [project.scripts]
 MJOLNIRHistory = "MJOLNIR.CommandLineScripts.MJOLNIRHistory:main"
