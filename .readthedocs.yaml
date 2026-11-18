@@ -27,3 +27,6 @@ sphinx:
 python:
    install:
    - requirements: docs/requirements.txt
+   # MJOLNIR from this repository, not PyPI: the API pages import its modules
+   - method: pip
+     path: .

@@ -87,6 +87,13 @@ language = 'en'
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = ['_build','.vscode']
 
+# Docstrings write the length of Q as |Q| (and |q|), which reStructuredText reads as a
+# substitution: make them stand for themselves
+rst_prolog = r"""
+.. |Q| replace:: \|Q\|
+.. |q| replace:: \|q\|
+"""
+
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 

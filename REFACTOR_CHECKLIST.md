@@ -303,7 +303,19 @@ work is the open items in the sections further down; tick both.
       for it). Every code cell was run against stand-in files (camea_test, with the
       tutorials' (H,0,L) points moved into its (H,K,0) plane): all new API calls run; only
       the tutorials' own peak fits fail, for lack of data where they fit
-- [ ] API documentation of the new modules
+- [x] API documentation of the new modules (2026-11-18): pages in `docs/Data`, each with an
+      introduction and autodoc of its modules: `Readers.rst` (DataReader, DataReaderFactory,
+      InstrumentName, ArrayType, the Nexus and NICOS readers, NexusLayout, Metadata,
+      LegacyFixes), `Cuts.rst` (Cuts, CutResult, Coordinates, AxisView), `Plotting.rst`
+      (Plotting, RLUAxes, DraggableShapes), `Mask.rst`, `Normalisation.rst` (BackgroundModel,
+      AbsoluteNormalization, Resolution), `Writers.rst` (DataWriter, NexusDataWriter,
+      CameaDataWriter, Export); with the existing DataSet, Sample and Gui (SliceViewer) pages
+      in the toctree of `Data.rst`. The examples on the pages run on the sample data.
+      `docs/conf.py` defines `|Q|` and `|q|` (docstrings use them for the length of Q). The
+      docs build with no warning from these pages. Read the Docs installed MJOLNIR from PyPI
+      (the old release, without these modules): `.readthedocs.yaml` now installs it from the
+      repository. Not documented: `bambus_calibration.py` (a script that writes a file when
+      imported)
 - [ ] Migration guide, old to new: `DataSet(dataFiles=...)` + `convertDataFile` → `DataSet(
       instrument, files=...)`; `extractData()` → `gather`; `cut1D` → `cut_1d`;
       `generateBackgroundModel` → `generate_background_model`; result columns unchanged

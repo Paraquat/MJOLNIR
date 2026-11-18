@@ -8,6 +8,12 @@ The Data module reads data files and treats their data. A data reader per instru
    :caption: Contents:
 
    DataSet
+   Readers
+   Cuts
+   Plotting
+   Mask
+   Normalisation
+   Writers
    Sample
    Gui
 
