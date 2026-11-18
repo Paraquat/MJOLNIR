@@ -280,8 +280,20 @@ work is the open items in the sections further down; tick both.
       other parts are drawn, see "Mask.py bugs"; drawing those two: Milestone 3)
 
 ### Documentation and release
-- [ ] Rewrite the docs that use the old API: the pages in `docs/Data`, the command line script
-      pages. Done (2026-11-13): the notebooks in `docs/notebooks` (all 10 that used the old
+- [x] Rewrite the docs that use the old API. Done (2026-11-18): `docs/Data/DataSet.rst`
+      (new method summary and an introduction to the new API; the class was documented
+      twice), `docs/Data/Data.rst` (the readers, Cuts, CutResult, Plotting), `docs/faq.rst`
+      (data export with `gather`, A3 offset and symmetrising via the readers' `A3Offset`,
+      masks per reader, `CutResult.data`, resolution; the question on converted-file
+      warnings removed; every example run on the sample data), the three command line pages
+      (current help text with `-i/--instrument`, defaults, `view_3d` viewer, PyQt5 needed),
+      `InDepthDocumentation/Interactivity.rst` (click read-out, the 3D viewer's keys and
+      cutting, resolution with `resolution_ellipse`; the old interactive modes on Q-plane
+      and Q-E plots said to be unavailable), `FileConversion.rst` (the NXsqom section
+      replaced by the in-memory conversion; NICOS paths) and `EnergyNormalization.rst`.
+      Docstrings of `DataSet` with `|Q|`/`|2theta|` reworded (docutils substitutions). The
+      docs build (Sphinx 9.2, notebooks left out) with no warning from these pages. Done
+      (2026-11-13): the notebooks in `docs/notebooks` (all 10 that used the old
       API, and the import in `_toolsOverview`), with the same data files and text, the old
       method and argument names replaced (`DataSet(InstrumentName.CAMEA, files=...)`,
       `view_3d` / `SliceViewer`, `plot_cut_qe`, `plot_cut_qe_line`, `plot_q_plane`,

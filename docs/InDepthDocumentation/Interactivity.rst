@@ -3,95 +3,82 @@
 Interactivity
 ^^^^^^^^^^^^^
 
-Working with the 3D data from CAMEA can be a challenge. Thus, a set of tools have been created...
+Working with the 3D data from CAMEA can be a challenge. Thus, a set of tools have been created to inspect the data directly on the plots: a read-out of the data under the mouse, cuts drawn on the slices of the 3D viewer, and the resolution ellipsoid at a point of interest.
 
-
-For the QPlane, QE axis, and the QELine axis a set of interactive modes have been created. These include the resolution and cutting modes
-
-.. table:: Overview of possible interactive modes for Axis in MJOLNIR
+.. table:: Overview of the interaction possibilities in MJOLNIR
     :align: center
 
-    +------------------+-----------+------------+
-    | Interaction Mode | Activate  | Deactivate |
-    +==================+===========+============+
-    | Resolution       | r         | b          |
-    +------------------+-----------+------------+
-    | Cutting          | c         | b          |
-    +------------------+-----------+------------+
-    | Manage Mode [#]_ | m         | m/n/c/b    |
-    +------------------+-----------+------------+
-    | View 3D [#]_     | N/A       | N/A        |
-    +------------------+-----------+------------+
+    +-----------------------+-------------------------------------------+------------------------+
+    | Interaction           | Where                                     | How                    |
+    +=======================+===========================================+========================+
+    | Read-out              | All cut plots and the 3D viewer           | Left click             |
+    +-----------------------+-------------------------------------------+------------------------+
+    | Browse slices         | 3D viewer (``view_3d``)                   | Slider, arrows, scroll |
+    +-----------------------+-------------------------------------------+------------------------+
+    | Cutting               | 3D viewer (``view_3d``)                   | c, then click and drag |
+    +-----------------------+-------------------------------------------+------------------------+
+    | Resolution            | Any plot, from a script                   | ``resolution_ellipse`` |
+    +-----------------------+-------------------------------------------+------------------------+
+
+The interactive modes of earlier versions on the Q plane and Q-E plots (resolution mode 'r', cutting mode 'c' with the manage mode 'm', cycling of cut types 'n', snapping, and 2D cuts with 'Ctrl + c') are not available in this version. Cuts are drawn in the 3D viewer, described below.
 
 
-.. [#] Management Mode is only available from the cutting mode as it is connected to clearing/moving cuts.
+Read-out
+--------
 
-.. [#] View3D is activated by creating a view3D through the data set. For more details see `Interactivity <../Tutorials/Quick/Viewer3D.html>`_.
+Clicking with the left mouse button on a plot made by MJOLNIR (``plot_cut_1d``, ``plot_cut_constant_q``, ``plot_cut_qe``, ``plot_cut_qe_line``, ``plot_cut_powder``, ``plot_q_plane`` and the 3D viewer) prints the position under the mouse and the values of the bin there: the normalised intensity, the counts, the normalisation, the monitor and the number of data points. The plotting methods take an ``on_click`` argument, called with the read-out text (default ``print``); ``on_click=None`` switches the read-out off. Clicks while zooming or panning are ignored.
 
+
+Viewer 3D and cutting
+---------------------
+
+``DataSet.view_3d(dQx, dQy, dE)`` bins the data in voxels and shows one slice at a time: constant energy (axis 2, on reciprocal lattice axes in RLU), constant :math:`Q_x` (axis 0) or constant :math:`Q_y` (axis 1). For details see the AdvancedView3DTutorial.
+
+.. table:: Interaction possibilities in the 3D viewer
+    :align: center
+
+    +-------------------------+------------------------------+
+    | Method                  | Button                       |
+    +=========================+==============================+
+    | Next/previous slice     | Up/right, down/left, scroll  |
+    +-------------------------+------------------------------+
+    | Slicing axis            | 0, 1, 2                      |
+    +-------------------------+------------------------------+
+    | Cutting on/off          | c                            |
+    +-------------------------+------------------------------+
+    | Draw cut                | Left click and drag          |
+    +-------------------------+------------------------------+
+    | Read-out (cutting off)  | Left click                   |
+    +-------------------------+------------------------------+
+
+With cutting switched on, a line drawn on a slice becomes a cut. On a constant-energy slice it is a 1D cut (``cut_1d``) from the start to the end of the line, over the energy range of the slice. On a Q-E slice a line is a Q-E cut (``cut_qe``) over the energies it spans, and a click without dragging (or a vertical line) an energy cut at constant Q (``cut_constant_q``). The width of the cuts and their bin size along Q are set with the ``cut_width`` and ``cut_min_pixel`` arguments of ``view_3d``. By default each cut is plotted in a new figure with the data set's own method; a function given as ``on_cut`` receives instead the kind of cut ('1d', 'qe' or 'constant_q') and its arguments, e.g. to collect the cuts or make them differently.
 
 
 Resolution
 ----------
 
-With the resolution mode activate, the resolution ellipsoid is calculated for the current mouse position on the data. It utilizes an updated version of the method presented in 
+The resolution ellipsoid can be calculated at any point of the data. It utilizes an updated version of the method presented in
 [eck14] G. Eckold and O. Sobolev, NIM A 752, pp. 54-64 (2014) and has been implemented `Tobias Weber <tweber@ill.fr>`_ in the software `TARKIN <https://doi.org/10.5281/zenodo.4117437>`_.
 
-The ellipsoid is inherently 4D (dimensions are Qx, Qy, Qz, and energy), but the plots upon which the resolution is shown is 2D. By integration over the two coordinates not 
+The ellipsoid is inherently 4D (dimensions are Qx, Qy, Qz, and energy), but the plots upon which the resolution is shown is 2D. By integration over the two coordinates not
 used in the figure, one can find the resolution matrix in the relevant plane. As this matrix (in this approximation) only dependent on the instrument, the sample rotation is to be taken into
-account as well as the possible rescaling of the plotting axis. 
+account as well as the possible rescaling of the plotting axis.
 
-When the left mouse button is pressed on a specific point, the resolution matrix together with the in-plane eigenvectors and widths are printed and the ellipse(s) remain
-on the plot. A resolution is calculated for each instrumental setting corresponding to the point of interest. If two different incoming energies result in an overlap at 
-the point, two ellipses are plotted and information is printed for both.
+``DataSet.resolution_matrix(position, Ei, Ef)`` gives the 4 by 4 matrix at a position (H, K, L, or Qx, Qy with ``rlu=False``), and ``DataSet.resolution_ellipse`` its projection onto the plane of two directions in (Qx, Qy, Qz, energy): the matrix, the axes of the ellipse (eigenvectors as columns) and the widths (standard deviations) along them. With ``lattice_axes=True`` the axes are rotated for plots on reciprocal lattice axes. They are implemented for CAMEA only. Below the ellipse in the Qx-Qy plane is drawn on a constant-energy plot:
 
-.. table:: Interaction possibilities for the resolution mode
-    :align: center
+.. code-block:: python
 
-    +----------------------+------------+
-    | Method               | Button     |
-    +======================+============+
-    | Calcualte Resolution | Left Click |
-    +----------------------+------------+
-    | Clear Ellipses       | c          |
-    +----------------------+------------+
-    | Return               | b          |
-    +----------------------+------------+
+    import numpy as np
+    from matplotlib.patches import Ellipse
 
+    ax = ds.plot_q_plane(energy_min=0.0, energy_max=0.2, rlu=False)
 
-Cutting
--------
+    position = [1.0, 0.5] # Qx, Qy [1/AA]
+    M, axes, sigma = ds.resolution_ellipse(position, [1, 0, 0, 0], [0, 1, 0, 0],
+                                           Ei=4.0, Ef=3.9, rlu=False)
+    axes, sigma = np.real(axes), np.real(sigma)
+    angle = np.rad2deg(np.arctan2(axes[1, 0], axes[0, 0]))
+    fwhm = 2*np.sqrt(2*np.log(2))*sigma # Full widths at half maximum
+    ax.add_patch(Ellipse(position, fwhm[0], fwhm[1], angle=angle, fill=False, color='r'))
 
-On an axis, one can start the cutting mode by pressing 'c' and exit it again by pressing 'b'. In this mode 1D cuts can be created, managed, and plotted. Depending on the axis 
-in question a number of cuts are possible, including a rectangular cut between two reciprocal space points at  constant energy, or an energy cut at a specific Q point. 
-By pressing 'n' one cycles through the possible cuts with the type of cut printed in the coordinate format text (i.e. the text showing the current 
-mouse position) and after all cutting types have been cycled through you will end up returning to the initial inactive starting position. To initiate the cut click with
-the left mouse button. This point signifies, depending on the cut type, the start or the centre of the cut. After providing all positions necessary, the cut will be shown in red
-and a 1D cut can be created by pressing 'c' and in some circumstances a 2D plot by 'Ctrl + c'. If a second cut is created the first will turn green to signify that it is now inactive. To change which cut is active and to move or delete
-cuts the manage mode has been created. Activating it by pressing 'm' one can activate a cut by left clicking on it or delete it by right-clicking it. By click-and-drag the cut can be translated.
-Cuts cannot be rescaled or rotated.
-
-.. table:: Interaction possibilities for the cutting mode
-    :align: center
-
-    +-------------------+------------+
-    | Method            | Button     |
-    +===================+============+
-    | New/Cycle Cut Type| n          |
-    +-------------------+------------+
-    | Define Cut        | Left Click |
-    +-------------------+------------+
-    | Enter Manage Mode | m          |
-    +-------------------+------------+
-    | Perform 1D Cut    | c          |
-    +-------------------+------------+
-    | Perform 2D Cut*   | Ctrl + c   |
-    +-------------------+------------+
-    | Snapping Cycle    | **.**      |
-    +-------------------+------------+
-    | Return            | b          |
-    +-------------------+------------+
-
-* Only in some circumstances, 2D plots are possible.
-
-When in cutting mode, it might be advantageous to be able to snap to the underlying grid of the figure. A snapping option has been created where one can snap to the grid or a specific 
-segment size, 1/n, for n = 1, 2, 3, 4, and 5. This mode is activated by pressing '**.**' while in cutting mode. The cycle goes as follows: None, 1, 2, 3, 4, 5 and then back to None.
+If two different incoming energies overlap at the point, the resolution is to be calculated for each of them.

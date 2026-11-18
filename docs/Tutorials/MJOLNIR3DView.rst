@@ -7,33 +7,39 @@ The script *MJOLNIR3DView* and it has the following help text::
 
     $ MJOLNIR3DView -h
     usage: MJOLNIR3DView [-h] [-r] [-b BINNING] [-d DQXDQYDE DQXDQYDE DQXDQYDE]
-                        [-M VMAX] [-m VMIN]
-                        [DataFile [DataFile ...]]
+                         [-M VMAX] [-m VMIN]
+                         [-i {CAMEA,BAMBUS,FlatCone,Marmot,MultiFLEXX}]
+                         [DataFile ...]
 
     Conversion tool for quick visualization using the viewer3D.
 
     positional arguments:
-    DataFile              Data file(s) to be used. If none provided file
+      DataFile              Data file(s) to be used. If none provided file
                             dialogue will appear. Using string format, directory
-                            and year is also possible.
+                            and year is also possible. See documentation.
 
-    optional arguments:
-    -h, --help            show this help message and exit
-    -r, --reuse           Set flag to reuse files from previous usage. Default
+    options:
+      -h, --help            show this help message and exit
+      -r, --reuse           Set flag to reuse files from previous usage. Default
                             false.
-    -b BINNING, --binning BINNING
-                            Binning performed. Default '8'
-    -d DQXDQYDE DQXDQYDE DQXDQYDE, --dQxdQydE DQXDQYDE DQXDQYDE DQXDQYDE
+      -b, --binning BINNING
+                            Binning performed. Default the instrument's (8 for
+                            CAMEA)
+      -d, --dQxdQydE DQXDQYDE DQXDQYDE DQXDQYDE
                             Binning used to plot in 3D, Default [0.03,0.03,0.08]
-    -M VMAX, --VMax VMAX  Maximal value for plotting, default max of data
-    -m VMIN, --VMin VMIN  Minimal value for plotting, default min of data
+      -M, --VMax VMAX       Maximal value for plotting, default max of data
+      -m, --VMin VMIN       Minimal value for plotting, default min of data
+      -i, --instrument {CAMEA,BAMBUS,FlatCone,Marmot,MultiFLEXX}
+                            Instrument of the data files. Default 'CAMEA'
 
-As input, one can either specify all of the data files wanted, use the number formatting explained below or simply leave out these; then a dialogue window will appear. If data files have previously been specified and one wants to reuse 
-the files, simply add the -r flag without any data files. 
+As input, one can either specify all of the data files wanted, use the number formatting explained below or simply leave out these; then a dialogue window will appear. If data files have previously been specified and one wants to reuse
+the files, simply add the -r flag without any data files.
 To specify the prismatic analyser binning, the -b flag is used, while -d is used to specify the bin sizes along the first scattering plane vector in 1/AA, along second in 1/AA, and along energy in meV.
-If the colour scale is non-optimal, one can use the -m and -M flags to specify lower and upper limit.
+If the colour scale is non-optimal, one can use the -m and -M flags to specify lower and upper limit. Files of other instruments than CAMEA are read with the -i flag.
 
-As standard, the plot is created in RLU units and has a grid located below the data. If other properties or layouts are needed, take a look at the scripting tutorial for the 3DViewer.
+The data are shown in the slice viewer of ``DataSet.view_3d``, in RLU units: constant-energy slices on reciprocal lattice axes, with a slider, the arrow keys and the scroll wheel to move through the slices and the keys 0, 1 and 2 to change the slicing axis. With cutting switched on (key c), lines drawn on a slice become 1D, Q-E or constant-Q cuts, which are plotted in new windows. If other properties or layouts are needed, take a look at the scripting tutorial for ``view_3d`` (AdvancedView3DTutorial).
+
+The script needs PyQt5, for the file dialogue; it is not installed with MJOLNIR.
 
 Number formatting
 ^^^^^^^^^^^^^^^^^

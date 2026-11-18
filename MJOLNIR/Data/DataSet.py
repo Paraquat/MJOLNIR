@@ -524,7 +524,7 @@ class DataSet:
 
         The points are binned in voxels of about dQx * dQy * dE (Cuts.bin_3d, aligned to the
         reciprocal lattice, as the old model did); AMBER separates the signal from a background
-        depending on |Q| and energy.
+        depending on the length of Q and energy.
 
         Kwargs:
 
@@ -940,7 +940,7 @@ class DataSet:
 
     def plot_cut_powder(self, q_bins, energy_bins, background_subtraction: bool = False,
                         **plot_options):
-        """Powder map (cut_powder) plotted as a colour map of |Q| against energy
+        """Powder map (cut_powder) plotted as a colour map of the length of Q against energy
         (Plotting.plot_cut_powder, which takes plot_options such as ax, counts, log, vmin,
         vmax, colorbar). Returns the axes; the cut is ax.result"""
         result = self.cut_powder(q_bins, energy_bins,
@@ -963,7 +963,7 @@ class DataSet:
 
     @staticmethod
     def default_sort_key(reader: DataReader) -> tuple:
-        """Sort by lowest Ei, then |2theta|, then A3 scan direction, then A3 start"""
+        """Sort by lowest Ei, then the absolute value of 2theta, then A3 scan direction, then A3 start"""
         direction = -np.sign(reader.A3[1] - reader.A3[0]) if len(reader.A3) > 1 else 0.0
         return (np.round(reader.Ei[0], 1), np.abs(np.round(reader.twotheta[0], 1)),
                 direction, np.round(reader.A3[0], 2))

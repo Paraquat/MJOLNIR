@@ -90,6 +90,7 @@ For each detector, analyser, and software pixel the following parameters are sav
    0,0,7,269.377490747,3.31657107929,0.0341873820177,-0.0625227707394,58,63
    ...
 
-The CSV file is saved and is used when converting experiment data from raw HDF files into NXqom 
-files explained in the Data file conversion documentation. 
+The CSV file is saved and is used when converting experiment data from raw HDF files into reciprocal
+space, as explained in the Data file conversion documentation. Data files carry these tables in their
+``calib`` groups; ``DataSet.update_calibration`` replaces them with the tables of other files. 
 

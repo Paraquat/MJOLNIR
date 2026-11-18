@@ -7,23 +7,27 @@ command line tool that prints out the most important properties of data files, t
 The script *MJOLNIRHistory* and it has the following help text::
 
     $ MJOLNIRHistory -h
-    usage: MJOLNIRHistory [-h] [-s SAVE] [-r] [DataFile [DataFile ...]]
+    usage: MJOLNIRHistory [-h] [-s SAVE] [-r]
+                          [-i {CAMEA,BAMBUS,FlatCone,Marmot,MultiFLEXX}]
+                          [DataFile ...]
 
     History tool for displaying files and command for selected data files.
 
     positional arguments:
-    DataFile              Data file(s) to be used. If none provided file
+      DataFile              Data file(s) to be used. If none provided file
                             dialogue will appear. Using string format, directory
                             and year is also possible. See documentation.
 
-    optional arguments:
-    -h, --help            show this help message and exit
-    -s SAVE, --save SAVE  Location to which the generated history will be saved.
-    -r, --reuse           Set flag to reuse files from previous usage. Default
+    options:
+      -h, --help            show this help message and exit
+      -s, --save SAVE       Location to which the generated history will be saved.
+      -r, --reuse           Set flag to reuse files from previous usage. Default
                             false.
+      -i, --instrument {CAMEA,BAMBUS,FlatCone,Marmot,MultiFLEXX}
+                            Instrument of the data files. Default 'CAMEA'
 
 
-This script prints out one line for each data file selected containing the most important informations of the scan including the name, scan command, sample name and comment.
+This script prints out one line for each data file selected containing the name of the file, its scan command and its title. Only these values are read from the files, so it is quick also for many files. Files of other instruments are read with the -i flag. With -s the lines are also saved to a text file (.txt is added if missing; an existing file is renamed with "_old" first). A file that cannot be read gives the line "name not correct format".
 
 As an example, running this on the MnF2 data file camea2018n000500.hdf one gets the following output::
 

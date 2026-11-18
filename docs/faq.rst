@@ -13,34 +13,30 @@ one can specify the number of tick marks on the x and y axis. This number stays 
 different number if needed. Further, specifying only the number of y-axis tick marks the program calculates a suitable number along the x-axis.
 
 
-Every time I run my script, I am bombarded with 'The file xx exists already. Old file will be renamed to xx.'-warnings
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The warning originates from the fact that a data file with the same name has been converted previously in the same directory, 
-and the program then tells you that the old conversion will be moved to a new file with the new name. It only serves as to try 
-to prevent you from saving a conversion on top of another involuntarily. To  silence this annoyance, convert the data files only 
-once or use the 'saveFile=False' flag in the DataSet.convertDataFile() method to not save the converted data.
-
-
 I do not want to make use of the features in MJOLNIR but only convert and extract my data. How do I do this?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is definitely possible to convert and extract the data from MJOLNIR without many troubles. Below is a code example:
+It is definitely possible to convert and extract the data from MJOLNIR without many troubles. The data files are converted when they are added to a DataSet, and ``gather`` returns the unmasked values of one quantity of all files. Below is a code example:
 
 .. code-block:: python
    :linenos:
 
-    from MJOLNIR.Data import DataSet
+    import numpy as np
+    from MJOLNIR.Data.DataSet import DataSet
+    from MJOLNIR.Data.InstrumentName import InstrumentName
+
     fileName = ['/Path/To/Data/camea2018n000136.hdf','/Path/To/Data/camea2018n000137.hdf']
-    ds = DataSet.DataSet(dataFiles=fileName)
-    ds.convertDataFile(binning=3,saveFile=False)
+    ds = DataSet(InstrumentName.CAMEA, files=fileName)
+    ds.set_binning(3)
 
-    Int = np.divide(ds.I,ds.Monitor*ds.Norm) # Calcualte floating point intensity
+    values = {name: np.asarray(ds.gather(name))
+              for name in ['h', 'k', 'l', 'energy', 'intensity', 'monitor', 'normalization']}
+    Int = values['intensity']/(values['monitor']*values['normalization']) # Normalised intensity
 
-    data = np.array([ds.h.extractData(),ds.k.extractData(),ds.l.extractData(),Int.flatten()])
+    data = np.array([values['h'], values['k'], values['l'], values['energy'], Int])
 
     saveFile = '/Path/To/Data/Data.csv'
-    np.savetxt(saveFile,data,delimiter=',')
+    np.savetxt(saveFile, data.T, delimiter=',', header='H,K,L,Energy,Int')
 
 However, a small warning. The data file created from this can be of several hundred MB.
 
@@ -97,21 +93,27 @@ corresponding to 0.5, 1.0, and 1.5 times the energy shift.
 I aligned my crystal slightly off when setting up the experiment. Can I correct for an offset in A3?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is definitely possible through the code below, where 10 degrees is added to the offset.
+This is definitely possible through the code below, where 10 degrees is added to the offset. The files are read first, the offset changed, and the readers then given to the DataSet, which converts them with the new offset.
 
 .. code-block:: python
+
+    from pathlib import Path
+    from MJOLNIR import _tools
+    from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
+    from MJOLNIR.Data.DataSet import DataSet
+    from MJOLNIR.Data.InstrumentName import InstrumentName
 
     files = '276-279'
 
     # Generate file locations as normal
     dataFiles = _tools.fileListGenerator(files,'/path/to/data/')
-    
-    ds = DataSet.DataSet(dataFiles) # load the data files
 
-    for d in ds: # Loop through all files 
-        d.A3Off += 10
+    factory = DataReaderFactory()
+    readers = [factory.create(InstrumentName.CAMEA, Path(file)) for file in dataFiles]
+    for reader in readers: # Loop through all files
+        reader.A3Offset = reader.A3Offset + 10
 
-    ds.convertDataFile()
+    ds = DataSet(InstrumentName.CAMEA, files=readers)
     # Continue as normal
 
 Because my crystal has a 120 degrees symmetry, we only scanned 120 degrees in our scans. How do I symmetrize it?
@@ -126,16 +128,18 @@ one can, in a script, load in the measured data twice where the second set of da
 
     # Generate file locations as normal
     dataFiles = _tools.fileListGenerator(files,'/path/to/data/')
-    numFiles = len(dataFiles) # The number of data files actually measured 
+    numFiles = len(dataFiles) # The number of data files actually measured
     dataFiles = dataFiles+dataFiles+dataFiles # Repeat the file list to contain 3 copies
 
-    ds = DataSet.DataSet(dataFiles) # load the 12 data files
+    # Read the 12 data files (imports as in the question above)
+    factory = DataReaderFactory()
+    readers = [factory.create(InstrumentName.CAMEA, Path(file)) for file in dataFiles]
 
-    for i,d in enumerate(ds): # Loop through all files and keep a counter 
-        if i>=numFiles: # If the file number is bigger than 4 add 120 degrees offset to A3
-            d.A3Off += 120.0
-        if i>=2*numFiles: # If the file number is bigger than 8 add another 120 degrees offset to A3
-            d.A3Off += 120.0    
+    for i,reader in enumerate(readers): # Loop through all files and keep a counter
+        # Files 4-7 get 120 degrees added to A3, files 8-11 240 degrees
+        reader.A3Offset = reader.A3Offset + 120.0*(i//numFiles)
+
+    ds = DataSet(InstrumentName.CAMEA, files=readers)
 
 One then has a DataSet object with 12 data files covering the full scattering plane, the so-called donut plot. If a crystal has a symmetry smaller than what is measured (e.g. 110 degrees are measured but symmetry is 90 degrees), there is no problem with this procedure. It merely results in double data coverage at the positions in Q where there is an overlap. 
 
@@ -169,17 +173,16 @@ This will make the generation of plots and the plt.show() non-blocking and thus 
 I want to created a mask for my data to exclude specific points in Q
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When dealing with multiple data files at once in a DataSet object, one needs to keep in mind that MJOLNIR does not expect these to be of equal size. That is, there is no requirement for the number of step points to be equal
- (and further, that the instrument is the same for all files). This then results in the mask of at DataSet being a list of np arrays with the same size as the data. Most easily, this is taken care of by looping through the DataFiles in the DataSet as:
+When dealing with multiple data files at once in a DataSet object, one needs to keep in mind that MJOLNIR does not expect these to be of equal size. That is, there is no requirement for the number of step points to be equal. This then results in the mask of a DataSet being a list of np arrays, one per data file, each with the same shape as that file's data. Most easily, this is taken care of by looping through the data readers in the DataSet as:
 
 .. code-block:: python
 
-    ds = DataSet(dataFiles)
-    
+    ds = DataSet(InstrumentName.CAMEA, files=dataFiles)
+
     mask = []
     # Loop through all data files in the DataSet
-    for d in ds:
-        mask.append(d.h>0.0)
+    for reader in ds:
+        mask.append(reader.h>0.0)
 
     ds.mask = mask
 
@@ -189,14 +192,16 @@ The above code ensures that all points with a value of H larger than 0.0 are mas
 .. code-block:: python
 
     QPoints = [[1,1,0],[-1,1,0],[1,0,0],[0,1,0]]
-    
-    for d in ds:
+    radius = 0.1
+    mask = []
+
+    for reader in ds:
     # calculate position in qx,qy for QPoints (may differ from file to file)
         localMask = []
 
         for h,k,l in QPoints:
-            qx,qy = d.sample.calculateHKLToQxQy(h,k,l)
-            m = np.sqrt((d.qx-qx)**2+(d.qy-qy)**2)<radius
+            qx,qy = reader.sample.calculateHKLToQxQy(h,k,l)
+            m = np.sqrt((reader.qx-qx)**2+(reader.qy-qy)**2)<radius
             localMask.append(m)
         trueMask = localMask[0]
         for m in localMask[1:]:
@@ -211,38 +216,41 @@ or in one line
 
     QPoints = [[1,1,0],[-1,1,0],[1,0,0],[0,1,0]]
     radius = 0.1
-    mask = [reduce(np.logical_or,[np.sqrt((d.qx-qx)**2+(d.qy-qy)**2)<radius for qx,qy in [d.sample.calculateHKLToQxQy(*HKL) for HKL in QPoints]]) for d in ds]
+    from functools import reduce
+
+    mask = [reduce(np.logical_or,[np.sqrt((reader.qx-qx)**2+(reader.qy-qy)**2)<radius for qx,qy in [reader.sample.calculateHKLToQxQy(*HKL) for HKL in QPoints]]) for reader in ds]
 
     ds.mask = mask
+
+Masks can also be built from the mask objects of ``MJOLNIR.Data.Mask`` (e.g. circles and boxes in H, K, L or Qx, Qy), which the DataSet evaluates again when the binning changes or files are added; see the Masking tutorial.
 
 
 
 After I have performed a cut, the data I receive as a data type of object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Sometimes, when working with pandas DataFrames, the data type of the different columns might go from e.g. int64 to object. In order to change this 
-when wanting to perform numeric calculations, on can format the DataFrame to be numeric. That is:
+Sometimes, when working with pandas DataFrames, the data type of the different columns might go from e.g. int64 to object. In order to change this
+when wanting to perform numeric calculations, on can format the DataFrame to be numeric. A cut returns a CutResult whose ``data`` is the DataFrame. That is:
 
 .. code-block:: python
 
     ...
-    >>> Data = ds.cut1D(...)
-    >>> Data['Intensity'].dtypes
-    Name: Intensity, Length: 4244, dtype: object
+    >>> result = ds.cut_1d(...)
+    >>> result.data['intensity'].dtypes
+    dtype('O')
 
-    >>> Intensity = pd.to_numeric(Data['Intensity'])
-    >>> Intensity.dtypes
+    >>> intensity = pd.to_numeric(result.data['intensity'])
+    >>> intensity.dtypes
     dtype('int64')
 
 
 Is it possible to calculate the resolution of the instrument at a given position in reciprocal space?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Indeed it is through the tools in the Geometry.Instrument settings, but if you want to overplot the resolution ellipsoid directly on your data
-this can be done as explain in `Interactivity <InDepthDocumentation/Interactivity.html>`_.
+Indeed it is, for CAMEA: ``DataSet.resolution_matrix`` gives the resolution matrix at a position and ``DataSet.resolution_ellipse`` its ellipse in a plane. How to overplot the resolution ellipse directly on your data is explained in `Interactivity <InDepthDocumentation/Interactivity.html>`_.
 
 
 I want to make a cut directly on the 2D data that I have plotted. How can I do this?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Just as for the question above, this is possible as explained in `Interactivity <InDepthDocumentation/Interactivity.html>`_.
+Cuts can be drawn on the slices of the 3D viewer (``DataSet.view_3d``): switch cutting on with 'c' and drag a line, as explained in `Interactivity <InDepthDocumentation/Interactivity.html>`_. On the plots of single cuts (e.g. ``plot_q_plane`` or ``plot_cut_qe``) cuts cannot be drawn in this version; there, a click prints the values under the mouse, whose position can be used for the next cut in a script.
