@@ -721,7 +721,9 @@ runs on the new `DataSet` and readers, and every view works.
 - [x] `symmetrize`: Dropped (2026-11-11). Used by nothing but an uncollected old test (the
       FAQ's "symmetrize" entry describes another technique: loading the files again with
       rotated A3 offsets). It overwrote qx, qy in place with no undo, was lost on
-      reconversion, and dropped any out-of-plane component. Reasons in the refactoring log
+      reconversion, and dropped any out-of-plane component. Reasons in the refactoring log.
+      A reimplementation without these faults is listed under "Open issues" in the
+      refactoring log (2026-11-18)
 
 ### Coordinates
 - [x] `convertToQxQy`, `convertToHKL` (`convert_to_qxqy`, `convert_to_hkl`)
