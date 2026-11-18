@@ -344,7 +344,7 @@ work is the open items in the sections further down; tick both.
 - [x] CI: Dropped from this milestone (2026-11-17): the remote has no CI at the moment.
       `.travis.yml` (Python 3.5-3.9) is left as it is, see "Project setup"
 - [x] New major version, as the API changes: 2.0.0 (2026-11-18, was 1.3.5), in
-      `MJOLNIR/__init__.py` (read by `setup.cfg`) and `docs/conf.py`, set with `Update.py`
+      `MJOLNIR/__init__.py` (read by `setup.cfg`) and `docs/conf.py`, set with `scripts/Update.py`
       (the file edits of `make version`; not committed, tagged, built or pushed). Before
       releasing it: MJOLNIR-GUI requires `MJOLNIR>=1.2.1` with no upper bound
       (`pyproject.toml`, `setup.py`), so a new GUI install would get 2.0.0 and break until

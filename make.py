@@ -31,7 +31,7 @@ def test():
 #     folders = [f.path for f in os.scandir(os.path.join('docs','Tutorials')) if f.is_dir()]
 #     print('Cleaning tutorial folders: '+OxfordList(folders))
 #     for folder in folders:
-#         os.system('python clean.py '+folder)
+#         os.system('python scripts/clean.py '+folder)
 
 def generateTutorials():
     if not DEBUG:
@@ -110,9 +110,9 @@ def upload():
 
 def update(version):
     if not DEBUG:
-        os.system('python Update.py '+version)
+        os.system('python scripts/Update.py '+version)
     else:
-        print('python Update.py '+version)
+        print('python scripts/Update.py '+version)
 
 def makeTutorials():
     # cleanTutorialFolders()

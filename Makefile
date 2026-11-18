@@ -12,10 +12,6 @@ quicktest:
 	coverage html
 
 tutorials:
-	python clean.py docs/Tutorials/Advanced
-	python clean.py docs/Tutorials/Instrument
-	python clean.py docs/Tutorials/Quick
-	python clean.py docs/Tutorials/Tools
 	./Tutorials/tutorials
 	make html
 
@@ -26,7 +22,7 @@ fulltest:
 wheel:
 	python setup.py sdist
 
-version ?= $(shell python cut.py $(shell ls -t dist/* | head -1))
+version ?= $(shell python scripts/cut.py $(shell ls -t dist/* | head -1))
 
 upload:
 	twine upload $(shell ls -t dist/* | head -1) -r testpypi
@@ -34,14 +30,14 @@ upload:
 
 testVersion:
 	echo 'Creating test version $(version)'
-	python Update.py $(version)
+	python scripts/Update.py $(version)
 	python setup.py sdist
 	twine upload $(shell ls -t dist/* | head -1) -r testpypi
 
 
 version: 
 	echo 'Creating version $(version)'
-	python Update.py $(version)
+	python scripts/Update.py $(version)
 	make tutorials
 	git add setup.py docs/conf.py docs/Tutorials/* docs/index.rst MJOLNIR/__init__.py
 	git commit -m 'Update version'
