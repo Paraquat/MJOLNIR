@@ -35,12 +35,12 @@ class Wedge(GeometryConcept.GeometryConcept):
         self.append(analysers if analysers is not None else [])
         self.append(detectors if detectors is not None else [])
         self._settings = {}
-        
+
         for key in kwargs:
             self.settings[key]=kwargs[key]
         self.settings['concept']=concept
-        
-        
+
+
 
     @property
     def analysers(self):
@@ -63,7 +63,7 @@ class Wedge(GeometryConcept.GeometryConcept):
             if not issubclass(type(Analysers),Analyser.Analyser):
                 raise AttributeError('Object is not an analyser or a simple list of these')
             self._analysers.append(Analysers)
-        
+
     @property
     def detectors(self):
         return self._detectors
@@ -177,15 +177,15 @@ class Wedge(GeometryConcept.GeometryConcept):
                 if len(PixelPos)!=len(self.analysers):
                     raise ValueError("ManyToMany concept chosen by detector split into number of parts not matching number of analysers!")
                 detectorPixelPositions.append(np.concatenate(PixelPos))
-                
+
                 vertical = np.array([0,0,1])
-                
+
                 LAS = [self.analysers[i].position+self.position for i in range(len(PixelPos))]
                 perpVect = [np.cross(vertical,LAS[i])/(np.linalg.norm(np.cross(vertical,LAS[i]))) for i in range(len(PixelPos))]
-                
+
                 deltaXD = [np.dot(PixelPos[i],perpVect[i]) for i in range(len(PixelPos))]
                 LDA = [np.array(PixelPos[i])-np.array(deltaXD[i]).reshape(-1,1)*np.array(perpVect[i]).reshape(1,3)-self.analysers[i].position for i in range(len(PixelPos))]
-                
+
                 LD = [np.linalg.norm(LDA[i],axis=1) for i in range(len(PixelPos))]
                 LA = [np.linalg.norm(LAS[i]) for i in range(len(PixelPos))]
                 deltaXDprime = [deltaXD[i]/(LD[i]/LA[i]+1.0) for i in range(len(PixelPos))]

@@ -25,16 +25,16 @@ MPLKwargs = ['agg_filter','alpha','animated','antialiased','aa','clip_box','clip
 def deprecateKwarg(argChanges):
     """Given a dictionary {old:new} with deprecated kwargs warn the user about a possible upcoming change but allow the old name for now."""
     def decorator(func):
-        
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            
+
             newKwargs = {}
             changes = []
             for key,value in kwargs.items():
 
                 if key in argChanges.keys():
-                    
+
                     changes.append(key)
                     newKwargs[argChanges[key]] = value
                 else:
@@ -48,18 +48,18 @@ def deprecateKwarg(argChanges):
                 warningtext = '\n'.join(warningtext)
                 warnings.warn(warningtext,DeprecationWarning,stacklevel=2)
             return func(*args, **newKwargs)
-    
+
         #wrapper.__signature__ = new_sig
         return wrapper
-    
+
     return decorator
 
 def KwargChecker(function=None,include=None):
     """Function to check if given key-word is in the list of accepted Kwargs. If not directly therein, checks capitalization. If still not match raises error
     with suggestion of closest argument.
-    
+
     Args:
-    
+
         - func (function): Function to be decorated.
 
     Raises:
@@ -79,7 +79,7 @@ def KwargChecker(function=None,include=None):
 
         # Add allowed kwargs as explicit keyword-only parameters
         for name in allowed_set:
-            
+
             params.append(
                 inspect.Parameter(
                     name,
@@ -87,7 +87,7 @@ def KwargChecker(function=None,include=None):
                     default=None
                 )
             )
-    
+
         seen = set()
         params = [p for p in params if not (p.name in seen or seen.add(p.name))]
         new_sig = sig.replace(parameters=params)
@@ -197,7 +197,7 @@ def my_timer_N(N=0): # pragma: no cover
     return my_timer
 
 def beautifyArgs(args=(),kwargs=None): # pragma: no cover
-    """Beautify arguments and keyword arguments. Returns formated string with arguments and 
+    """Beautify arguments and keyword arguments. Returns formated string with arguments and
     keyword argumenets seperated with commas as called in a function"""
     if kwargs is None:
         kwargs = {}
@@ -222,7 +222,7 @@ def createLogger(self,name,stream=sys.stdout,level=logging.ERROR): # pragma: no 
     self._log.addHandler(ch)
 
 def logMethod(self,original_function):  # pragma: no cover
-    @functools.wraps(original_function)     
+    @functools.wraps(original_function)
     def new_function(*args,**kwargs):
         self._log.info(f'Calling {new_function.original_function.__name__}({beautifyArgs(args,kwargs)})')
         try:
@@ -230,31 +230,31 @@ def logMethod(self,original_function):  # pragma: no cover
         except Exception as WrapperError:
             self._log.error('***** FAILED *****')
             raise WrapperError
-        return x    
-    new_function.original_function= original_function                                   
-    return new_function  
+        return x
+    new_function.original_function= original_function
+    return new_function
 
 def logAttribute(self,original_attribute): # pragma: no cover
-    self._log.info(f'Calling attribute {str(original_attribute)}')                                     
-    
+    self._log.info(f'Calling attribute {str(original_attribute)}')
+
 
 def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL): # pragma: no cover
     if parent is None:
         parent = object
     def track_all_class_methods(Cls):
         class NewCls(parent):
-            
+
             def __init__(self,*args,**kwargs):
                 createLogger(self,name=log,stream=stream,level=level)
                 self._log.info(f'Calling {Cls.__name__}({beautifyArgs(args,kwargs)})')
                 self._Instance = Cls(*args,**kwargs)
 
-                
+
             def __getattribute__(self,s):
                 """
-                this is called whenever any attribute of a NewCls object is accessed. This function first tries to 
+                this is called whenever any attribute of a NewCls object is accessed. This function first tries to
                 get the attribute off NewCls. If it fails then it tries to fetch the attribute from self.oInstance (an
-                instance of the decorated class). If it manages to fetch the attribute from self.oInstance, and 
+                instance of the decorated class). If it manages to fetch the attribute from self.oInstance, and
                 the attribute is an instance method then `time_this` is applied.
                 """
                 try:
@@ -276,11 +276,11 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
         d = Cls.__dict__
         keys = d.keys()
         copy = [x for x in list(Cls.__dict__) if x not in list(NewCls.__dict__)]
-        
+
         for key in copy+['__doc__']:
             if key=='__dict__' or key in ['__getattribute__','__init__']: #  Check if the value in dict is a function
                 continue
-            
+
             if type(d[key]) is type(Cls.__init__):
                 if hasattr(d[key],'_original'):
 
@@ -289,7 +289,7 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
                     setattr(NewCls, key, d[key])
                     for funckey in d[key].__dict__:
                         setattr(d[key],funckey,d[key].__dict__[funckey])
-                        
+
             else:
                 setattr(NewCls, key, d[key])
         return NewCls
@@ -298,13 +298,13 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
 
 def binEdges(values,tolerance,startPoint=None,endPoint=None):
     """Generate binning of values array with minimum bin size of tolerance. Binning starts at values[0]-tolerance/2.0 and ends at values[-1]+tolerance/2.0.
-    
+
     Args:
-        
+
         - values (array): 1D array to be binned.
-        
+
         - tolerance (float): Minimum length of bin sizes.
-        
+
 
     Kwargs:
 
@@ -313,9 +313,9 @@ def binEdges(values,tolerance,startPoint=None,endPoint=None):
         - endPoint (float): Maximal end bin position (default None)
 
     Returns:
-        
+
         - bins (array)
-    
+
     """
     values_array = np.array(values).ravel().flatten()
     unique_values = np.asarray(list(set(values_array)))
@@ -341,7 +341,7 @@ def binEdges(values,tolerance,startPoint=None,endPoint=None):
         bin_edges.append(bin_edges[-1]+tolerance)
     else:
         bin_edges.append(unique_values[-1]+0.1*tolerance)
-    
+
     bin_edges = np.array(bin_edges)
 
     if endPoint is not None:
@@ -359,13 +359,13 @@ def without_keys(dictionary, keys): # Remove key word argument from kwargs
 @KwargChecker()
 def fileListGenerator(numberString,folder,year=2018, format = None, instrument = 'CAMEA'):
     """Function to generate list of data files.
-    
+
     Args:
-        
+
         - numberString (str): List if numbers separated with comma and dashes for sequences.
-        
+
         - folder (str): Folder of wanted data files.
-        
+
     Kwargs:
 
         - year (int): Year of wanted data files (default 2018)
@@ -373,21 +373,21 @@ def fileListGenerator(numberString,folder,year=2018, format = None, instrument =
         - format (str): format of data files (default None, but CAMEA if instrument is provided)
 
         - instrument (str): Instrument to be used to determine format string (default CAMEA)
-        
+
     returns:
-        
+
         - list of strings: List containing the full file string for each number provided.
-        
+
     Example:
         >>> numberString = '201-205,207-208,210,212'
         >>> files = fileListGenerator(numberString,'data/',2018)
-        ['data/camea2018n000201.hdf', 'data/camea2018n000202.hdf', 
-        'data/camea2018n000203.hdf', 'data/camea2018n000204.hdf', 
-        'data/camea2018n000205.hdf', 'data/camea2018n000207.hdf', 
-        'data/camea2018n000208.hdf', 'data/camea2018n000210.hdf', 
+        ['data/camea2018n000201.hdf', 'data/camea2018n000202.hdf',
+        'data/camea2018n000203.hdf', 'data/camea2018n000204.hdf',
+        'data/camea2018n000205.hdf', 'data/camea2018n000207.hdf',
+        'data/camea2018n000208.hdf', 'data/camea2018n000210.hdf',
         'data/camea2018n000212.hdf']
     """
-        
+
     splits = numberString.split(',')
     dataFiles = []
     if format is None: # If no user specified format is provided
@@ -403,7 +403,7 @@ def fileListGenerator(numberString,folder,year=2018, format = None, instrument =
 
     for sp in splits:
         isRange = sp.find('-')!=-1
-        
+
         if isRange:
             spSplits = sp.split('-')
             if len(spSplits)>2:
@@ -411,9 +411,9 @@ def fileListGenerator(numberString,folder,year=2018, format = None, instrument =
             startNumber = int(spSplits[0])
             endNumber = int(spSplits[1])
             if startNumber>endNumber:
-                numbers = np.arange(startNumber,endNumber-1,-1)    
+                numbers = np.arange(startNumber,endNumber-1,-1)
             else:
-                numbers = np.arange(startNumber,endNumber+1)    
+                numbers = np.arange(startNumber,endNumber+1)
         else:
             numbers = [int(sp)]
 
@@ -425,30 +425,30 @@ def fileListGenerator(numberString,folder,year=2018, format = None, instrument =
 
 def RoundBinning(X,deltas,Data=None):
     """ Bin points to nearest delta value in D dimensions and reorder Data.
-    
+
     Args:
-        
+
          - X (np.array): Input points in shape (D,N) for D dimensions.
-        
+
          - deltas (float or list): binning size(s)
-        
+
     Kwargs:
-        
+
          - Data (list/array): List of data or data list of shape (N) to be binned like X (default None).
-        
+
     Returns:
-        
+
          - BinnedPoints (list): ND list of binned unique positions of points
-        
+
          - indices (list): Inverse indices from which points-array can be created from unique points
-        
+
          - count (list): Number of points going into each bin
-        
-        (- returnData: Rebinned data as according to points being binned) 
-        
+
+        (- returnData: Rebinned data as according to points being binned)
+
     Algorithm takes the data points and rebins them into points closest to delta in N dimensions. If deltas=[0.05,0.05] and 2D points are given, points will be binned to closest 0.05 (...-0.1,-0.05,0.0,0.05,0.1...) in both directions. Data lists are also reshuffeled to match.
-    
-    
+
+
     """
     points = np.array(X)
     deltas = np.array([deltas]).squeeze()
@@ -458,36 +458,36 @@ def RoundBinning(X,deltas,Data=None):
         binning = np.array([deltas]).reshape(-1,1)
         if not points.shape[0]==binning.shape[0]:
             raise AttributeError(f'Shape mismatch between X and deltas. Expected {points.shape[0]} deltas for X with shape {points.shape}, recieved {deltas}')
-        
+
     binningLog = np.log10(binning)
     binningOrder = np.floor(binningLog)
     binningScale = np.power(10,(binningOrder-binningLog)).reshape(-1,1)
-    
+
     Scale = np.multiply(points,binningScale)
-    
+
     binPoints,indices,count = np.unique(np.round(Scale*np.power(10,-binningOrder)),axis=1,return_inverse=True,return_counts=True)
-    
+
     BinnedPoints = binPoints*np.power(10,binningOrder)/binningScale
-    
+
     if Data is not None:
         if isinstance(Data,list):
             returnData = [np.histogram(indices,bins=BinnedPoints.shape[1],weights=x)[0] for x in Data]
         else:
             returnData = np.histogram(indices,bins=BinnedPoints.shape[1],weights=Data)[0]
         return BinnedPoints,indices,count,returnData
-    
+
     return BinnedPoints,indices,count
-    
+
 
 def invert(M):
     """Invert non-square matrices as described on https://en.wikipedia.org/wiki/Generalized_inverse.
-    
+
     Args:
-        
+
         - M (matrix): Matrix in question.
-        
+
     Returns:
-        
+
         - Left or right inverse matrix depending on shape of provided matrix.
     """
     s = M.shape
@@ -499,15 +499,15 @@ def invert(M):
 
 def calRefVector(points):# pragma: no cover
     """ Calcualte reference vector as vector pointing from mean point to geometric center. For half moon shape this is anti-radially.
-    
+
     Args:
-        
+
         - points (list): list of points for which reference vector is calcualted, shape is 2xN
-        
+
     Returns:
-        
+
         vector: Reference vector
-    
+
     """
     center = np.mean(points,axis=1).reshape(2,1)
     argMinDist = np.argmin(np.linalg.norm(center-points,axis=0))
@@ -516,21 +516,21 @@ def calRefVector(points):# pragma: no cover
 
 def minMax(x,axis=None):
     """Return minimal and maximal of list.
-    
+
     Args:
-        
+
         - x (list): Object from which min and max is to be found.
-        
+
     Kwargs:
-        
+
         - axis (int): Axis or axes along which to operate (default 0)
-      
+
     Returns:
-        
+
         - min: Minimal value
-        
+
         - max: Maximal value
-        
+
     """
     return np.min(x,axis=axis),np.max(x,axis=axis)
 
@@ -553,7 +553,7 @@ def rotate2X(v):
     v2 = np.dot(R,v)
     theta2 = np.arccos(np.dot(v2,np.array([1,0,0]))/np.linalg.norm(v2))
     R2 = rotMatrix(np.array([0,0,1.0]),-theta2,deg=False)
-    
+
     Rotation = np.dot(R2,R)
     return Rotation
 
@@ -564,7 +564,7 @@ def LengthOrder(v):
         return Rv
     if np.sum(nonZeroPos)==0:
         raise AttributeError('Provided vector is zero vector!')
-    
+
     if np.sum(nonZeroPos)==3:
         v1 = Norm2D(v[:2])
         ratio = v1[0]/v[0]
@@ -575,7 +575,7 @@ def LengthOrder(v):
         Rv = np.zeros(3)
         nonZeros = v[nonZeroPos]
         Rv[nonZeroPos] = Norm2D(nonZeros)
-    
+
     if not np.isclose(np.dot(Rv,v)/(np.linalg.norm(Rv)*np.linalg.norm(v)),1.0):
         raise AttributeError('The found vector is not parallel to original vector: {}, {}',format(Rv,v))
     return Rv
@@ -586,7 +586,7 @@ def Norm2D(v):
     reciprocal = np.abs(1/v)
     if np.isclose(reciprocal[0],reciprocal[1]):
         return v*reciprocal[0]
-    
+
     ratio = np.max(reciprocal)/np.min(reciprocal)
     if np.isclose(np.mod(ratio,1),0.0) or np.isclose(np.mod(ratio,1),1.0):
         return v*np.min(reciprocal)*ratio
@@ -596,19 +596,19 @@ def Norm2D(v):
 
 def rotMatrix(v,theta,deg=True):
     """ Generalized rotation matrix.
-    
+
     Args:
-        
+
         - v (list): Rotation axis around which matrix rotates
-        
+
         - theta (float): Rotation angle (by default in degrees)
-        
+
     Kwargs:
-        
+
         - deg (bool): Whether or not angle is in degrees or radians (Default True)
-        
+
     Returns:
-        
+
         - 3x3 matrix rotating points around vector v by amount theta.
     """
     if deg==True:
@@ -627,19 +627,19 @@ def rotMatrix(v,theta,deg=True):
 
 def Rot(theta,deg=True):
     """Create 2D rotation matrix
-    
+
     Args:
-        
+
         - theta (float): Rotation angle (by default in degrees)
-        
+
     Kwargs:
-        
+
         - deg (bool): Whether or not number provided is degree or radian (default True)
-      
+
     Returns:
-        
+
         - 2x2 rotation matrix definde with -sin in row 0 column 1
-        
+
     """
     if deg==True:
         theta = np.deg2rad(theta)
@@ -649,17 +649,17 @@ def Rot(theta,deg=True):
 
 def clockwiseangle_and_distance(point,origin=(0,0),refvec = (0,1)): # pragma: no cover
     """Sort points clockwise. Taken from https://stackoverflow.com/questions/41855695/sorting-list-of-two-dimensional-coordinates-by-clockwise-angle-using-python
-    
+
     Args:
-        
+
         - point (list): List of points in 2D of size 2xN
-        
+
     Kwargs:
-        
+
         - origin (list): Location of origin from which the points are to be sorted (default [0,0])
-        
+
         - refvec (list): Vector direction for definition of zero point (default [0,1])
-        
+
     """
     # Vector between point and the origin: v = p - o
     vector = [point[0]-origin[0], point[1]-origin[1]]
@@ -673,7 +673,7 @@ def clockwiseangle_and_distance(point,origin=(0,0),refvec = (0,1)): # pragma: no
     dotprod  = normalized[0]*refvec[0] + normalized[1]*refvec[1]     # x1*x2 + y1*y2
     diffprod = refvec[1]*normalized[0] - refvec[0]*normalized[1]     # x1*y2 - y1*x2
     angle = math.atan2(diffprod, dotprod)
-    # Negative angles represent counter-clockwise angles so we need to subtract them 
+    # Negative angles represent counter-clockwise angles so we need to subtract them
     # from 2*pi (360 degrees)
     if angle < 0:
         return 2*math.pi+angle, lenvector
@@ -697,15 +697,15 @@ def rotationMatrix(alpha,beta,gamma,format='deg'):
 @KwargChecker()
 def vectorAngle(V1,V2):
     """calculate angle between V1 and V2.
-    
+
     Args:
-    
+
         - V1 (list): List or array of numbers
-        
+
         - V2 (list): List or array of numbers
-        
+
     Return:
-        
+
         - theta (float): Angle in degrees between the two vectors
     """
     return np.arccos(np.dot(V1,V2.T)/(np.linalg.norm(V1)*np.linalg.norm(V2)))
@@ -714,74 +714,74 @@ def vectorAngle(V1,V2):
 # TODO: Write a test/update this function
 def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitude,EMin,EMax,spinWaveEnergyErr=None): # pragma: no cover
     """Write fitted values for spin wave(s) into a SpinW readable format.
-    
+
     Args:
-        
+
         - files (string): File into which the spin waves is to be saved
-        
+
         - position (3D vector, 3 x m): HKL position of spin wave(s)
-        
+
         - spinWaveEnergy (array, n x m): Array with energy position of spin wave. For multiple spin waves fill with 0 if wave not found
-        
+
         - spinWaveWidth (array, n x m): Standard deviation of spin wave(s). For multiple spin waves fill with 0 if wave not found
-        
+
         - spinWaveAmplitude (array, n x m): Amplitude of spin wave(s). For multiple spin waves fill with 0 if wave not found
-        
+
         - EMin (float): Lowest energy measured in data [meV]
-        
+
         - EMin (float): Highest energy measured in data [meV]
-        
-        
+
+
     n is the number of spin waves
-    m is the number of data points measured        
+    m is the number of data points measured
     """
     spinWaveEnergy = np.asarray(spinWaveEnergy)
     if spinWaveEnergyErr is not None:
         spinWaveEnergyErr = np.asarray(spinWaveEnergyErr)
         if not spinWaveEnergy.shape == spinWaveEnergyErr.shape:
             raise AttributeError(f'Arrays for spinWaveEnergy(shape: {spinWaveEnergy.shape}), spinWaveEnergyErr(shape: {spinWaveEnergyErr.shape}) have to have same shape.')
-   
-        
+
+
     spinWaveWidth = np.asarray(spinWaveWidth)
     spinWaveAmplitude = np.asarray(spinWaveAmplitude)
     position = np.asarray(position)
-    
+
     if not np.all([spinWaveEnergy.shape == spinWaveWidth.shape,spinWaveEnergy.shape == spinWaveAmplitude.shape]):
         raise AttributeError(f'Arrays for spinWaveEnergy(shape: {spinWaveEnergy.shape}), spinWaveWidth(shape: {spinWaveWidth.shape}), and spinWaveAmplitude(shape: {spinWaveAmplitude.shape}) have to have same shape.')
-        
+
     if len(spinWaveEnergy.shape) == 1:
         spinWaveEnergy = spinWaveEnergy.reshape((1,-1))
         spinWaveWidth = spinWaveWidth.reshape((1,-1))
         spinWaveAmplitude = spinWaveAmplitude.reshape((1,-1))
-        
+
     spinWaves,dataPoints = spinWaveEnergy.shape
-    
+
     if not position.shape == (3,dataPoints):
         raise AttributeError(f'With provided spin wave parameters, expected position of shape (3,{dataPoints}) but recieved {position.shape}.')
-    
-    
+
+
     if spinWaveEnergyErr is not None:
         columns = 4
     else:
         columns = 3
     dataMatrix = np.zeros((5+columns*spinWaves,dataPoints))
-    
+
     dataMatrix[:3,:] = position
     dataMatrix[3,:] = EMin
     dataMatrix[4,:] = EMax
-    
+
     energyIndices = np.array([6+x*columns for x in range(spinWaves)],dtype=int)
     widthIndices = np.array([7+x*columns for x in range(spinWaves)],dtype=int)
     amplitudeIndices = np.array([5+x*columns for x in range(spinWaves)],dtype=int)
-    
+
     if spinWaveEnergyErr is not None:
         errorIndices = np.array([8+x*columns for x in range(spinWaves)],dtype=int)
         dataMatrix[errorIndices,:] = spinWaveEnergyErr
-    
+
     dataMatrix[energyIndices,:] = spinWaveEnergy
     dataMatrix[widthIndices,:] = spinWaveWidth
     dataMatrix[amplitudeIndices,:] = spinWaveAmplitude
-    
+
     headers = ['QH','QK','QL','ENlim1','ENlim2']
     if spinWaveEnergyErr is not None:
         headers+=list(np.concatenate([[f'I{x+1}',f'EN{x+1}',f'sigma{x+1}',f'EErr{x+1}'] for x in range(spinWaves)]))
@@ -789,22 +789,22 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
         headers+=list(np.concatenate([[f'I{x+1}',f'EN{x+1}',f'sigma{x+1}'] for x in range(spinWaves)]))
     titles = ''.join([f'{x:>14s} ' for x in headers])
 
-    
+
     np.savetxt(file,dataMatrix.T,fmt='%+.7e',delimiter = ' ', header=titles,comments='')
 
 
 
 def generateLabel(vec,labels=('H','K','L')):
     """Format a scattering vector with individual letters.
-    
+
     Args:
-    
+
         - vec (array): Vector to be formated.
 
     Kwargs:
-        
-        - lables (list): Letters to use for formating (default ['H','K','L']) 
-        
+
+        - lables (list): Letters to use for formating (default ['H','K','L'])
+
     """
     # Individual letters
     integers = np.isclose(np.abs(vec)-np.floor(np.abs(vec)),0.0,atol=1e-4)
@@ -812,7 +812,7 @@ def generateLabel(vec,labels=('H','K','L')):
     vec = np.abs(vec)
     zeros = np.isclose(vec,0.0,atol=1e-4)
     ones = np.isclose(vec,1.0,atol=1e-4)
-    
+
     label = []
     for l,i,s,z,o,v in zip(labels,integers,signs,zeros,ones,vec):
         sign= '-' if s==-1 else ''
@@ -825,22 +825,22 @@ def generateLabel(vec,labels=('H','K','L')):
                 label.append(''.join([sign,l]))
             else: # if integer different from 0 or +- 1
                 label.append(''.join([sign,str(int(v)),l]))
-                
+
     returnLabel = ''.join(['(',', '.join([x for x in label]),')'])
     return returnLabel
 
 
 def generateLabelDirection(vec,labels=('H','K','L')):
     """Format a scattering vector with letters according to the first non-zero direction.
-    
+
     Args:
-    
+
         - vec (array): Vector to be formated.
 
     Kwargs:
-        
-        - lables (list): Letters to use for formating (default ['H','K','L']) 
-        
+
+        - lables (list): Letters to use for formating (default ['H','K','L'])
+
     """
     # Individual letters
     integers = np.isclose(np.abs(vec)-np.floor(np.abs(vec)),0.0,atol=1e-4)
@@ -848,7 +848,7 @@ def generateLabelDirection(vec,labels=('H','K','L')):
     vec = np.abs(vec)
     zeros = np.isclose(vec,0.0,atol=1e-4)
     ones = np.isclose(vec,1.0,atol=1e-4)
-    
+
     label = []
     L = ''
     for l,i,s,z,o,v in zip(labels,integers,signs,zeros,ones,vec):
@@ -868,7 +868,7 @@ def generateLabelDirection(vec,labels=('H','K','L')):
                 if L == '':
                     L = l
                 label.append(''.join([sign,str(int(v)),L]))
-                
+
     returnLabel = ''.join(['(',', '.join([x for x in label]),')'])
     return returnLabel
 
@@ -913,29 +913,29 @@ _relative_atomic_masses = (
 
 def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnElements=False):
     """Calculate Molar mass given chemical formula and number of formula units per cell
-    
+
     Args:
-        
+
         - sampleChemicalFormula (string): Chemical formula
-        
-    Kwargs:    
-        
+
+    Kwargs:
+
         - formulaUnitsPerUnitCell (int): Number of units per unitcell (default 1)
-        
+
         - returnElements (bool): If true return also list of elements
-        
+
     Returns:
-        
+
         - MolarMass (float)
-    
+
     Raises:
-        
+
         - AttributeError
-    
+
     Based on https://stackoverflow.com/questions/18517779/make-outer-tokens-change-inner-tokens-in-a-chemical-formula-using-pyparsing/18555142#18555142
     with the added feature of floats being allowed
     """
-    
+
     # Check if number of starting and ending parentheses match
     start = sampleChemicalFormula.count('(')
     stop = sampleChemicalFormula.count(')')
@@ -943,32 +943,32 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
         raise AttributeError(f'The number of starting and closing parenthesis do not match. Got {start} "(" and {stop} ")"')
 
 
-    
+
     # Combination of https://stackoverflow.com/questions/26385984/recursive-pattern-in-regex
     # and (\d*\.\d+|\d+) made to find integers or floats.
-    # Finds outer most parentheses 
+    # Finds outer most parentheses
     recursiveParenthesis = re.compile(r'\(((?>[^\(\)]+|(?R))*)\)(\d*\.\d+|\d+)?')
-    
-    
-    
+
+
+
     def splitParentheses(string,multiplyer):
         results = [(x[0],float(x[1])*multiplyer) if x[1]!='' else (x[0],multiplyer) for x in recursiveParenthesis.findall(string)]
         if len(results) == 0:
             return string
         results = [(r[0],int(r[1])) if np.isclose(math.modf(r[1])[0],0.0) else r for r in results]
         return results
-    
+
     # Remove a result from chemical string
     def replace(string,value,multi):
         if np.isclose(multi,1.0):
             replacing = "("+value+")"
         else:
             replacing = "("+value+")"+str(multi)
-        
+
         string = string.replace(replacing,'')
         return string
-    
-    
+
+
     def recursiveFinder(string,m=1.0):
         returnValues = []
         split = splitParentheses(string,m)
@@ -981,18 +981,18 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
                 [returnValues.append((x[0],x[1]*inner[1])) for x in recursiveFinder(inner[0],1)]
             else:
                 returnValues.append(inner)
-                
+
         returnValues.append((string,m))
         return returnValues
-        
-    # Split chemical formula at perentheses and update multiplyer 
+
+    # Split chemical formula at perentheses and update multiplyer
     splitted = recursiveFinder(sampleChemicalFormula)
-    
+
     # Find elements in all strings and create dictionary to hold total number
     elementPattern = r"([A-Z][a-z]*)([-+]?\d*\.\d+|\d+)?"
     element = re.compile(elementPattern)
     elements = {} # Dictionary to hold sample composition
-    
+
     for part,mult in splitted:
         for elem in element.findall(part):
             m = float(mult)*(float(elem[1]) if elem[1]!='' else 1)
@@ -1000,7 +1000,7 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
                 elements[elem[0]]=m
             else:
                 elements[elem[0]]+=m
-    
+
     # Convert chemical symbol into mass
     def _get_relative_atomic_masses():
         for mass in _relative_atomic_masses.split():
@@ -1010,7 +1010,7 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
                 yield float(mass.split('(')[0])
             else:
                 yield(float(mass))
-    
+
     relative_atomic_masses = tuple(_get_relative_atomic_masses())
     sampleMolarMass = 0.0
     error = False
@@ -1020,7 +1020,7 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
         except ValueError:
             error = True
             break
-            
+
         sampleMolarMass += relative_atomic_masses[idx]*element[1]
     if error:
         raise AttributeError(f'Element "{element[0]}" not recognized...')
@@ -1038,12 +1038,12 @@ def calculateAbsoluteNormalization(sampleMass=None,sampleChemicalFormula=None,sa
                                   sampleGFactor=2,correctVanadium=False,vanadiumChemicalFormula = 'V', vanadiumMass=15.25,vanadiumMolarMass=None,
                                   vanadiumMonitor=100000,vanadiumSigmaIncoherent=5.08,vanadiumGFactor=2.0,vanadiumUnitsPerUnitCell=1.0):
     """Calculate absolute normalization relative to Vanadium
-    
-    Args: 
-        
+
+    Args:
+
 
         - sampleMass (float): Mass of sample in grams
-        
+
     Kwargs:
 
         - sampleChemicalFormula (string): Chemical formula
@@ -1051,9 +1051,9 @@ def calculateAbsoluteNormalization(sampleMass=None,sampleChemicalFormula=None,sa
         - sampleMolarMass (float): Molar mass of sample in g/mol
 
         - formulaUnitsPerUnitCell (float): Number of units per unit cell (default 1)
-        
+
         - sampleGFactor (float): Magnetic G factor for sample (defalt 2.0)
-        
+
         - sampleDebyeWaller (float): DebyeWaller factor of sample (default 1)
 
         - correctVanadium (bool): Whether to scale normalization with Vanadium or if this has been performed in normalziation tables (default False)
@@ -1065,24 +1065,24 @@ def calculateAbsoluteNormalization(sampleMass=None,sampleChemicalFormula=None,sa
         - vanadiumMonitor (int): Monitor count used in normalization scan (default 100000)
 
         - vanadiumSigmaIncoherent (float): Incoherent scattering strength of Vanadium (default 5.08)
-        
+
     Returns:
-        
+
         - normalizationFactor (float): Relative normalization of sample to Vanadium scan
-    
+
     """
 
     if sampleMass is not None: # No normalization to sample!
         if sampleMolarMass is None:
             sampleMolarMass = calculateMolarMass(sampleChemicalFormula=sampleChemicalFormula,
                                                 formulaUnitsPerUnitCell=formulaUnitsPerUnitCell)
-        
+
     else:
         sampleMass = 1.0
         sampleMolarMass = 1.0
         sampleGFactor = 2.0
 
-    
+
     if correctVanadium:
         if vanadiumMolarMass is None:
             vanadiumMolarMass = calculateMolarMass(sampleChemicalFormula=vanadiumChemicalFormula,
@@ -1091,12 +1091,12 @@ def calculateAbsoluteNormalization(sampleMass=None,sampleChemicalFormula=None,sa
 
     else:
         vanadiumFactor = 1.0
-    
+
     ##########################
     #Calculations
     ##########################
     normalizationFactor = 4*np.pi*sampleMass*(sampleGFactor**2)*vanadiumFactor/(sampleMolarMass*13.77)
-    
+
     return normalizationFactor
 
 
@@ -1140,9 +1140,9 @@ def ScatteringAngle(d,Energy=None,Wavelength=None,K=None,degrees = True):
         raise AttributeError('None of the energy, wavelenght, or k were provided...')
     elif np.sum(pars)>1: # more than one was provided..
         raise AttributeError('More than one parameter was provided. Got {}'.format(', '.join(parsNames[pars])))
-    
+
     available = parsNames[pars][0]
-    
+
     if available == 'Energy':
         Wavelength = WavelengthEnergy(Energy)
         K = KEnergy(Energy)
@@ -1152,7 +1152,7 @@ def ScatteringAngle(d,Energy=None,Wavelength=None,K=None,degrees = True):
     elif available == 'K':
         Energy = EnergyK(K)
         Wavelength = WavelengthK(K)
-    
+
     scatAngle = 2.0*np.arcsin(Wavelength/(2.0*d))
     if degrees == True:
         scatAngle = np.rad2deg(scatAngle)
@@ -1163,16 +1163,16 @@ def ScatteringAngle(d,Energy=None,Wavelength=None,K=None,degrees = True):
 
 def DSpacing(TwoTheta,Energy=None,Wavelength=None,K=None,degrees = True):
     """Calculate d spacing [AA] from scattering angle [deg or rad] and one of the following [Energy [meV], Wavelength [AA], K[1/AA]]."""
-    
+
     pars = np.array([x is not None for x in [Energy,Wavelength,K]],dtype=bool)
     parsNames = np.array(['Energy','Wavelength','K'])
     if np.all(pars==False): # No provided
         raise AttributeError('None of the energy, wavelenght, or k were provided...')
     elif np.sum(pars)>1: # more than one was provided..
         raise AttributeError('More than one parameter was provided. Got {}'.format(', '.join(parsNames[pars])))
-    
+
     available = parsNames[pars][0]
-    
+
     if available == 'Energy':
         Wavelength = WavelengthEnergy(Energy)
         K = KEnergy(Energy)
@@ -1182,10 +1182,10 @@ def DSpacing(TwoTheta,Energy=None,Wavelength=None,K=None,degrees = True):
     elif available == 'K':
         Energy = EnergyK(K)
         Wavelength = WavelengthK(K)
-    
+
     if degrees is True:
         TwoTheta = np.deg2rad(TwoTheta)
-    
+
     d = Wavelength/(2.0*np.sin(TwoTheta/2.0))
     return d
 
@@ -1198,12 +1198,12 @@ def scale(x,f=0.5):
 
 def getNext(l,delete=True):
     """get elements in itterator and delete list depending on flag
-    
+
     Args:
         - l (itterable): List or liste-like to loop over
 
     Kwargs: delete (bool): If true, itteratively delete elements in list, else keep elements (default True)
-    
+
     """
     if delete:
         while len(l)>0:
@@ -1214,7 +1214,7 @@ def getNext(l,delete=True):
 
 def histogramdd(sample, bins, weights, returnCounts = False):
     """
-    Restricted version of numpys multidimensional histogram function. 
+    Restricted version of numpys multidimensional histogram function.
 
     Args:
 
@@ -1255,7 +1255,7 @@ def histogramdd(sample, bins, weights, returnCounts = False):
     for i in range(D):
         edges[i] = np.asarray(bins[i])
         nbin[i] = len(edges[i])+1
-    
+
 
     # Compute the bin number each sample falls into.
     Ncount = tuple(
@@ -1314,34 +1314,34 @@ def histogramdd(sample, bins, weights, returnCounts = False):
 
 def findFlattenedIndex(sample,bins):
     """Rewriting of numpy binning algorithm
-    
+
     Args:
 
         - sample (list): Position to be binned, of size N x D, where D is the dimensionality
 
         - bins (list): Bins into which to perform the binning, of length D, where D is the dimensionality
     """
-    
+
     _, D = sample.shape
     #D = 2 # Two coordinates (|q| and E)
-    
+
     nbin = np.empty(D, int)
     edges = D*[None]
     for i in range(D):
         edges[i] = np.asarray(bins[i])
         nbin[i] = len(edges[i])+1
-        
+
     #for df in ds:
-    
-    
-    
+
+
+
     # Compute the bin number each sample falls into.
     Ncount = tuple(
         # avoid np.digitize to work around gh-11022
         np.searchsorted(edges[i], sample[:, i], side='right')
         for i in range(D)
     )
-    
+
     # Using digitize, values that fall on an edge are put in the right bin.
     # For the rightmost bin, we want values equal to the right edge to be
     # counted in the last bin, and not as an outlier.
@@ -1350,7 +1350,7 @@ def findFlattenedIndex(sample,bins):
         on_edge = (sample[:, i] == edges[i][-1])
         # Shift these points one bin to the left.
         Ncount[i][on_edge] -= 1
-    
+
     # Compute the sample indices in the flattened histogram matrix.
     # This raises an error if the array is too large.
     xy = np.ravel_multi_index(Ncount, nbin)

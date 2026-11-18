@@ -47,7 +47,7 @@ def test_TubeDetector_length():
         assert False
     except AttributeError:
         assert True
-    
+
 def test_TubeDetector_diameter():
     TubeDetector = TubeDetector1D(position=(0.0,1.0,0.0),direction=(1.0,0,0))
     try:
@@ -77,7 +77,7 @@ def test_TubeDetector1D_plot():
     ax = fig.add_subplot(projection='3d')
 
     TubeDetector.plot(ax)
-    
+
 
 def test_TubeDetector1D_getPixelPositions():
     TubeDetector = TubeDetector1D(position=(1.0,0.0,1.0),direction=(1.0,0,0),length=0.5,pixels=5)
@@ -88,5 +88,4 @@ def test_TubeDetector1D_getPixelPositions():
     print(AssumedPositions)
     assert(np.all(AssumedPositions==positions))
 
-    
-    
+

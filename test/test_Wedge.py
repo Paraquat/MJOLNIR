@@ -50,7 +50,7 @@ def test_Wedge_error():
         assert False
     except AttributeError:
         assert True
-    
+
     try:
         wedge.append(["List of",3.0,"wrong objects"])
         assert False
@@ -150,7 +150,7 @@ def test_wedge_calculateDetectorAnalyserPositions_OneToOne():
     DetPixelPos = np.array([[[0.8,0,1],[0.9,0,1],[1.0,0,1],[1.1,0,1],[1.2,0,1]]])
     assert(np.all(DetPixelPos==detectorPixelPositions[0][0]))
     assert(np.all([x==Ana.position for x in analyserPixelPositions[0]]))
-    
+
     DetPixelPos2= np.array([[[1.3,0.1,1],[1.4,0.1,1],[1.5,0.1,1],[1.6,0.1,1],[1.7,0.1,1]]])
     #print(analyserPixelPositions[1])
     assert(np.all(DetPixelPos2==detectorPixelPositions[1][0]))
@@ -159,14 +159,14 @@ def test_wedge_calculateDetectorAnalyserPositions_OneToOne():
     offcenterpos = np.array([0.02225497,0.02166939,0.02105171,0.02041748,0.01977911])
     #print(np.sum([analyserPixelPositions[1][i][1]-offcenterpos[i] for i in range(5)]))
     assert(np.sum([analyserPixelPositions[1][i][1]-offcenterpos[i] for i in range(5)])<1e-8)
-    
-    
+
+
 
 def test_wedge_calculateDetectorAnalyserPositions_ManyToMany():
-    
+
     wedge = Wedge(concept='ManyToMany')
 
-    
+
     Ana = Analyser.FlatAnalyser(position=(0.5,0,0),direction=(1,0,1))
     Det2 = Detector.TubeDetector1D(position=(1.5,0.1,1.0),direction=(1.0,0,0),length=0.5,pixels=5,split=[0,2,5])
     Ana2 = Analyser.FlatAnalyser(position=(0.75,0,0),direction=(1,0,1))
@@ -177,10 +177,10 @@ def test_wedge_calculateDetectorAnalyserPositions_ManyToMany():
 
     #print(detectorPixelPositions)
     #print(analyserPixelPositions)
-    
+
     DetPixelPos2= np.array([[[1.3,0.1,1],[1.4,0.1,1],[1.5,0.1,1],[1.6,0.1,1],[1.7,0.1,1]]])
     assert(np.all(DetPixelPos2==detectorPixelPositions[0]))
-    
+
     anapos = np.array([0.5,0.5,0.75,0.75,0.75])
     assert(np.all([analyserPixelPositions[0][i,0]==anapos[i] for i in range(5)]))
 
@@ -198,4 +198,4 @@ def test_wedge_repr_dummy():
 
     string = repr(wedge)
     assert True
-    
+

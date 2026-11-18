@@ -25,7 +25,7 @@ class Analyser(GeometryConcept.GeometryObject):
         super().__init__(position,direction)
         self.d_spacing = d_spacing
         self.mosaicity = mosaicity
-        
+
 
     @property
     def type(self):
@@ -54,7 +54,7 @@ class Analyser(GeometryConcept.GeometryObject):
         if d_spacing>10.0:
             warnings.warn('The unit of d spacing is Angstrom')
         self._d_spacing = d_spacing
-        
+
     @property
     def mosaicity(self):
         return self._mosaicity
@@ -80,7 +80,7 @@ class Analyser(GeometryConcept.GeometryObject):
         Kwargs:
 
             - offset (3vector): Offset of analuser due to bank position (default [0,0,0])
-        
+
         >>> GenericAnalyser = Analyser(position=(0.0,1.0,0.0),direction=(1.0,0,0))
         >>> GenericAnalyser.plot(ax)
         """
@@ -115,11 +115,11 @@ class FlatAnalyser(Analyser):
             - diameter (float): Diameter of tube in meters (default 0.02)
 
         Raises:
-            
+
             - AttributeError
-            
+
             - NotImplementedError
-        
+
 
         """
         super().__init__(position,direction,d_spacing,mosaicity)
@@ -138,7 +138,7 @@ class FlatAnalyser(Analyser):
     def width(self,width):
         if(width<0):
             raise AttributeError('The width of the analyser cannot be negative.')
-        self._width = width 
+        self._width = width
 
 
     @property
@@ -168,7 +168,7 @@ class FlatAnalyser(Analyser):
             - offset (3vector): Offset of detector due to bank position (default [0,0,0])
 
             - n (int): Number of points on the surface to be plotted (default 100)
-        
+
         >>> Analyser = FlatAnalyser(position=(0.0,1.0,0.0),direction=(1.0,0,0))
         >>> Analyser.plot(ax,offset=(0.0,0.0,0.0),n=100)
         """
@@ -183,7 +183,7 @@ class FlatAnalyser(Analyser):
             angleZ = self.direction[0]
         else:
             angleZ = self.direction # Energy-determining angle
-        
+
         x=np.linspace(-Width, Width, n)
         y=np.linspace(-Height, Height, n)
         Xc, Yc=np.meshgrid(x, y)

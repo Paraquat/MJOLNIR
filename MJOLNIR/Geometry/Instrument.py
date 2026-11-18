@@ -19,11 +19,11 @@ predictionInstrumentSupport = ['CAMEA','MultiFLEXX','Bambus'] # Instrument suppo
 class Instrument(GeometryConcept.GeometryConcept):
     @_tools.KwargChecker(include=['Author','Instrument','Date','Initialized']) # Not used as excess kwargs are put into settings
     def __init__(self, position=(0,0,0),wedges=None,fileName='',**kwargs):
-        """Instrument object used to calculated analytic scattering coverage. 
+        """Instrument object used to calculated analytic scattering coverage.
         Based on the GeometryConcept object it contains all needed information about the setup used in further calculations.
 
         Kwargs:
-            
+
             - position (float 3d): Position of the instrument always at origin (default (0,0,0))
 
             - wedges (list of wedges or single wedge): Wedge or list of wedges which the instrument consists of (default empty)
@@ -31,13 +31,13 @@ class Instrument(GeometryConcept.GeometryConcept):
             - fileName (string): Filename of xml file (ending in xml). To load binary files use self.load(filename).
 
         Raises:
-            
+
             - AttributeError
-        
+
         """
-        
+
         self._wedges = []
-        
+
         self._settings = {}
         if fileName !='':
             if(fileName.split('.')[-1]=='xml'):
@@ -46,7 +46,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 raise ValueError('File not of type XML.')
         else:
             super().__init__(position)
-            
+
             for key in kwargs:
                 self.settings[key]=kwargs[key]
             self._settings['Initialized']=False
@@ -73,12 +73,12 @@ class Instrument(GeometryConcept.GeometryConcept):
             if not issubclass(type(wedges),Wedge.Wedge):
                 raise AttributeError('Object is not an analyzer or a simple list of these')
             self._wedges.append(wedges)
-    
+
     def append(self,wedge):
         """Append wedge(s) to instrument.
 
         Args
-            
+
             - wedge (Wedge(s)): Single wedge or list of wedges
         """
         if isinstance(wedge,list):
@@ -114,18 +114,18 @@ class Instrument(GeometryConcept.GeometryConcept):
         string = f'{self.__class__} with settings:\n'
         for attrib in self.settings:
             string+=f'{attrib}:\t{self.settings[attrib]}\n'
-        string+='\n'    
+        string+='\n'
         string+='Containing the following wedges:\n'
         for wedge in self.wedges:
             string+=str(wedge)+'\n'
         return string
 
     def initialize(self):
-        """Method to initialize and perform analytical calculations of scattering quantities. 
+        """Method to initialize and perform analytical calculations of scattering quantities.
         Initializes:
 
             -  A4: Matrix holding pixel A4. Shape (len(Wedges),len(detectors),pixels)
-            
+
             -  Ef: Matrix holding pixel Ef. Shape (len(Wedges),len(detectors),pixels)
         """
         factorLambdasqrtE = 9.0445678
@@ -144,12 +144,12 @@ class Instrument(GeometryConcept.GeometryConcept):
             A4 = [-np.arccos(np.divide(np.dot(AnalyserPos,beamDirection),
                 np.linalg.norm(AnalyserPos,axis=1)))*np.sign(np.cross(AnalyserPos,beamDirection)[:,-1]) for AnalyserPos in analyserPixelPositions]
 
-                
+
             relPos = [detectorPixelPositions[i]-analyserPixelPositions[i] for i in range(len(analyserPixelPositions))]
 
             A6 = [np.arccos(np.divide(np.einsum('ij,ij->i',analyserPixelPositions[i],relPos[i]),
                 np.linalg.norm(analyserPixelPositions[i],axis=1)*np.linalg.norm(relPos[i],axis=1))) for i in range(len(analyserPixelPositions))]
-            Ef = [np.power(factorLambdasqrtE/(wedge.analysers[0].d_spacing*2.0*np.sin(A6Sub/2.0)),2.0) for A6Sub in A6] 
+            Ef = [np.power(factorLambdasqrtE/(wedge.analysers[0].d_spacing*2.0*np.sin(A6Sub/2.0)),2.0) for A6Sub in A6]
             self._A4.append(A4)
             self._Ef.append(Ef)
             self._pixelPosition.append(detectorPixelPositions)
@@ -184,7 +184,7 @@ class Instrument(GeometryConcept.GeometryConcept):
     def Ef(self,*args,**kwargs):
         raise NotImplementedError('Ef cannot be overwritten.')
 
-    
+
     def saveXML(self,fileName):
         """Method for saving current file as XML in fileName."""
         XMLString = '<?xml version="1.0"?>\n'
@@ -194,7 +194,7 @@ class Instrument(GeometryConcept.GeometryConcept):
 
         XMLString+="position='"+','.join([str(x) for x in self.position])+"'"
         XMLString+='>\n'
-            
+
         for wedge in self.wedges:
             XMLString+="\t<Wedge "
             for attrib in wedge.settings:
@@ -214,11 +214,11 @@ class Instrument(GeometryConcept.GeometryConcept):
                         valueStr = str(value)
                     XMLString+=f" {str(key)[1:]}='{valueStr}'"
                 XMLString+=f"></{itemClass}>\n"
-                
-            
+
+
             XMLString+="\t</Wedge>\n"
         XMLString+="</Instrument>\n"
-    
+
         f = open(fileName,'w')
         f.write(XMLString)
         f.close()
@@ -259,8 +259,8 @@ class Instrument(GeometryConcept.GeometryConcept):
         z_an[5]=1.2456
         z_an[6]=1.3098
         z_an[7]=1.3747
-    
-        
+
+
 
         H1 = 0.7
         H2 = 0.71
@@ -274,22 +274,22 @@ class Instrument(GeometryConcept.GeometryConcept):
         today = datetime.date.today().strftime("%d/%m/%Y")
         string = f"<?xml version='1.0'?>\n<Instrument Initialized='False' Author='MJOLNIR' Date ='{today}' position='0.0,0.0,0.0'>\n"
         for W in -np.arange(wedges):
-            
+
             string+="\t<Wedge position='0.0,0.0,0.0' concept='ManyToMany'>\n"
-            
+
             Anaposx = -np.sin((W*wedgeAngle+offset)*np.pi/180)*z_an
             Anaposy = np.cos((W*wedgeAngle+offset)*np.pi/180)*z_an
-            
+
             for i in range(len(z_an)):
                 XX = Anaposx[i]/(np.sqrt(2)*z_an[i])
                 YY = Anaposy[i]/(np.sqrt(2)*z_an[i])
                 string+="\t\t<FlatAnalyser position='"+str(Anaposx[i])+','+str(Anaposy[i])+",0.0' direction='"+str(YY)+","+str(XX)+",0.0' d_spacing='3.354' mosaicity='60' width='0.05' height='0.1'></FlatAnalyser>\n"
-            
-            
+
+
             detx_1 = -np.sin((ang_1+W*8.0+offset)*np.pi/180)*det_cen
             detz_1 = np.cos((ang_1+W*8.0+offset)*np.pi/180)*det_cen
-            
-            
+
+
             detx_2 = -np.sin((ang_2+W*8.0+offset)*np.pi/180)*det_cen
             detz_2 = np.cos((ang_2+W*8.0+offset)*np.pi/180)*det_cen
             for i in range(7):
@@ -297,7 +297,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 if i<6:
                     string+="\t\t<TubeDetector1D position='"+str(detx_2[i])+','+str(detz_2[i])+','+str(H1 if np.mod(W,2) else H2)+"' direction='"+str(detx_2[i])+','+str(detz_2[i])+",0.0' pixels='1024' length='1.0' diameter='0.025' split='0,189, 298, 404, 510, 618, 726, 837,1024'></TubeDetector1D>\n"
             string+="\t</Wedge>\n"
-            
+
         string+="</Instrument>"
 
         if fileName.split('.')[-1]!='xml':
@@ -307,11 +307,11 @@ class Instrument(GeometryConcept.GeometryConcept):
             f.write(string)
 
     @_tools.KwargChecker()
-    def generateCalibration(self,Vanadiumdatafile,A4datafile=False,savelocation='calibration/', 
+    def generateCalibration(self,Vanadiumdatafile,A4datafile=False,savelocation='calibration/',
     tables=('Single','PrismaticLowDefinition','PrismaticHighDefinition'), plot=False, mask=True, adaptiveBinning=False, ignoreTubes=None,
     sample='V',sampleMass=None,sampleDebyeWallerFactor=1.0,formulaUnitsPerUnitCell=1.0,sampleIncoherent=5.08):
         """Method to generate look-up tables for normalization. Saves calibration file(s) as 'Calibration_Np.calib', where Np is the number of pixels.
-        
+
         Generates 4 different tables:
 
             - Prismatic High Definition (8 pixels/energy or 64 pixels/detector)
@@ -321,7 +321,7 @@ class Instrument(GeometryConcept.GeometryConcept):
             - Single (1 pixel/energy or 8 pixels/detector)
 
             - Number (integer)
-        
+
         Args:
 
             - Vanadiumdatafile (string): String to single data file used for normalization, Vanadium Ei scan (required).
@@ -348,8 +348,8 @@ class Instrument(GeometryConcept.GeometryConcept):
 
             - sampleDebyeWallerFactor (float): Correction of normalization data with Debye-Waller factor (default 1.0)
 
-            - formulaUnitsPerUnitCell (float): Numer of formal units in normalization sample per unit cell (default 1.0) 
-            
+            - formulaUnitsPerUnitCell (float): Numer of formal units in normalization sample per unit cell (default 1.0)
+
             - sampleIncoherent (float): Incoherent strength of sample (default 5.08)
 
         .. warning::
@@ -362,7 +362,7 @@ class Instrument(GeometryConcept.GeometryConcept):
 
         if ignoreTubes is None:
             ignoreTubes = []
-        
+
         with hdf.File(Vanadiumdatafile,'r') as VanFile: # Open normalziation file
             if not A4datafile == False: # pragma: no cover
                 A4File = hdf.File(A4datafile,'r')
@@ -373,18 +373,18 @@ class Instrument(GeometryConcept.GeometryConcept):
             VanFileInstrument = getInstrument(VanFile) # Get the HDF object of the instrument (CAMEA)
 
             VanFileInstrumentType = VanFileInstrument.name.split('/')[-1]
-            
+
             if not A4datafile == False: # pragma: no cover
                 if VanFileInstrumentType == A4FileInstrumentType:
                     InstrumentType = VanFileInstrumentType
                 else:
-                    raise AttributeError(f'The provided Vanadium and Powder files does not have the same instrument type ({VanFileInstrumentType} and {A4FileInstrumentType} respectively).')        
+                    raise AttributeError(f'The provided Vanadium and Powder files does not have the same instrument type ({VanFileInstrumentType} and {A4FileInstrumentType} respectively).')
             InstrumentType = VanFileInstrumentType
             if InstrumentType=='CAMEA':
 
                 if savelocation[-1]!='/':
                     savelocation+='/'
-                
+
                 bins = []
                 for table in tables:
                     if isinstance(table,int):
@@ -400,19 +400,19 @@ class Instrument(GeometryConcept.GeometryConcept):
                 if intensities is None:
                     intensities = VanFileInstrument.get('detector/data')
                 #print(monitor.shape)
-                
+
                 Data = np.array(intensities).transpose(2,0,1).astype(float)/monitor[np.newaxis,:,np.newaxis]
                 if sampleMass is not None: # A sample mass has been proivided
 
                     sampleMolarMass = _tools.calculateMolarMass(sample,formulaUnitsPerUnitCell)
-                    
+
                     # TODO: Check placement of sampleDebyeWallerFactor!
                     vanadiumFactor = sampleDebyeWallerFactor*sampleMolarMass/(sampleMass*sampleIncoherent)
                     Data*=vanadiumFactor # Multiply vanadium factor to perform absolut normalization 22-02-2021 JL
                 else:
                     vanadiumFactor = 1.0
-                
-                
+
+
                 if False: #Mask pixels where spurion is present
                     Data[:,:,:100]=0
 
@@ -420,7 +420,7 @@ class Instrument(GeometryConcept.GeometryConcept):
 
                 # Due to motor positioning error by too small steps, one scan could be unordered along energy!
                 sortIDXEi = np.argsort(Ei)
-                
+
                 Ei = Ei[sortIDXEi]
                 Data = Data[:,sortIDXEi]
 
@@ -442,7 +442,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 ESummedData = Data.sum(axis=1)
                 dataSubtracted = np.array(ESummedData.copy(),dtype=float)
 
-                
+
 
                 if plot: # pragma: no cover
                     plt.ioff()
@@ -458,7 +458,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                         plt.title('Vanadium normalization detector '+str(i))
                         plt.tight_layout()
                         plt.savefig(savelocation+'Raw/detector'+str(i)+'.png',format='png', dpi=150)
-                
+
                 for j in range(analysers):
                     peakPos[:,j],peakVal[:,j] = findPeak(dataSubtracted) # Find a peak in data
                     for i in range(detectors):
@@ -483,7 +483,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                         y = Gaussian(x,peakVal[i,j],peakPos[i,j],peakWidth[i,j],peakBackg[i,j])
                         peak = y>peakVal[i,j]*0.05
                         dataSubtracted[i,peak]= 0
-                
+
                 if plot: # pragma: no cover
                     x = np.arange(pixels)
                     for k in range(wedges):
@@ -506,7 +506,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                         plt.savefig(savelocation+r'/Raw/Fit_wedge_'+str(k)+'.png',format='png', dpi=150)
                         print('Saving: {}'.format(savelocation+r'/Raw/Fit_wedge_'+str(k)+'.png'))
 
-                
+
                 ## Sort the positions such that peak 1 is the furthermost left peak and assert diff(pos)>100
                 sortedPeakPosArg = np.argsort(peakPos,axis=1)
                 sortedPeakPos = np.sort(peakPos,axis=1)
@@ -563,18 +563,18 @@ class Instrument(GeometryConcept.GeometryConcept):
                 for i in range(Eguess.shape[0]):
                     for j in range(analysers):
                         Eguess[i,j]=np.argmax(Data[i,:,int(pixelpos[i,j])])
-                
+
 
                 fitParameters = []
                 activePixelRanges = []
                 for detpixels in bins:
                     if detpixels*analysers*3>len(Ei):
                         warnings.warn(f'Fitting might be unstable due to {detpixels} pixels being fitted using only {len(Ei)} energies ({detpixels*analysers*3} free parameters).',category=RuntimeWarning,stacklevel=2)
-                        
+
                     if plot: # pragma: no cover
                         EiX = np.linspace(Ei[0],Ei[-1],len(Ei))
                         if not os.path.exists(savelocation+f'/{detpixels}_pixels'):
-                            os.makedirs(savelocation+f'/{detpixels}_pixels') 
+                            os.makedirs(savelocation+f'/{detpixels}_pixels')
                         colors=np.zeros((3,detpixels))
                         if pixels==1:
                             colors[:,0]=[0.65,0.2,0.45]
@@ -601,7 +601,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                             for j in range(analysers):
                                 center = int(round(sortedPeakPos[i,j]))
                                 width = activePixels[i,j].sum()
-                                
+
                                 if adaptiveBinning: # Adaptive binning with equal Gaussian area for each pixel piece
 
                                     binStart,binEnd = [center-width/2.0,center+width/2.0]
@@ -637,8 +637,8 @@ class Instrument(GeometryConcept.GeometryConcept):
                                     fitFunc = lambda x,A,mu,sigma:Gaussian(x,A,mu,sigma,0.0)
                                     try:
                                         res = scipy.optimize.curve_fit(fitFunc,EiLocal,binPixelData.astype(float),p0=guess)
-                                        
-                                        
+
+
                                     except: # pragma: no cover
                                         if not os.path.exists(savelocation+f'/{detpixels}_pixels'):
                                             os.makedirs(savelocation+f'/{detpixels}_pixels')
@@ -647,13 +647,13 @@ class Instrument(GeometryConcept.GeometryConcept):
                                         plt.figure()
                                         plt.scatter(EiLocal,binPixelData)
                                         plt.plot(Ei,fitFunc(Ei,*guess))
-                                    
+
                                         plt.savefig(savelocation+f'/{detpixels}_pixels/Detector{i}_{k}.png',format='png',dpi=150)
                                         plt.close()
-                                    
+
                                     fittedParameters[i,j,k]=list(res[0])+[0.0]
                                     fittedParameters[i,j,k,0] *= np.sqrt(2*np.pi)*fittedParameters[i,j,k,2] #np.sum(binPixelData) # Use integrated intensity as amplitude 29-07-2020 JL
-                                     
+
                                     if plot: # pragma: no cover
                                         plt.plot(EiX,Gaussian(EiX,*fittedParameters[i,j,k])/(np.sqrt(2*np.pi)*fittedParameters[i,j,k,2]),color='black')
                                         plt.scatter(EiLocal,binPixelData,color=colors[:,k])
@@ -680,12 +680,12 @@ class Instrument(GeometryConcept.GeometryConcept):
 
                         # q = 2 k sin(theta)
                         theta = np.arcsin(Qvec/(2*ki))
-        
+
                         A4 = np.array(self.A4)
                         A4=A4.reshape(A4.shape[0]*A4.shape[1],A4.shape[2],order='C')
                         EPrDetector = len(self.wedges[0].detectors[0].split)+1
 
-                        
+
                         pixelList = np.array(activePixelDetector).reshape(A4.shape[0],EPrDetector,detpixels+1).astype(int)
                         PixelEdge = np.array([[pixelList[:,:,i],pixelList[:,:,i+1]] for i in range(detpixels)]).transpose((2,3,0,1))
                         PixelEnergy = fittedParameters[:,:,:,1].reshape(A4.shape[0],EPrDetector*detpixels)
@@ -700,18 +700,18 @@ class Instrument(GeometryConcept.GeometryConcept):
                                 for k in range(detpixels):
                                     MeanIntensity[:,i,j*detpixels+k] = np.sum(A4FileIntensity[:,i,PixelEdge[i,j,k,0]:PixelEdge[i,j,k,1]],axis=1)
                                     MeanA4Instr[i,j*detpixels+k] = np.mean(A4[i,PixelEdge[i,j,k,0]:PixelEdge[i,j,k,1]])
-                                    
+
                         x = A4FileValue
                         A4FitValue = np.zeros(A4.shape[0])
 
-                        
+
                         if plot==True:
                             plt.clf()
                         for i in range(104):
                             y = MeanIntensity[:,i,SoftwarePixel[i]]
                             if plot==True:
                                 plt.scatter(x,y)
-                            
+
                             guess=[np.max(y),x[np.argmax(y)],3,0]
                             try:
                                 fit = scipy.optimize.curve_fit(Gaussian,x,y,p0=[guess])
@@ -776,7 +776,7 @@ class Instrument(GeometryConcept.GeometryConcept):
 
                     file.write(tableString)
                     file.close()
-        
+
             if A4datafile is not False: # pragma: no cover
                 A4File.close()
 
@@ -786,35 +786,35 @@ def parseXML(Instr,fileName):
     tree = ET.parse(fileName)
     instr_root = tree.getroot()
 
-    
-    
-        
+
+
+
     for attrib in instr_root.keys():
         if attrib=='position':
             Instr.position = np.array(instr_root.attrib[attrib].split(','),dtype=float)
         Instr.settings[attrib]=instr_root.attrib[attrib]
-    
-    
+
+
     Instr._wedges=[]
     for wedge in list(instr_root):#.getchildren():
-        
+
         if wedge.tag in dir(Wedge):
             Wedgeclass_ = getattr(Wedge, wedge.tag)
         else:
             raise ValueError(f"Element is supposed to be a Wedge, but got '{wedge.tag}'.")
         wedgeSettings = {}
-        
+
         for attrib in wedge.keys():
             if attrib=='concept':
                 wedgeSettings[attrib]=np.array(wedge.attrib[attrib].strip().split(','),dtype=str)
-            else:        
+            else:
                 wedgeSettings[attrib]=np.array(wedge.attrib[attrib].strip().split(','),dtype=float)
-            
+
         temp_wedge = Wedgeclass_(**wedgeSettings)
-        
-        
-        
-        
+
+
+
+
         for item in list(wedge):#.getchildren():
             if item.tag in dir(Detector):
                 class_ = getattr(Detector, item.tag)
@@ -822,7 +822,7 @@ def parseXML(Instr,fileName):
                 class_ = getattr(Analyser,item.tag)
             else:
                 raise ValueError(f"Item '{item.tag}' not recognized as MJOLNIR detector or analyser.")
-            
+
             itemSettings = {}
             for attrib in item.keys():
                 attribVal = item.get(attrib).strip().split(',')
@@ -840,7 +840,7 @@ def parseXML(Instr,fileName):
                         #print(type(attribVal))
                         itemSettings[attrib]=attribVal
                     else:
-                        itemSettings[attrib]=np.array(attribVal,dtype=float)    
+                        itemSettings[attrib]=np.array(attribVal,dtype=float)
             try:
                 temp_item = class_(**itemSettings)
             except TypeError as e:
@@ -857,8 +857,8 @@ def parseXML(Instr,fileName):
         #print(str(temp_wedge))
         Instr.append(temp_wedge)
     #print(str(Instr))
-    
-   
+
+
 
 def getNX_class(x,y,attribute):
     try:
@@ -891,21 +891,21 @@ def converterToA3A4(Qx,Qy, Ei,Ef,A3Off=0.0,A4Sign=-1):
 
     U1V/=np.linalg.norm(U1V)
     U2V = np.array([0.0,0.0,1.0],dtype=float)
-    
-    
+
+
     TV = TasUBlibDEG.buildTVMatrix(U1V, U2V)
     R = np.linalg.inv(TV)
-    
+
     ss = 1.0
-    
+
     cossgl = np.sqrt(R[0,0]*R[0,0]+R[1,0]*R[1,0])
     om = TasUBlibDEG.arctan2d(R[1,0]/cossgl, R[0,0]/cossgl)
-    
+
     ki = np.sqrt(Ei)*_tools.factorsqrtEK
     kf = np.sqrt(Ef)*_tools.factorsqrtEK
-    
+
     cos2t =(ki**2 + kf**2 - q**2) / (2. * np.abs(ki) * np.abs(kf))
-    
+
     A4 = ss*TasUBlibDEG.arccosd(cos2t)
     theta = TasUBlibDEG.calcTheta(ki, kf, A4)
     A3 = -om + np.sign(A4Sign)*ss*theta + A3Off
@@ -922,7 +922,7 @@ def converterToQxQy(A3,A4,Ei,Ef):
     q = np.sqrt(ki**2 +kf**2-
         2. *ki *kf * np.cos(np.deg2rad(A4)))
 
-    
+
     Qx,Qy = (QV*q.reshape(-1,1))[:,:2].T
     return (Qx,Qy)
 
@@ -938,7 +938,7 @@ class simpleDataSet:
 
     def FindEi(self,deltaE):
         return self.Ei
- 
+
 
 
 
@@ -951,7 +951,7 @@ def getInstrumentInfo(name):
         energies = 8
         axes = 9
         A4Width = 0
-        
+
     elif name == 'MultiFLEXX':
         calib = np.loadtxt(MJOLNIR.__multiFLEXXNormalization__,delimiter=',',skiprows=1)
         detectors = 31
@@ -962,14 +962,14 @@ def getInstrumentInfo(name):
 
     elif name == 'Bambus':
         calib = np.loadtxt(MJOLNIR.__bambusNormalization__,delimiter=',',skiprows=1)
-        detectors = 20 
+        detectors = 20
         wedges = 20
         energies = 5
         A4Width = 0.5 # Pad the prediction in A4 with this value (otherwise only lines will be shown)
         axes = 6
     else:
         raise AttributeError(f'Provided instrument "{name}" not understood')
-    
+
     return detectors,wedges,energies,calib,A4Width,axes
 
 def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,PillarOffsets=None,SEAlignmentPeak=None,SEA3OffsetWanted=0,points=False,outputFunction=None,instrument = 'CAMEA'):
@@ -990,13 +990,13 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
         - sample (Sample): Sample used for setup
 
     Kwargs:
-        
+
         - PillarSizes (list): List of angular width of pilars in sample environment (default None)
-        
+
         - PillarOffsets (list): List of angular offsets of pilars in sample environment (default None)
-        
+
         - SEAlignmentPeak ([HKL]): Alingment point of sample environment (default None)
-        
+
         - SEA3OffsetWanted (float): Offset in A3 of sample environment relative to SEAlignmentPeak (default 0)
 
         - points (bool): If true, overplot actual points measured (default False)
@@ -1006,10 +1006,10 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
         - instrument (string): Instrument for which the prediction is to be made (default CAMEA)
 
     """
-    
-    
-    
-    
+
+
+
+
     if np.any([x is None for x in [SEAlignmentPeak,PillarSizes,PillarOffsets]]):
         PillarSizes = []
         PillarOffsets = []
@@ -1017,32 +1017,32 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
     else:
         ## Start of calculation of sample environment offset
         r1 = sample.plane_vector1
-        
+
         _, SEA4BaseR1= converterToA3A4(*sample.calculateHKLToQxQy(*SEAlignmentPeak),Ei,Ei)
-        
+
         AlingmentPeakAngles = TasUBlibDEG.calcTasQAngles(sample.UB,sample.planeNormal,1.0,0.0,np.array([*SEAlignmentPeak,Ei,Ei]))
-        
+
         offset = TasUBlibDEG.tasAngleBetweenReflections(sample.B,r1,np.array([*SEAlignmentPeak,*AlingmentPeakAngles,Ei,Ei]))-r1[3]
-        
+
     # Offset is equal to calculated offset with respect to SEAlignmentPeak plus wanted A3 offset
     EnvironmentA3Offset = offset+SEA3OffsetWanted
-    
+
     t = simpleDataSet(sample,Ei)
     fig = plt.figure(figsize=(16,11))
 
-    
+
     if outputFunction is None:
         outputFunction = print
-        
+
     if PillarSizes is None:
         PillarSizes = []
-    
+
     if PillarOffsets is None:
         PillarOffsets = []
-        
+
     if not len(PillarOffsets) == len(PillarSizes):
         raise AttributeError(f'Number of provided pillars ({len(PillarOffsets)}) does not match number of pillar offsets ({len(PillarSizes)}).')
-        
+
     detectors,wedges,energies,calib,A4Width,axes = getInstrumentInfo(instrument)
     Ax = []
     rows = int(axes/3.0)
@@ -1051,69 +1051,69 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
         ax.grid(True, zorder=0,color='k')
         ax.ds = t
         Ax.append(ax)
-        
-        
-    
+
+
+
     A4Instrument = calib[:,-1].reshape(detectors,energies)
-        
+
     EfInstrument = calib[:,4].reshape(detectors,energies)
     EfInstrument[np.isclose(EfInstrument,0.0)]=np.nan
-    
-    
+
+
     A3Values = np.linspace(A3Start,A3Stop,A3Steps)-sample.theta
-    
+
     endColor = np.array([0.12156863, 0.46666667, 0.70588235, 0.35])
     startColor = np.array([0.83921569, 0.15294118, 0.15686275, 0.35])
     diff = (endColor-startColor)/float(energies-1)
-    
+
     def format_axes_func(self,x,y,Ei,Ef,A3Off=sample.theta,A4Sign=-1.0):# pragma: no cover
         A3,A4 = converterToA3A4(x,y,Ei,Ef,-A3Off,A4Sign=A4Sign)
         return ax.sample.format_coord(x,y)+f', A3 = {A3:.2f} deg, A4 = {A4:.2f} deg, Ef = {Ef:.2f}'
-    
+
     for i,(ax,Ef,A4) in enumerate(zip(Ax,EfInstrument.reshape(detectors,energies).T,A4Instrument.reshape(detectors,energies).T)):
         ax.Ef = np.nanmean(Ef)
         ax.EMin = Ei-ax.Ef
         ax.EMax = Ei-ax.Ef
-        
+
         for A4Position in A4Positions:
             if points:
                 for A3 in A3Values:
                     H,L = converterToQxQy(A3=A3, A4=A4+A4Position,Ei = Ei, Ef = Ef)
                     ax.scatter(H,L,color=startColor[:-1]+diff[:-1]*i)
-                    
+
             detPrWedge = int(detectors/wedges)
             if instrument == 'CAMEA':
-                
+
                 A4Edge = np.array([np.concatenate([a4,[a4[-1]]*A3Steps,a4[::-1],[a4[0]]*A3Steps]) for a4 in A4.reshape(wedges,detPrWedge)])
                 EfEdge = np.array([np.concatenate([ef,[ef[-1]]*A3Steps,ef[::-1],[ef[0]]*A3Steps]) for ef in Ef.reshape(wedges,detPrWedge)])
                 A3Edge = np.array(list(np.concatenate([[A3Values[0]]*detPrWedge,A3Values,[A3Values[-1]]*detPrWedge,A3Values[::-1]]))*wedges).reshape(wedges,-1)
             else:
-                
+
                 ### Generate points for plotting. Traces out the shape by first changing A4, then A3, then -A4, and then -A3
                 A4Edge = np.array([np.concatenate([a4-A4Width,np.array([a4[-1]]*A3Steps)-A4Width,a4[::-1]+A4Width,np.array([a4[0]]*A3Steps)+A4Width,[a4[0]-A4Width]]) for a4 in A4.reshape(wedges,detPrWedge)])#.reshape(energies,detPrWedge)])
                 EfEdge = np.array([np.concatenate([ef,[ef[-1]]*A3Steps,ef[::-1],[ef[0]]*(A3Steps+1)]) for ef in Ef.reshape(wedges,detPrWedge)])#.reshape(energies,detPrWedge)])
                 A3Edge = np.array(list(np.concatenate([[A3Values[0]]*detPrWedge,A3Values,[A3Values[-1]]*detPrWedge,A3Values[::-1],[A3Values[0]]]))*wedges).reshape(wedges,-1)
-            
-            
-            
+
+
+
             Hedge,Ledge = np.array([converterToQxQy(A3=a3, A4=a4+A4Position,Ei = Ei, Ef = ef) for a3,a4,ef in zip(A3Edge,A4Edge,EfEdge)]).transpose([1,0,2])
             [a.plot(hedge,ledge,color=startColor+diff*i) for hedge,ledge in zip(Hedge,Ledge) for a in [Ax[-1],ax]]
-    
-        
+
+
         def colorGenerator():
             colors = ['tab:blue','tab:orange','tab:green','tab:red','tab:purple','tab:brown','tab:pink','tab:gray','tab:olive','tab:cyan']
             i=0
             while True:
                yield colors[i]
                i = (i+1)%len(colors)
-        
-        
+
+
         ## Plot windows of sample environment on top
         for offset,PillarWidth,color in zip(PillarOffsets,PillarSizes,colorGenerator()):
             A3BlockStart = -180-offset-EnvironmentA3Offset-0.5*PillarWidth-sample.theta
             A3BlockSttop = -180-offset-EnvironmentA3Offset+0.5*PillarWidth-sample.theta
             BA3 = np.linspace(A3BlockStart,A3BlockSttop,int(PillarWidth))
-            
+
             A4Minimum = np.min(A4+np.min(A4Positions))
             A4Maximum = np.max(A4+np.max(A4Positions))
             A4XX = np.linspace(A4Minimum,A4Maximum,61)
@@ -1123,43 +1123,43 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
             Qx,Qy = np.array([converterToQxQy(A3plot, A4plot, Ei, np.mean(Ef)) for A3plot,A4plot in zip(A3Plot,A4Plot)])[:,:,0].T
             ax.plot(Qx,Qy,c=color)
 
-    
+
             OutGoingA3Start = -PillarWidth/2.0+EnvironmentA3Offset-sample.theta+offset
             OutGoingA3Stop = PillarWidth/2.0+EnvironmentA3Offset-sample.theta+offset
             OutGoingA3Start,OutGoingA3Stop = [f([OutGoingA3Start,OutGoingA3Stop]) for f in [np.min,np.max]]
-            
-            
+
+
             A4MaxValue = np.max(A4Positions)+np.max(A4)
             A4MinValue = np.min(A4Positions)+np.min(A4)
-            
+
             A3BlockMaxA4Start = A4MaxValue-(offset+EnvironmentA3Offset-0.5*PillarWidth)
             #A3BlockMaxA4Stop = A4MaxValue-(offset+EnvironmentA3Offset+0.5*PillarWidth)
-            
+
             #A3BlockMinA4Start = A4MinValue-(offset+EnvironmentA3Offset-0.5*PillarWidth)
             A3BlockMinA4Stop = A4MinValue-(offset+EnvironmentA3Offset+0.5*PillarWidth)
-            
-            
+
+
             def blockedA4(a3):
                 return [np.min([(offset+EnvironmentA3Offset+0.5*PillarWidth)+a3,A4MaxValue]),np.max([(offset+EnvironmentA3Offset-0.5*PillarWidth)+a3,A4MinValue])]
-            
+
             A3BlockingOutgoing = np.arange(A3BlockMinA4Stop,A3BlockMaxA4Start)
-            
+
             A3Plot = np.concatenate([A3BlockingOutgoing,A3BlockingOutgoing[::-1]])
             aA4 = np.array([blockedA4(a3) for a3 in A3BlockingOutgoing])
             A4Plot = np.concatenate([aA4[:,0],aA4[::-1,1]])
             Qx,Qy = np.array([converterToQxQy(A3plot-sample.theta, A4plot, Ei, np.mean(Ef)) for A3plot,A4plot in zip(A3Plot,A4Plot)])[:,:,0].T
             ax.plot(Qx,Qy,c=color,linestyle='dashed')
-        
-            
+
+
         ax.set_xlabel(_tools.generateLabelDirection(sample.projectionVector1) + ' RLU')
         ax.set_ylabel(_tools.generateLabelDirection(sample.projectionVector2) + ' RLU')
         ax.set_title(rf'$\Delta $E {Ei-np.nanmean(Ef):.2f}'+f' meV, E$_f$ {np.nanmean(Ef):.2f} meV',pad=10+10*(not np.isclose(ax.sample.projectionAngle,np.pi/2.0)))
-        
-    
+
+
     Ax[-1].set_xlabel(_tools.generateLabelDirection(sample.projectionVector1) + ' RLU')
     Ax[-1].set_ylabel(_tools.generateLabelDirection(sample.projectionVector2) + ' RLU')
     Ax[-1].set_title('All Planes',pad=10+10*(not np.isclose(ax.sample.projectionAngle,np.pi/2.0)))
-    
+
     #fig.tight_layout()
     if instrument == 'CAMEA':
         Ax[0].format_coord = lambda x,y: format_axes_func(Ax[0],x,y,Ei,np.nanmean(EfInstrument,axis=0)[0],-sample.theta,A4Sign=A4Positions[0])
@@ -1170,14 +1170,14 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
         Ax[5].format_coord = lambda x,y: format_axes_func(Ax[5],x,y,Ei,np.nanmean(EfInstrument,axis=0)[5],-sample.theta,A4Sign=A4Positions[0])
         Ax[6].format_coord = lambda x,y: format_axes_func(Ax[6],x,y,Ei,np.nanmean(EfInstrument,axis=0)[6],-sample.theta,A4Sign=A4Positions[0])
         Ax[7].format_coord = lambda x,y: format_axes_func(Ax[7],x,y,Ei,np.nanmean(EfInstrument,axis=0)[7],-sample.theta,A4Sign=A4Positions[0])
-        
+
     else:
         Ax[0].format_coord = lambda x,y: format_axes_func(Ax[0],x,y,Ei,np.nanmean(EfInstrument,axis=0)[0],-sample.theta,A4Sign=A4Positions[0])
         Ax[1].format_coord = lambda x,y: format_axes_func(Ax[1],x,y,Ei,np.nanmean(EfInstrument,axis=0)[1],-sample.theta,A4Sign=A4Positions[0])
         Ax[2].format_coord = lambda x,y: format_axes_func(Ax[2],x,y,Ei,np.nanmean(EfInstrument,axis=0)[2],-sample.theta,A4Sign=A4Positions[0])
         Ax[3].format_coord = lambda x,y: format_axes_func(Ax[3],x,y,Ei,np.nanmean(EfInstrument,axis=0)[3],-sample.theta,A4Sign=A4Positions[0])
         Ax[4].format_coord = lambda x,y: format_axes_func(Ax[4],x,y,Ei,np.nanmean(EfInstrument,axis=0)[4],-sample.theta,A4Sign=A4Positions[0])
-        
+
     def onclick(event,axes,outputFunction):# pragma: no cover
         for ax in axes:
             if ax.in_axes(event):
@@ -1188,7 +1188,7 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
                 else:
                     if C != 0: # Cursor corresponds to arrow
                         return
-        
+
                 x = event.xdata
                 y = event.ydata
                 if hasattr(ax,'__format_coord__'):

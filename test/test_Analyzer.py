@@ -14,7 +14,7 @@ def test_init():
     assert(GenericAnalyser.mosaicity==60.0)
 
 def test_Generic_plot():
-    
+
     GenericAnalyser = Analyser(position=(0.0,1.0,0.0),direction=(1.0,0,0),d_spacing=3.35,mosaicity=60.0)
     ax = []
     try:
@@ -60,7 +60,7 @@ def test_Analyser_init():
     assert(np.all(Analyser.direction==(1.0,0.0,0.0)))
     assert(Analyser.width==0.05)
     assert(Analyser.height==0.1)
- 
+
 
 def test_Analyser_width():
     Analyser = FlatAnalyser(position=(0.0,1.0,0.0),direction=(1.0,0,0))
@@ -85,7 +85,7 @@ def test_FlatAnalyser_plot():
     ax = fig.add_subplot(projection='3d')
 
     Analyser.plot(ax)
-    
+
 def test_FlatAnalyser_str():
     Analyser = FlatAnalyser(position=(0.0,1.0,0.0),direction=(1.0,0,0))
     assert(str(Analyser)=='FlatAnalyser located at '+np.array2string(np.array([0.0,1.0,0.0])))

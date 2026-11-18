@@ -16,37 +16,37 @@ class Marray:
                 self._data = [np.asarray(data).view(cls)]
         else:
             self._data = [np.asarray(data).view(cls)]
-        
+
 
     @property
     def multidimensional(self):
         return self._multidimensional
-    
+
     @multidimensional.getter
     def multidimensional(self):
         if isinstance(self._data,list):
             return True
         else:
             return False
-    
+
     @property
     def data(self):
         return self._data
-    
+
     @data.getter
     def data(self):
         return self._data
-    
+
     @data.setter
     def data(self,data):
         self._data = data
-    
-    
-    
+
+
+
     @property
     def mask(self):
         return self._mask
-    
+
     @mask.getter
     def mask(self):
         if self.multidimensional:
@@ -55,9 +55,9 @@ class Marray:
                 mask.append(self._data[i].mask)
         else:
             mask = self._data.mask
-            
+
         return mask
-    
+
     @mask.setter
     def mask(self,mask):
         try:
@@ -86,7 +86,7 @@ class Marray:
     def __iter__(self):
         self._index=0
         return self
-    
+
     def __next__(self):
         if self._index >= len(self):
             raise StopIteration
@@ -96,9 +96,9 @@ class Marray:
 
     def next(self):
         return self.__next__()
-    
-    
-    
+
+
+
     def __len__(self):
         if self.multidimensional:
             return len(self._data)
@@ -107,14 +107,14 @@ class Marray:
                 return len(self._data)
             else:
                 return 0
-    
+
 
     def __getitem__(self,index):
         return self._data[index]
-    
+
     def __setitem__(self,index,value):
         self._data[index] = value
-        
+
     def __delitem__(self,index):
         del self._data[index]
 
@@ -127,22 +127,22 @@ class Marray:
         else:
             data = self._data.compressed()
         return data
-    
+
     def append(self,d):
         self._data.append(d)
-        
+
     def __str__(self):
         return '\n'.join(str(x) for x in self)
-    
+
     def compress(self):
         return self.extractData()
-    
+
     def flatten(self):
         data = []
         for d in self:
             data.append(d)
         return data
-    
+
     def max(self,axis=None,out=None):
         newAxis,zeroAxis = axisChecker(axis)
         if zeroAxis:
@@ -153,7 +153,7 @@ class Marray:
             am = [np.max(d,axis=newAxis,out=out) for d in self]
             am = am[np.argmax(am)]
         return am
-    
+
     def min(self,axis=None,out=None):
         newAxis,zeroAxis = axisChecker(axis)
         if zeroAxis:
@@ -164,7 +164,7 @@ class Marray:
             am = [np.min(d,axis=newAxis,out=out) for d in self]
             am = am[np.argmin(am)]
         return am
-    
+
     def reshape(self,shape):
         if self.multidimensional:
             try:
@@ -222,7 +222,7 @@ class Marray:
             returnMat = Marray(data)
             returnMat.mask = self.mask
             return returnMat
-    
+
     __radd__ = __add__#(self,other):
     def __sub__(self,other):
         if isinstance(other,Marray):
@@ -236,7 +236,7 @@ class Marray:
             returnMat = Marray(data)
             returnMat.mask = self.mask
             return returnMat
-    
+
     def __rsub__(self,other):
         """if isinstance(other,Marray):
             data = [o-s for s,o in zip(self.data,other.data)]
@@ -260,15 +260,15 @@ class Marray:
             return [x.shape for x in self]
         else:
             return self._data.shape
-    
+
     @shape.setter
     def shape(self,shape):
         self.reshape(shape)
-    
+
     def swapaxes(self,axis1,axis2):
         for d in self:
             d.swapaxes(axis1,axis2)
-    
+
     def transpose(self,*axis):
         for d in self:
             d.transpose(*axis)
@@ -276,7 +276,7 @@ class Marray:
     @property
     def size(self):
         return self._size
-    
+
     @size.getter
     def size(self):
         totalSize = np.sum([x.size for x in self])

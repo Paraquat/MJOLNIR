@@ -31,7 +31,7 @@ class AxisView(Sequence[FloatArray]):
         self._length = 0
         self._remaining_shape = (
             self._arrays[0].shape[:self._axis] + self._arrays[0].shape[self._axis + 1:])
-    
+
 
         for array in arrays:
             normalized_axis = normalize_axis_index(axis, array.ndim)

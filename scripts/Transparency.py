@@ -39,10 +39,10 @@ if False:
     fig=plt.figure(figsize=(8,8))
     ax = plt.gca(projection='3d')
     for Eslice in range(len(energy_bin[0,0])-1):
-    
+
         VMIN=1e-10
         VMAX=1e-6
-        
+
         pc = ax.plot_surface(Qx[:,:,Eslice].T,Qy[:,:,Eslice].T,np.ones_like(Qy[:,:,Eslice]).T*energy_bin[0,0,Eslice],rstride=1,cstride=1,facecolors=my_cmap((Int[:,:,Eslice]/np.nanmax(Int[:,:,:])).T))#,vmin=VMIN,vmax=VMAX,zorder=10,cmap=my_cmap)
     #pc = ax.pcolormesh(Qx[:,:,Eslice].T,Qy[:,:,Eslice].T,Int[:,:,Eslice].T,vmin=VMIN,vmax=VMAX,zorder=10,cmap=my_cmap)
     ax.set_ylabel('$Q_y$ [1/AA]')
@@ -52,26 +52,26 @@ if False:
 else:
     for Eslice in range(len(energy_bin[0,0])-1):
         surf = mlab.mesh(Qx[:-1,:-1,Eslice].T,Qy[:-1,:-1,Eslice].T,energy_bin[0,0,Eslice]+Int[:,:,Eslice].T)#,warp_scale="auto")#np.ones_like(Qy[:,:,Eslice]).T*energy_bin[0,0,Eslice],color=(my_cmap((Int[:,:,Eslice].flatten()/np.nanmax(Int[:,:,:])).T)[:,:3]))
-    
+
     xx = [np.min(Qx),np.max(Qx)]
     x0 = [xx[0],xx[0]]
     yy = [np.min(Qy),np.max(Qy)]
     y0 = [yy[0],yy[0]]
     zz = [np.min(energy_bin),np.max(energy_bin)]
     z0 = [zz[0],zz[0]]
-    
+
     lensoffset=2.0
     mlab.plot3d(xx,y0,z0,line_width=0.01,tube_radius=0.01)# xaxis
     mlab.plot3d(x0,yy,z0,line_width=0.01,tube_radius=0.01)# yaxis
     mlab.plot3d(x0,y0,zz,line_width=0.01,tube_radius=0.01)# zaxis
-    
+
     mlab.text3d(0.5*(np.sum(xx)), yy[0], zz[0], 'Qx [1/A]',scale=0.1)
     mlab.text3d(xx[0],0.5*(np.sum(yy)), zz[0], 'Qy [1/A]',scale=0.1)
     mlab.text3d(xx[0],yy[0],0.5*(np.sum(zz)), 'E [meV]',scale=0.1)
-    
+
     #    mlab.plot3d(zx,zy+lensoffset,zz,line_width=0.01,tube_radius=0.01)
     #    mlab.plot3d(xx,xy+lensoffset,xz,line_width=0.01,tube_radius=0.01)
-    
+
     #mlab.xlabel('Qx [1/A]')
     #mlab.ylabel('Qy [1/A]')
     #mlab.zlabel('E [meV]')

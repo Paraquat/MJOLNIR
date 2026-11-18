@@ -55,7 +55,7 @@ def makeWheel():
 def getLatestVersions():
     list_of_files = glob.glob(os.path.join('dist','*')) # * means all if need specific format then *.csv
     list_of_files = sorted(list_of_files, key=os.path.getctime)
-    
+
     versions = {}
     pattern = r"-([0-9]*)\.([0-9]*)\.([0-9]*)\.?(post)?([0-9]*)?"
 
@@ -91,7 +91,7 @@ def getCurrentVersion():
     # else:
     #     adder = ''
     # version = [int(x) for x in versionList]
-    
+
     # if adder != '':
     #     version[-1]=adder+str(version[-1]+1)
     # else:

@@ -23,7 +23,7 @@ def camelCase(string,split='_'):
     splitString = string.split(split)
     first = splitString[0]
     others = [x.title() for x in splitString[1:]]
-    
+
     combi = [first]+others
     return ''.join([str(x) for x in combi])
 
@@ -35,7 +35,7 @@ class Sample:
             self.name = str(np.array(sample.get('name'))[0].decode())
 
             self.planeNormal = np.array(sample.get('plane_normal'))
-            
+
             self.polarAngle = np.array(sample.get('polar_angle'))
             self.rotationAngle = np.array(sample.get('rotation_angle'))
             self.unitCell = np.array(sample.get('unit_cell'))
@@ -66,11 +66,11 @@ class Sample:
             values = [camelCase(x) for x in attributes]
             for att, val in zip(attributes,values):
                 setattr(self,val,np.array(sample.get(att)))
-            
-            
+
+
         elif np.all([a is not None,b is not None, c is not None]):
             self.unitCell = np.array([a,b,c,alpha,beta,gamma])
-           
+
             self.polarAngle = np.array(None)
             self.rotationAngle = np.array(0)
             self.name=name
@@ -83,8 +83,8 @@ class Sample:
             self.plane_vector2 = r2
 
             self.planeNormal = np.cross(self.plane_vector1[:3],self.plane_vector2[:3])
-            
-            
+
+
             cell = TasUBlib.calcCell(self.unitCell)
 
             self.orientationMatrix = TasUBlib.calcTasUBFromTwoReflections(cell, r1, r2)#(np.pi*2)
@@ -97,7 +97,7 @@ class Sample:
             print(a,b,c,alpha,beta,gamma)
             raise AttributeError('Sample not understood')
 
-            
+
     @property
     def unitCell(self):
         return self._unitCelll
@@ -116,7 +116,7 @@ class Sample:
         self.beta  = unitCell[4]
         self.gamma = unitCell[5]
         self.updateCell()
-        
+
     @property
     def a(self):
         return self._a
@@ -224,11 +224,11 @@ class Sample:
 
     def calculateProjections(self):
         """Calculate projections and generate projection angles."""
-        checks = np.array(['unitCell','orientationMatrix','projectionVector1','projectionVector2']) # 
+        checks = np.array(['unitCell','orientationMatrix','projectionVector1','projectionVector2']) #
         boolcheck = np.logical_not(np.array([hasattr(self,x) for x in checks]))
         if np.any(boolcheck):
             raise AttributeError('Sample object is missing: {}.'.format(', '.join(str(x) for x in checks[boolcheck])))
-        
+
         if self.projectionVector1[np.argmax(np.abs(self.projectionVector1))]<0:
             self.projectionVector1*=-1
         if self.projectionVector2[np.argmax(np.abs(self.projectionVector2))]<0:
@@ -245,12 +245,12 @@ class Sample:
         if np.isclose(0.0,self.projectionAngle):
             raise AttributeError("The provided orientations are equal.")
 
-        
+
         UB= self.orientationMatrix
         self.UB = UB
 
         self.orientationMatrixINV = np.linalg.inv(UB)
-        
+
 
         p23 = np.array([[1,0,0],[0,1,0]]) # To extract Qx, Qy only
         PM = np.array([V1,V2]).T # Projection matrix
@@ -263,9 +263,9 @@ class Sample:
             self.theta = -TasUBlib.calcTasMisalignment(UB,self.planeNormal,V1)
         except AttributeError:
             self.theta = 0
-        
+
         self.RotMat = _tools.Rot(self.theta) # Create 2x2 rotation matrix
-        
+
         self.convertinv = np.linalg.inv(self.convert) # Convert from Qx, Qy to projX, projY
 
         self.convertHKLINV = _tools.invert(self.convertHKL) # Convert from Qx, Qy to HKL
@@ -276,23 +276,23 @@ class Sample:
         self.RotMat3D[:2,:2] = self.RotMat
         #self.orientationMatrixINV = np.linalg.inv(np.dot(self.RotMat3D,UB))
         self.orientationMatrixINV = np.linalg.inv(self.UB)
-        
+
 
     def tr(self,p0,p1):
         """Convert from projX, projY coordinate to Qx,QY coordinate."""
         p0, p1 = np.asarray(p0), np.asarray(p1)
-        
+
         P = np.array([p0,p1])
-        
+
         Pos = np.einsum('ij,j...->i...',self.convertinv,P)
         return Pos[0],Pos[1]
-        
+
     def inv_tr(self, x,y):
         """Convert from Qx,QY  coordinate to projX, projY coordinate."""
         x, y = np.asarray(x), np.asarray(y)
         P = np.array([x,y])
         Pos = np.einsum('ij,j...->i...',self.convert,P)
-        return Pos[0],Pos[1]   
+        return Pos[0],Pos[1]
 
 
     def format_coord(self,x,y):
@@ -332,34 +332,34 @@ class Sample:
     @_tools.KwargChecker()
     def CurratAxe(self,Ei,Ef,Bragg,spurionType='Monochromator',HKL=False,Projection=False):
         """Function to calculate Currat-Axe position in QxQy coordinate system.
-    
+
         Args:
-            
+
             - Ei (float/list): Incoming energy in meV.
-            
+
             - Ef (float/list): Outgoing energy in meV.
-            
+
             - Bragg (list): Bragg peak in HKL or list of.
-            
+
         Kwargs:
-            
+
             - spurionType (str): Either "Monochromator" or "Analyser" for origin of "wrong" energy (default "Monochromator").
-            
+
             - HKL (bool): Whether or not to recalculate to HKL instead of Qx, Qy, Qz (default False).
-            
+
             - Projection (Bool): Whether or not to recalculate to Projection vectors instead of Qx, Qy, Qz (default False).
-            
+
         Returns:
-            
+
             - Position (list): List of size (len(Bragg),len(Ei),len(Ef),3), where last axis is Qx, Qy, Qz
-            
+
         """
         A3Off = self.theta
-        
+
         Ei = np.asarray(Ei).flatten() # Shape (m)
         Ef = np.asarray(Ef).flatten() # Shape (n)
         Bragg = np.asarray(Bragg).reshape(-1,3) # shape (l,3)
-        
+
         QlLocal = []
         if spurionType.lower() == 'monochromator':
             for B in Bragg:
@@ -379,16 +379,16 @@ class Sample:
             raise AttributeError(f'Provided spurionType not understood. Expected "Monochromator" or "Analyser" but received "{spurionType}".')
 
         returnVal = np.array(QlLocal) # Shape (l,m,n,3)
-        
+
         if HKL == True or Projection == True: # need to calculate HKL for Projection calculation
             returnValShape = np.array(returnVal.shape)
             returnVal = self.calculateQxQyToHKL(returnVal[:,:,:,0].flatten(),returnVal[:,:,:,1].flatten())
             if Projection == True:
-                
+
                 toProjection = self.calculateHKLtoProjection(returnVal[0],returnVal[1],returnVal[2])
                 returnVal = np.array(self.inv_tr(toProjection[0],toProjection[1]))
                 returnValShape[-1]=2 # reshape Qx,Qy,Qz dimension to P1,P2 (3 -> 2)
-            
+
             returnVal = returnVal.reshape(returnValShape) # Shape (l,m,n,3) or (l,m,n,2)
         return returnVal
 
@@ -396,7 +396,7 @@ class Sample:
         """Update cell parameters with current unit cell values.
 
         Kwargs:
-            
+
             - unitCell (list): List of a,b,c,alpha,beta,gamma. If None, use self.unitCell (default None)
 
         """
@@ -409,16 +409,16 @@ class Sample:
         self.realVectorB = self.b*np.array([cosd(self.gamma),sind(self.gamma),0.0])#np.dot(np.array([self.b,0,0]),rotationMatrix(0,0,self.gamma))
         self.realVectorC = self.c*np.array([cosd(self.beta),(cosd(self.alpha)-cosd(self.beta)*cosd(self.gamma))/sind(self.gamma),
         np.sqrt(1-cosd(self.beta)**2-((cosd(self.alpha)-cosd(self.beta)*cosd(self.gamma))/sind(self.gamma))**2)])#np.dot(np.array([self.c,0,0]),rotationMatrix(0,self.beta,0))
-        
+
         self.volume = np.abs(np.dot(self.realVectorA,np.cross(self.realVectorB,self.realVectorC)))
         self.reciprocalVectorA = 2*np.pi*np.cross(self.realVectorB,self.realVectorC)/self.volume
         self.reciprocalVectorB = 2*np.pi*np.cross(self.realVectorC,self.realVectorA)/self.volume
         self.reciprocalVectorC = 2*np.pi*np.cross(self.realVectorA,self.realVectorB)/self.volume
-        
+
 
         bv1,bv2,bv3 = self.reciprocalVectorA,self.reciprocalVectorB,self.reciprocalVectorC
         a1,a2,a3,alpha1,alpha2,alpha3= self.unitCell
-        
+
         b1,b2,b3 = [np.linalg.norm(x) for x in [bv1,bv2,bv3]]
         beta1 = np.rad2deg(_tools.vectorAngle(bv2,bv3))
         beta2 = np.rad2deg(_tools.vectorAngle(bv3,bv1))
@@ -429,20 +429,20 @@ class Sample:
     def updateSampleParameters(self,unitCell):
         """Update the sample parameters and change UB matrix as well.
 
-        Args: 
+        Args:
 
             - unitCell (list): List of cell parameters. If None use self.unitCell
 
         """
-        
+
         UB = self.UB
         B = self.B
         U = np.dot(UB,np.linalg.inv(B))
-        
+
         self.updateCell(unitCell)
         newB = TasUBlib.calculateBMatrix(self.cell)
         newUB = np.dot(U,newB)
-        
+
         self.UB = newUB
         self.orientationMatrix = newUB
         self.B = newB # Else a second update takes U from the old B
@@ -459,12 +459,12 @@ def calcProjectionVectors(R1,R2,norm=None):
     else:
         NV = np.cross(r1,r2)
     NV/= np.linalg.norm(NV)
-    
+
     Zeros = np.isclose(NV,0.0)
     if np.sum(Zeros)==3:
         raise AttributeError(f'The two plane vectors are equivalent, {r1}, {r2}!')
-    
-    
+
+
     if np.sum(Zeros) == 2 or np.sum(Zeros)==1: # Easy case where the two vectors are to be along the x, y, or z directions
         if Zeros[0] == True:
             V1 = np.array([1.0,0.0,0.0])
@@ -478,7 +478,7 @@ def calcProjectionVectors(R1,R2,norm=None):
     else: # The tricky case of all vectors having non-zero components.
         V1 = r1
         V2 = r2
-            
+
     V1 = _tools.LengthOrder(V1)
     V2 = _tools.LengthOrder(V2)
     #for V in [V1,V2]: # Flip sign if needed
@@ -490,35 +490,35 @@ def calcProjectionVectors(R1,R2,norm=None):
 def calculateSample(cell,HKL1,HKL2,A3R1,A3R2,Ei,Ef):
     """
     Generate a sample from two reflections, their A3 positions, and incoming and outgoing energies
-    
+
         - HKL1 ([HKL]): First alignment point
 
         - HKL2 ([HKL]): Second alignment point
-        
+
         - A3R1 (float): A3 value of reference peak 1 (deg)
-        
+
         - A3R2 (float): A3 value of reference peak 2 (deg)
-        
+
         - Ei (float): Incoming energy used (meV)
-        
+
         - Ef (float): Outgoing energy used (meV)
-        
+
     """
-    
+
     if np.isclose(A3R1,A3R2):
         raise AttributeError('A3 positions of the two peaks are identical.')
-    
+
     if np.all(np.isclose(HKL1,HKL2)):
         raise AttributeError('Provided HKL positions are identical.')
-    
+
     B = TasUBlib.calculateBMatrix(TasUBlib.calcCell(cell))
-    
+
     A4R1 = TasUBlib.calTwoTheta(B, [*HKL1,Ei,Ef], -1)
     A4R2 = TasUBlib.calTwoTheta(B, [*HKL2,Ei,Ef], -1)
-    
+
     r1 = np.array([*HKL1,A3R1, A4R1, 0.0,0.0, Ei,Ei]) # H K L A3 A4 SGU SGL Ei Ef
     r2 = np.array([*HKL2,A3R2, A4R2, 0.0,0.0, Ei,Ei]) # H K L A3 A4 SGU SGL Ei Ef
-    
+
     return Sample(*cell,projectionVector1=r1,projectionVector2=r2)
 
 

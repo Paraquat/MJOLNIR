@@ -6,7 +6,7 @@ Created on Mon Mar 12 16:43:47 2018
 """
 import numpy as np
 def parseXML(filename):
-		
+
 	from MJOLNIR.Geometry import Detector,Analyser,Wedge,Instrument
 	import xml.etree.ElementTree as ET
 	import numpy as np
@@ -15,31 +15,31 @@ def parseXML(filename):
 	instr_root = tree.getroot()
 
 	instrSettings = {}
-		
+
 	for attrib in instr_root.keys():
 		instrSettings[attrib]=instr_root.attrib[attrib]
 
 	Instr = Instrument.Instrument(**instrSettings)
 
 	for wedge in list(instr_root):#.getchildren():
-		
+
 		if wedge.tag in dir(Wedge):
 			Wedgeclass_ = getattr(Wedge, wedge.tag)
 		else:
 			raise ValueError(f"Element is supposed to be a Wedge, but got '{wedge.tag}'.")
 		wedgeSettings = {}
-		
+
 		for attrib in wedge.keys():
 			if attrib=='concept':
 				wedgeSettings[attrib]=np.array(wedge.attrib[attrib].strip().split(','),dtype=str)
-			else:		
+			else:
 				wedgeSettings[attrib]=np.array(wedge.attrib[attrib].strip().split(','),dtype=float)
-			
+
 		temp_wedge = Wedgeclass_(**wedgeSettings)
 		#print(temp_wedge)
-		
-		
-		
+
+
+
 		for item in list(wedge):#.getchildren():
 			if item.tag in dir(Detector):
 				class_ = getattr(Detector, item.tag)
@@ -47,7 +47,7 @@ def parseXML(filename):
 				class_ = getattr(Analyser,item.tag)
 			else:
 				raise ValueError(f"Item '{item.tag}' not recognized as MJOLNIR detector or analyser.")
-			
+
 			itemSettings = {}
 			for attrib in item.keys():
 				attribVal = item.get(attrib).strip().split(',')
@@ -58,7 +58,7 @@ def parseXML(filename):
 						#print(type(attribVal))
 						itemSettings[attrib]=attribVal
 					else:
-						itemSettings[attrib]=np.array(attribVal,dtype=float)	
+						itemSettings[attrib]=np.array(attribVal,dtype=float)
 			try:
 				temp_item = class_(**itemSettings)
 			except TypeError as e:
@@ -80,7 +80,7 @@ def createXMLString(instrument):
 	for attrib in instrument.settings:
 		XMLString+=f"{attrib}='{instrument.settings[attrib]}' "
 	XMLString+='>\n'
-		
+
 	for wedge in instrument.wedges:
 		XMLString+="\t<Wedge "
 		for attrib in wedge.settings:
@@ -98,9 +98,9 @@ def createXMLString(instrument):
 					valueStr = str(value)
 				XMLString+=f" {str(key)[1:]}='{valueStr}'"
 			XMLString+=f"></{itemClass}>\n"
-			
-		
+
+
 		XMLString+="\t</Wedge>\n"
 	XMLString+="</Instrument>\n"
 	return XMLString
-		
+

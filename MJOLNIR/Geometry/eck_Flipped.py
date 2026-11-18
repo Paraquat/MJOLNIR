@@ -22,7 +22,7 @@ from MJOLNIR.Geometry import reso
 #--------------------------------------------------------------------------
 # scattering triangle
 # see: https://code.ill.fr/scientific-software/takin/mag-core/blob/master/tools/tascalc/tascalc.py
-# 
+#
 
 ksq2E = 2.072124836832
 
@@ -67,7 +67,7 @@ def get_mono_angle(k, d):
 def rotation_matrix_3d_z(angle):
     s = np.sin(angle)
     c = np.cos(angle)
-    
+
 
     return np.array([
         [c, -s, 0],
@@ -91,8 +91,8 @@ def focal_len(lenBefore, lenAfter):
 
 
 #
-# optimal mono/ana curvature, 
-# see e.g. 
+# optimal mono/ana curvature,
+# see e.g.
 # 	- (Shirane 2002) p. 66
 # 	- or nicos/nicos-core.git/tree/nicos/devices/tas/mono.py in nicos
 #  - or Monochromator_curved.comp in McStas
@@ -202,7 +202,7 @@ def get_mono_vals(src_w, src_h, mono_w, mono_h,
 	    ( 1./src_w**2. + (1./(mono_w*np.abs(np.sin(thetam))))**2. + \
 		    (inv_mono_curvh/(mono_mosaic * np.abs(np.sin(thetam))))**2. )
 
-    # Cv scalar: formula 40 in [eck14] 
+    # Cv scalar: formula 40 in [eck14]
     Cv = 0.5*reso.sig2fwhm**2. * pos_z**2. * \
         ( 1./src_h**2. + 1./mono_h**2. + (inv_mono_curvv/mono_mosaic_v)**2. )
 
@@ -216,7 +216,7 @@ def get_mono_vals(src_w, src_h, mono_w, mono_h,
 
     # [eck14], equ. 54
     therefl = refl * np.sqrt(np.pi / Av[1,1]) # typo in paper?
-    
+
     return [ A, B, C, D, therefl ]
 
 
@@ -239,7 +239,7 @@ def calc_eck(param):
 
     if 'flipped' not in param:
         param['flipped'] = True
-    
+
     flipped = param['flipped']
 
 
@@ -252,11 +252,11 @@ def calc_eck(param):
 
     if param["mono_is_optimally_curved_h"]:
         mono_curvh = foc_curv(param["dist_src_mono"], param["dist_mono_sample"], np.abs(2.*thetam), False)
-    if param["mono_is_optimally_curved_v"]: 
+    if param["mono_is_optimally_curved_v"]:
         mono_curvv = foc_curv(param["dist_src_mono"], param["dist_mono_sample"], np.abs(2.*thetam), True)
-    if param["ana_is_optimally_curved_h"]: 
+    if param["ana_is_optimally_curved_h"]:
         ana_curvh = foc_curv(param["dist_sample_ana"], param["dist_ana_det"], np.abs(2.*thetaa), False)
-    if param["ana_is_optimally_curved_v"]: 
+    if param["ana_is_optimally_curved_v"]:
         ana_curvv = foc_curv(param["dist_sample_ana"], param["dist_ana_det"], np.abs(2.*thetaa), True)
 
     inv_mono_curvh = 0.
@@ -266,11 +266,11 @@ def calc_eck(param):
 
     if param["mono_is_curved_h"]:
         inv_mono_curvh = 1./mono_curvh
-    if param["mono_is_curved_v"]: 
+    if param["mono_is_curved_v"]:
         inv_mono_curvv = 1./mono_curvv
-    if param["ana_is_curved_h"]: 
+    if param["ana_is_curved_h"]:
         inv_ana_curvh = 1./ana_curvh
-    if param["ana_is_curved_v"]: 
+    if param["ana_is_curved_v"]:
         inv_ana_curvv = 1./ana_curvv
     # --------------------------------------------------------------------
 
@@ -330,7 +330,7 @@ def calc_eck(param):
     #--------------------------------------------------------------------------
     # ana part
     # equ 43 in [eck14]
-    
+
     ## UPDATED -> Flipped done 19/04/2021
     #
     # y -> z
@@ -357,12 +357,12 @@ def calc_eck(param):
         #--------------------------------------------------------------------------
 
         flipper = np.array([[1, 0, 0],[0, 0, -1],[0, 1, 0]])
-        
+
         E = np.dot(flipper,np.dot(E,np.transpose(flipper)))
         F = np.dot(flipper,np.dot(F,np.transpose(flipper)))
     else:
         [E, F, G, H, dReflA] = get_mono_vals(
-            param["det_w"], param["det_h"], 
+            param["det_w"], param["det_h"],
             param["ana_w"], param["ana_h"],
             param["dist_ana_det"], param["dist_sample_ana"],
             kf, -thetaa,
@@ -381,7 +381,7 @@ def calc_eck(param):
     kperp *= param["sample_sense"]
 
 
-    ## UPDATED -> Flipped Not needed 
+    ## UPDATED -> Flipped Not needed
     #
     # trafo, equ 52 in [eck14]
     T = np.identity(6)
@@ -503,7 +503,7 @@ if __name__ == "__main__":
         "thetaa" : get_mono_angle(kf, d_ana),
         "angle_ki_Q" : get_angle_ki_Q(ki, kf, Q),
         "angle_kf_Q" : get_angle_kf_Q(ki, kf, Q),
-    
+
         # scattering senses
         "mono_sense" : sc_senses[0],
         "sample_sense" : sc_senses[1],
@@ -580,8 +580,8 @@ if __name__ == "__main__":
         exit(-1)
 
     if verbose:
-        print("2theta = %g, thetam = %g, thetaa = %g, ki_Q = %g, kf_Q = %g\n" % 
-            (params["twotheta"]*rad2deg, params["thetam"]*rad2deg, params["thetaa"]*rad2deg, 
+        print("2theta = %g, thetam = %g, thetaa = %g, ki_Q = %g, kf_Q = %g\n" %
+            (params["twotheta"]*rad2deg, params["thetam"]*rad2deg, params["thetaa"]*rad2deg,
             params["angle_ki_Q"]*rad2deg, params["angle_kf_Q"]*rad2deg))
         print("R0 = %g, Vol = %g" % (res["r0"], res["res_vol"]))
         print("Resolution matrix:\n%s" % res["reso"])

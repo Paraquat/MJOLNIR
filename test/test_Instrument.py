@@ -24,7 +24,7 @@ def test_Instrument_init():
 
     Det = Detector.Detector(position=(1.0,1,0),direction=(1,0,0))
     Ana = Analyser.Analyser(position=(0.5,0,0),direction=(1,0,1))
-    
+
     wedge = Wedge.Wedge(detectors=[Det,Det],analysers=Ana)
 
     Instr.wedges=[wedge,wedge]
@@ -34,7 +34,7 @@ def test_Instrument_init():
 
 
 def test_Instrument_error():
-    
+
     try:
         Instr = Instrument(fileName='wrongDummyFile.bin')
         assert False
@@ -62,7 +62,7 @@ def test_Instrument_error():
         assert False
     except AttributeError:
         assert True
-    
+
     try:
         Instr.append(["List of",3.0,"wrong objects"])
         assert False
@@ -121,7 +121,7 @@ def test_Instrument_plot():
 
     Instr.plot(ax)
 
-def test_Instrument_Setting(): 
+def test_Instrument_Setting():
     Instr = Instrument()
     Instr.settings['SettingVersion']=1.0
     assert(Instr.settings['SettingVersion']==1.0)
@@ -135,7 +135,7 @@ def test_Instrument_Initialization():
     split = [12]
     Det = Detector.TubeDetector1D(position=(1.0,1,0),direction=(1,0,0),pixels=pixels,split=split)
     Ana = Analyser.FlatAnalyser(position=(0.5,0,0),direction=(1,0,1))
-    
+
 
     wedge.append([Det,Det,Ana,Ana,Ana])
 
@@ -205,7 +205,7 @@ def test_Instrument_saveload():
     Instr.save(tempFile)
     Instr2.load(tempFile)
     os.remove(tempFile)
-    
+
 
     assert(Instr==Instr2)
 
@@ -214,7 +214,7 @@ def test_Instrument_saveload():
 def test_parseXML(): # Improve this test!
 
     tempFileName = '__temp__.xml'
-        
+
     Instr = Instrument()
     Instr.settings['Author'] = 'Jakob Lass'
 
@@ -227,11 +227,11 @@ def test_parseXML(): # Improve this test!
     Instr.append([wedge,wedge])
     Instr.append(wedge)
     Instr.saveXML(tempFileName)
-        
+
     InstrLoaded = Instrument(fileName=tempFileName)
     os.remove(tempFileName)
 
-    assert(Instr==InstrLoaded) 
+    assert(Instr==InstrLoaded)
 
 
 def test_XML_errors():
@@ -298,7 +298,7 @@ def test_instrument_string_dummy(): # Todo: Improve test!
     string = str(Instr)
     del string
     assert True
-    
+
 def test_instrument_create_xml():
 
     Instr = Instrument()
@@ -342,7 +342,7 @@ def test_generate_calibration(quick, tmp_path):
 def test_Prediction():
     A3Start = 0.0
     A3Stop = 100
-    A3Steps = 101 
+    A3Steps = 101
     Ei = 5.0
     A4 = [-36,-40]
     points = False
@@ -353,7 +353,7 @@ def test_Prediction():
     A3R2 = 115.0
     #r1 = np.array([1,0,0,25.0,-24,0.0,0.0,Ei,Ei])
     #r2 = np.array([0,0,1,115.0,-24,0.0,0.0,Ei,Ei])
-    
+
     cell = np.array([6.0,6.0,6.0,90.0,90.0,90.0])
 
     sample = Sample.calculateSample(cell,HKL1,HKL2,A3R1=A3R1,A3R2=A3R2, Ei=Ei,Ef=Ei)
@@ -368,5 +368,5 @@ def test_Prediction():
 
     ax = prediction(A3Start=A3Start,A3Stop=A3Stop,A3Steps=A3Steps,A4Positions=A4,Ei=Ei,sample=sample,
     points=points, instrument='Bambus')
-    
+
 

@@ -17,11 +17,11 @@ class Detector(GeometryConcept.GeometryObject):
             - Position (3vector): Position of object (default [0,0,0])
 
             - Direction (3vector): Direction along which the object points (default [0,0,1])
-            
+
         raises:
 
             - NotImplementedError
-            
+
         """
         super().__init__(position,direction)
 
@@ -36,7 +36,7 @@ class Detector(GeometryConcept.GeometryObject):
     @type.setter
     def type(self,type):
         self._type = type
-        
+
     def plot(self,ax,offset=(0.0,0.0,0.0)):
         """
         Args:
@@ -82,9 +82,9 @@ class TubeDetector1D(Detector):
             split (list int): Edge pixels for slitting the tube into areas lid by analysers (default [0,57,57*2,57*3,57*4,57*5,57*6,57*7,57*8])
 
         Raises:
-            
+
             - AttributeError
-        
+
 
         """
 
@@ -108,7 +108,7 @@ class TubeDetector1D(Detector):
     def pixels(self,pixels):
         if(pixels<1):
             raise AttributeError('The number of pixels need to be greater than 0.')
-        self._pixels = int(pixels)   
+        self._pixels = int(pixels)
 
     @property
     def length(self):
@@ -168,13 +168,13 @@ class TubeDetector1D(Detector):
             - offset (3vector): Offset of detector due to bank position (default [0,0,0])
 
             - n (int): Number of points on the surface to be plotted (default 100)
-        
+
         >>> Detector = TubeDetector1D(position=(0.0,1.0,0.0),direction=(1.0,0,0))
         >>> Detector.plot(ax,offset=(0.0,0.0,0.0),n=100)
         Plots detector tube in provided axis object.
 
         """
-        
+
         pos = self.position.copy()
         pos+=np.array(offset,dtype=float)
 
@@ -235,4 +235,3 @@ class TubeDetector1D(Detector):
         pixelPositions = np.dot(scale,direction)+self.position
 
         return np.split(pixelPositions,self.split)[1:-1]
-    

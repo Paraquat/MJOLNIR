@@ -66,7 +66,7 @@ def extractDataFiles(args,settingsName,oneFile = False):# pragma: no cover
                 startingDir = startingPath
         else:
             startingDir = None
-        
+
         if 'reuse' in args:
             reuse = args.reuse
         else:
@@ -106,26 +106,26 @@ class App(QWidget):
         self.title = 'MJOLNIR Command Line - Load Files'
         self.startingPath = startingPath
         self.initUI()
-    
+
     def initUI(self):
         self.hide()
         self.setWindowTitle(self.title)
         self.openFileNamesDialog()
-        
-        
+
+
         Qt.QCoreApplication.quit()
-    
+
     def openFileNamesDialog(self):
         #options = QFileDialog.Options()
         #options |= QFileDialog.DontUseNativeDialog
         #print(self,"MJOLNIR Command Line - Load Files", allowedString,self.startingPath)
         files, _ = QFileDialog.getOpenFileNames(self,"MJOLNIR Command Line - Load Files", self.startingPath,allowedString)
-        global dataFilesLoaded 
+        global dataFilesLoaded
         dataFilesLoaded = files
         self.close()
-    
 
-    
+
+
 def loadFiles(startingPath=None):
     app = QApplication(sys.argv)
     ex = App(startingPath=startingPath)

@@ -36,7 +36,7 @@ def calculateBase(l,span,ticks):
     ytickorder = np.ceil(np.log10(span/ticks))
     minimalMultiplesy = np.argmin(np.abs(np.power(10,-ytickorder)*span/ticks-l.multiples))
     return l.multiples[minimalMultiplesy]*np.power(10,ytickorder)
-    
+
 
 
 def updateAxisDecorator(ax,direction='both'):
@@ -142,17 +142,17 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
     ylim = axis.get_ylim()
     xlimDiff = np.diff(xlim)
     ylimDiff = np.diff(ylim)
-    
+
     if direction == 'both':
         direction = ['x','y']
         difference = [xlimDiff,ylimDiff]
         locators = [axis._grid_helper.grid_finder.grid_locator1,axis._grid_helper.grid_finder.grid_locator2]
     else:
         if direction == 'x':
-            difference = [xlimDiff]  
+            difference = [xlimDiff]
             locators = [axis._grid_helper.grid_finder.grid_locator1]
         else:
-            difference = [ylimDiff]  
+            difference = [ylimDiff]
             locators = [axis._grid_helper.grid_finder.grid_locator2]
         direction = [direction]
     for d,diff,locator in zip(direction,difference,locators):
@@ -169,10 +169,10 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
                     span = np.max(Qs[:,1])-np.min(Qs[:,1])
                 if not hasattr(axis,f'{d}ticks'):
                     setattr(axis,f'{d}ticks',7)
-                
+
                 ticks = getattr(axis,f'{d}ticks')
                 setattr(axis,f'_old{d.capitalize()}limDiff',diff)
-            
+
 
             if not hasattr(axis,f'{d}base'):
                 base = calculateBase(locator,span,ticks)
@@ -180,7 +180,7 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
                 base = getattr(axis,f'{d}base')
 
             locator.set_params(base=base)
-        
+
         elif isinstance(locator,MaxNLocator):
             if hasattr(axis,f'{d}ticks'):
                 ticks = getattr(axis,f'{d}ticks')
@@ -188,8 +188,8 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
                 ticks = 7
             locator.set_params(nbins = ticks)
         else:
-            return 
-    
+            return
+
     # force an update
     axis.forceGridUpdate()
 
@@ -295,7 +295,7 @@ def create_q_axis(sample, rlu: bool = True, figure=None, ids=(1, 1, 1), basex=No
         ax.set_xlabel('Qx [1/AA]')
         ax.set_ylabel('Qy [1/AA]')
 
-    if ax.rlu: # 
+    if ax.rlu: #
         ax.calculateTicks = lambda value:calculateTicks(value,ax.sample.projectionAngle)
         ax.forceGridUpdate = lambda:forceGridUpdate(ax)
         ax._oldXlimDiff = np.diff(ax.get_xlim())
@@ -307,7 +307,7 @@ def create_q_axis(sample, rlu: bool = True, figure=None, ids=(1, 1, 1), basex=No
         ax.callbacks.connect('ylim_changed', axisChanged)
         ax.get_figure().canvas.mpl_connect('draw_event',lambda event: axisChanged(event,axis=ax,forceUpdate=True))
         ax.axisChanged = lambda direction='both': axisChanged(None,ax,forceUpdate=True,direction=direction)
-    
+
         @updateAxisDecorator(ax=ax,direction='x')
         def set_xticks_base(xBase,ax=ax):
             """Setter of the base x ticks to be used for plotting
@@ -454,7 +454,7 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
 
 
     grid_locator1 = MultipleLocator(base=1.0) # Standard X ticks is multiple locator
-    grid_helper = GridHelperCurveLinear((lambda x,y:inv_tr(projectionVectorLength,x,y), 
+    grid_helper = GridHelperCurveLinear((lambda x,y:inv_tr(projectionVectorLength,x,y),
                                     lambda x,y:tr(projectionVectorLength,x,y)),grid_locator1=grid_locator1)
 
     if rlu:
@@ -463,10 +463,10 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
         labels = ['qx','qy']
 
     ax = SubplotHost(figure, *figure_position, grid_helper=grid_helper)
-    
+
     ax.inv_tr = lambda x,y:inv_tr(projectionVectorLength,x,y)
     ax.tr = lambda x,y:tr(projectionVectorLength,x,y)
-    
+
     ax.sample = sample
 
     figure.add_subplot(ax)
@@ -488,7 +488,7 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
 
     ax.set_ylabel('E [meV]')
     ax._length = projectionVectorLengthORthogonal
-    ax._projectionVector = projectionVector 
+    ax._projectionVector = projectionVector
     ax._projectionVectorOrthogonal = projectionVectorOrthogonal
     ax.plotDirection = projectionVector
     ax._step = 0.0

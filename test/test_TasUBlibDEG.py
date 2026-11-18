@@ -2,8 +2,8 @@ from MJOLNIR.TasUBlibDEG import calcTasUBFromTwoReflections, calcTasQH, calculat
 import numpy as np
 
 def test_TasUBDeg(): # Test that the two libraries are equivalent in calculating the UB matrices
-                
-    
+
+
     r1 = [ 1.0000000e+00,  0.0000000e+00,  0.0000000e+00,  8.4377825e-06,
        -4.4549999e+01, -1.4062500e-05,  3.3378601e-06,  5.0000076e+00,
         4.9678469e+00]
@@ -21,9 +21,9 @@ def test_TasUBDeg(): # Test that the two libraries are equivalent in calculating
     UBFile = np.array([[ 1.7459887e-01,  2.4665387e-02,  2.1624945e-08],
        [-7.2323568e-02, -1.8736884e-01, -5.1334577e-09],
        [ 4.7066340e-08,  1.6969278e-08, -8.8105723e-02]])
-    
+
     test = np.all(np.isclose(UB,2*np.pi*UBFile,atol=1e-6))
-    
+
     print(cellDeg)
     print('--------------')
     print(UB)
@@ -45,7 +45,7 @@ def test_TasUBDeg(): # Test that the two libraries are equivalent in calculating
     qm =  1.325155
 
     QH = calcTasQH(UBInv,angles,Ei,Ef)
-        
+
     assert(np.all(np.isclose([QH[0]],[qh,qk,ql],atol=1e-4)))
 
 def test_TasUBDeg_CreateUB():
@@ -56,17 +56,17 @@ def test_TasUBDeg_CreateUB():
 
     cell = [6.11,   6.11,  11.35, 1.187430040454027, 1.1874300210500532, 0.5535845899562842, 90.  ,  90.  , 120., 90., 90., 120.]
     B = calculateBMatrix(cell)
-    OM = 360-22.500 # Offset known 
+    OM = 360-22.500 # Offset known
     sgu = 0.0
     sgl = 0.0
     UB = calcUBFromAngles(B,OM,sgu,sgl)
-    
+
     assert(np.all(np.isclose(UBFile,UB,atol=4)))
 
 def test_TasUBDEG_CalculateAngles(): # TODO: Redo these calculations as one needs to do the trick with a3 to calculate anything correctly...
     cell = [6.11,   6.11,  11.35, 1.187430040454027, 1.1874300210500532, 0.5535845899562842, 90.  ,  90.  , 120., 90., 90., 60.]
     B = calculateBMatrix(cell)
-    OM = 0.00 # Offset known 
+    OM = 0.00 # Offset known
     sgu = 0.0
     sgl = 0.0
     UB = calcUBFromAngles(B,OM,sgu,sgl)
@@ -75,7 +75,7 @@ def test_TasUBDEG_CalculateAngles(): # TODO: Redo these calculations as one need
     qe = np.array([1.0,0.0,0.0,5.0,5])
     ss = 1 # Scattering sense
     A3Off = 0.0
-    
+
     UBINV = np.linalg.inv(UB)
     QE = np.array([[1.0,0.0,0.0,5.0,5],
                    [0.0,0.5,0.0,8.0,9.2],
@@ -89,7 +89,7 @@ def test_TasUBDEG_CalculateAngles(): # TODO: Redo these calculations as one need
         print(f'{hkl}')
         assert(np.all(np.isclose([sgu,sgl],0.0))) # Sgu and sgl are 0 by definition
         assert(np.all(np.isclose(hkl,qe[:3])))
-    
+
 
 def test_TasUBDeg_calculateCell():
     cellParams = np.array([5.103,5.103,13.755,90.0,90.0,120.0])

@@ -38,7 +38,7 @@ class GeometryConcept:
 
     @position.setter
     def position(self,position):
-        
+
         position  = np.array(position,dtype=float)
         if position.ndim !=1 or len(position)!=3:
             raise AttributeError(f'Position is to be a 3 vector, got {position}.')
@@ -63,7 +63,7 @@ class GeometryConcept:
         """
         raise NotImplementedError
 
-    def __eq__(self, other): 
+    def __eq__(self, other):
         return np.logical_and(set(self.__dict__.keys()) == set(other.__dict__.keys()),self.__class__ == other.__class__)
 
     def save(self, filename):
@@ -73,7 +73,7 @@ class GeometryConcept:
             print(f"Error in opening file:\n{e}")
         else:
                 pickle.dump(self, fileObject, -1)
-                fileObject.close()  
+                fileObject.close()
 
     def load(self,filename):
         """Method to load an object from a pickled file."""
@@ -83,20 +83,20 @@ class GeometryConcept:
             print(f"Error in opening file:\n{e}")
         else:
             tmp_dict = pickle.load(fileObject)
-            
+
             fileObject.close()
             # TODO: Make checks that the object loaded is of correct format?
             self=tmp_dict
-        
 
-    
+
+
 
 
 
 class GeometryObject(GeometryConcept):
     """Physical geometry object on which other physical MJOLNIR components are build. All of the components needed to create an instrument should
     inherit from this class in order enforce a uniform interface."""
-    
+
     @_tools.KwargChecker()
     def __init__(self, position=(0.0,0.0,0.0), direction=(0,0,1)):
         """
@@ -107,7 +107,7 @@ class GeometryObject(GeometryConcept):
             - Direction (3vector): Direction along which the object points (default [0,0,1])
 
         Raises:
-            
+
             - AttributeError
 
         >>> GenericObject = GeometryObject(position=(0.0,1.0,0.0),direction=(1.0,0,0))
@@ -116,7 +116,7 @@ class GeometryObject(GeometryConcept):
         """
         super().__init__(position)
         self.direction = direction
-    
+
 
 
     @property
@@ -134,7 +134,7 @@ class GeometryObject(GeometryConcept):
             raise AttributeError('Direction is to be a 3 vector')
         if np.abs(np.linalg.norm(direction))<1e-10:
             raise AttributeError('Length of direction is not allowed to be zero')
-        
+
         direction/=np.linalg.norm(direction)
         self._direction = direction
 

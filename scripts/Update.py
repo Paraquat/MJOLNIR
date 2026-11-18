@@ -17,7 +17,7 @@ version = sys.argv[1]
 # 		if l.find("    version='")!=-1:
 # 			l ="    version='"+version+"',\n"
 # 		writeLines+=l
-			
+
 # with open('setup.py','w') as f:
 # 	f.write(writeLines)
 
@@ -32,7 +32,7 @@ with open('docs/conf.py') as f:
 		elif l.find("release = u'")!=-1:
 			l = "release = u'"+version+"'\n"
 		writeLines+=l
-			
+
 with open('docs/conf.py','w') as f:
 	f.write(writeLines)
 
@@ -47,7 +47,7 @@ with open('MJOLNIR/__init__.py') as f:
 			idx = l.find('__version__ = ')
 			l = l[:idx] + "__version__ = '"+version+"'\n"
 		writeLines+=l
-        
+
 with open('MJOLNIR/__init__.py','w') as f:
 	f.write(writeLines)
 

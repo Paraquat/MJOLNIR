@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # resolution ellipsoid calculations
-# 
+#
 # @author Tobias Weber <tweber@ill.fr>
 # @date mar-2019
 # @license GPLv2
@@ -170,13 +170,13 @@ def calc_ellipses(Qres_Q, verbose=True):
 
 
 	results = {
-		"fwhms_QxE" : fwhms_QxE, "rot_QxE" : rot_QxE, 
+		"fwhms_QxE" : fwhms_QxE, "rot_QxE" : rot_QxE,
 		"fwhms_QyE" : fwhms_QyE, "rot_QyE" : rot_QyE,
-		"fwhms_QzE" : fwhms_QzE, "rot_QzE" : rot_QzE, 
+		"fwhms_QzE" : fwhms_QzE, "rot_QzE" : rot_QzE,
 		"fwhms_QxQy" : fwhms_QxQy,  "rot_QxQy" : rot_QxQy,
-		"fwhms_QxE_proj" : fwhms_QxE_proj,  "rot_QxE_proj" : rot_QxE_proj, 
+		"fwhms_QxE_proj" : fwhms_QxE_proj,  "rot_QxE_proj" : rot_QxE_proj,
 		"fwhms_QyE_proj" : fwhms_QyE_proj, "rot_QyE_proj" : rot_QyE_proj,
-		"fwhms_QzE_proj" : fwhms_QzE_proj, "rot_QzE_proj" : rot_QzE_proj, 
+		"fwhms_QzE_proj" : fwhms_QzE_proj, "rot_QzE_proj" : rot_QzE_proj,
 		"fwhms_QxQy_proj" : fwhms_QxQy_proj, "rot_QxQy_proj" : rot_QxQy_proj,
 	}
 

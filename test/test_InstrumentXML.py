@@ -5,7 +5,7 @@ def test_parseXML(): # Improve this test!
 	from MJOLNIR.Geometry import Wedge,Analyser,Detector,Instrument
 	import os
 	tempFileName = '__temp__'
-		
+
 	Instr = Instrument.Instrument()
 	Instr.settings['Author'] = 'Jakob Lass'
 
@@ -17,16 +17,16 @@ def test_parseXML(): # Improve this test!
 	wedge.append([Det,Ana])
 	Instr.append([wedge,wedge])
 	Instr.append(wedge)
-		
+
 	f = open(tempFileName,'w')
 
 	f.write(createXMLString(Instr))
 	f.close()
-		
-		
+
+
 	InstrLoaded = parseXML(tempFileName)
 	os.remove(tempFileName)
-		
+
 	assert(Instr==InstrLoaded)
 
 
@@ -61,7 +61,7 @@ def test_parseWrongXML():
 +"		<TubeDetector1D position='0.01151899615488017,1.1999447123628586,0.71' direction='0.01151899615488017,1.1999447123628586,0.0' pixels='1024' length='1' diameter='0.02' split='0,189, 298, 404, 510, 618, 726, 837,1024'></TubeDetector1D>\n"\
 +"	</Wedge>\n"\
 +"</Instrument>")
-	
+
 	try:
 		InstrLoaded = parseXML(tempFileName)
 	except ValueError: # Wrong Analyser type
@@ -79,7 +79,7 @@ def test_parseWrongXML():
 +"		<TubeDetector1D split='0,189, 298, 404, 510, 618, 726, 837,1024'></TubeDetector1D>\n"\
 +"	</Wedge>\n"\
 +"</Instrument>")
-	
+
 	try:
 		InstrLoaded = parseXML(tempFileName)
 	except ValueError: # No position in flat analyser
