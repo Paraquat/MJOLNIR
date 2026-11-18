@@ -1,17 +1,13 @@
 from MJOLNIR.Data.Sample import Sample
-from pathlib import Path
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR import _tools
 import numpy as np
 import MJOLNIR.TasUBlibDEG as TasUBlib
 from MJOLNIR.Data.DataReader import DataReader
-import pytest
 
 # The old tests read camea2018 files that are not available (question 37 of the refactoring
 # log): tests that work with any file read the 2024 sample file, the others build their
 # sample from a cell and two reflections
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
 def hhl_sample():
     """Cubic sample (a = 5 Å) in the (H,H,0)-(0,0,L) plane, as camea2018n000178.hdf"""
@@ -60,9 +56,8 @@ def test_sample_exceptions():
     except:
         assert True
 
-@needs_data
-def test_Sample_conversions():
-    sample = CameaDataReader(SAMPLE_DATA[0]).sample
+def test_Sample_conversions(camea_2024_files):
+    sample = CameaDataReader(camea_2024_files[0]).sample
 
     # Check that tr and inv_tr results in the same
     p0,p1 = 2.25,-1.23
@@ -114,9 +109,8 @@ def test_calculateProjections(): # TODO: Update test
     #string = s1.format_coord(point[0],point[1])
     #assert(string=='h = 3.500, k = 7.200, l = 0.000')
 
-@needs_data
-def test_DataFile_Sample_UB():
-    df = CameaDataReader(SAMPLE_DATA[0])
+def test_DataFile_Sample_UB(camea_2024_files):
+    df = CameaDataReader(camea_2024_files[0])
     s = df.sample
     b1,b2,b3 = [np.linalg.norm(x) for x in [s.reciprocalVectorA,s.reciprocalVectorB,s.reciprocalVectorC]]
     a1,a2,a3 = [np.linalg.norm(x) for x in [s.realVectorA,s.realVectorB,s.realVectorC]]
@@ -134,9 +128,8 @@ def test_DataFile_Sample_UB():
     assert(np.all(comparison))
 
 
-@needs_data
-def test_DataFile_Sample_Projection():
-    df = CameaDataReader(SAMPLE_DATA[0]) # In A-B plane
+def test_DataFile_Sample_Projection(camea_2024_files):
+    df = CameaDataReader(camea_2024_files[0]) # In A-B plane
     assert(np.all(np.isclose(df.sample.projectionVector1,np.array([1.0,0.0,0.0]))))
     assert(np.all(np.isclose(df.sample.projectionVector2,np.array([0.0,1.0,0.0]))))
 

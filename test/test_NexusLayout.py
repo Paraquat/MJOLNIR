@@ -3,15 +3,12 @@ import pytest
 import h5py
 from types import SimpleNamespace
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.NexusLayout import (Field, Group, NexusLayout, CameaLayout, FlatconeLayout,
                                       MarmotLayout)
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.NexusDataReader import NexusDataReader
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-ILL_DATA = Path.home() / 'projects' / 'marmot+flatcone'
 
 def test_field_format_keeps_unknown_placeholders():
     field = Field('{entry}/{instrument}/calib{binning}/width', aliases=('{entry}/w',))
@@ -112,20 +109,21 @@ def check_against_file(layout, f, binnings=()):
             assert dataset.dtype == np.dtype(field.dtype), key
     return found
 
-@pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
-@pytest.mark.parametrize('data_file', SAMPLE_DATA[:2], ids=lambda p: p.name)
-def test_camea_matches_files(data_file):
+@pytest.mark.parametrize('index', [0, 1])
+def test_camea_matches_files(camea_2024_files, index):
+    if index >= len(camea_2024_files):
+        pytest.skip(f'needs {index + 1} camea2024*.hdf files')
+    data_file = camea_2024_files[index]
     with h5py.File(data_file) as f:
         assert check_against_file(CameaLayout, f, binnings=(1, 3, 5, 8)) > 60
         assert f[CameaLayout.path('counts')].ndim == 3
 
-@pytest.mark.skipif(not ILL_DATA.exists(), reason='marmot+flatcone data not available')
-@pytest.mark.parametrize('layout, file_name, n_fields', [(FlatconeLayout, '043555_pastis.nxs', 21),
-                                                         (MarmotLayout, '054724.nxs', 20)],
+@pytest.mark.parametrize('layout, data, n_fields', [(FlatconeLayout, 'flatcone_file', 21),
+                                                    (MarmotLayout, 'marmot_file', 20)],
                          ids=['Flatcone', 'Marmot'])
-def test_ill_matches_files(layout, file_name, n_fields):
+def test_ill_matches_files(request, layout, data, n_fields):
     """Every field but the magnetic and electric fields, which these files do not record"""
-    with h5py.File(ILL_DATA / file_name) as f:
+    with h5py.File(request.getfixturevalue(data)) as f:
         assert check_against_file(layout, f) == n_fields
 
 def test_ill_layouts_share_base():
@@ -138,9 +136,8 @@ def test_ill_layouts_share_base():
         FlatconeLayout.field('instrumentMode') # Marmot only
     assert FlatconeLayout.calibration_group_for(1) is None # Calibration from a CSV table
 
-@pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
-def test_camea_reader_uses_layout():
-    data_file = SAMPLE_DATA[0]
+def test_camea_reader_uses_layout(camea_2024_files):
+    data_file = camea_2024_files[0]
     assert CameaDataReader.can_read(data_file)
     reader = CameaDataReader(data_file)
     assert reader.layout is CameaLayout

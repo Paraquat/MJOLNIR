@@ -1,11 +1,9 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.MarmotDataReader import MarmotDataReader
 
-data_file = Path.home() / 'projects' / 'marmot+flatcone' / '054724.nxs'
 
 @pytest.fixture(scope="module")
 def calibration_file(tmp_path_factory):
@@ -19,8 +17,8 @@ def calibration_file(tmp_path_factory):
     return path
 
 @pytest.fixture(scope="module") # Read the file: common across all test functions here
-def datareader(calibration_file):
-    return MarmotDataReader(data_file, calibration_file=calibration_file)
+def datareader(marmot_file, calibration_file):
+    return MarmotDataReader(marmot_file, calibration_file=calibration_file)
 
 def test_read(datareader):
     marmot_file = datareader
@@ -49,8 +47,8 @@ def test_read(datareader):
     # Read, not applied: A4Offset stays 0
     assert metadata['A4OffsetStored'] == pytest.approx(-179.8, abs=1e-4)
 
-def test_no_calibration():
-    marmot_file = MarmotDataReader(data_file)
+def test_no_calibration(marmot_file):
+    marmot_file = MarmotDataReader(marmot_file)
     with pytest.raises(AttributeError):
         marmot_file.set_instrument_calibration()
 

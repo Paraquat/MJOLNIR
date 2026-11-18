@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data import Mask
 from MJOLNIR.Data.Mask import calculateCurratAxeMask
@@ -9,15 +8,12 @@ from MJOLNIR.Data.BambusDataReader import BAMBUSDataReader
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-data_path = Path(__file__).parent.parent / 'sampledata'
-files = sorted(data_path.glob('camea2024*.hdf'))
-bambus_file = Path.home() / 'projects' / 'CoRhO4' / 'corh2o4_test.dat'
 
 bragg = [[1, 0, 0], [0, 1, 0]]
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2]) # Default binning 8
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2]) # Default binning 8
 
 # Masked points in camea2024n001486 at binning 8, identical to the old
 # DataFile.calculateCurratAxeMask when it was moved here
@@ -53,7 +49,7 @@ def test_mask_object_on_dataset(dataset):
     assert np.array_equal(result[0], calculateCurratAxeMask(dataset[0], bragg, dqx=0.05, dqy=0.08))
     assert result[0].sum() == 4410
 
-def test_other_instrument():
+def test_other_instrument(bambus_file):
     # Not specific to CAMEA: any reader with an Ei, calibrated Ef and sample works
     reader = BAMBUSDataReader(bambus_file)
     reader.set_instrument_calibration()

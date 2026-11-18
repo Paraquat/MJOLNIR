@@ -1,14 +1,12 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.FlatconeDataReader import FlatconeDataReader
 
 @pytest.fixture(scope="module") # Read the file: common across all test functions here
-def datareader():
-    data_file = Path.home() / 'projects' / 'marmot+flatcone' / '043555_pastis.nxs'
-    return FlatconeDataReader(data_file)
+def datareader(flatcone_file):
+    return FlatconeDataReader(flatcone_file)
 
 def test_read(datareader):
     flatcone_file = datareader

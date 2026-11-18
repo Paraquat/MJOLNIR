@@ -3,18 +3,13 @@ import pytest
 import h5py
 import shutil
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-camea_file = Path(__file__).parent.parent / 'sampledata' / 'camea2024n001486.hdf'
-bambus_file = Path.home() / 'projects' / 'CoRhO4' / 'corh2o4_test.dat'
-flatcone_file = Path.home() / 'projects' / 'marmot+flatcone' / '043555_pastis.nxs'
-marmot_file = Path.home() / 'projects' / 'marmot+flatcone' / '054724.nxs'
 
 @pytest.fixture(scope="module")
-def multiflexx_file(tmp_path_factory):
+def multiflexx_file(bambus_file, tmp_path_factory):
     # No MultiFLEXX NICOS file is available: build one from the BAMBUS header, with the
     # MultiFLEXX channels ch0, ..., ch154
     lines = bambus_file.read_text().splitlines()
@@ -36,8 +31,8 @@ def readers():
 def accepted_by(readers, path):
     return [name for name, reader in readers.items() if reader.can_read(path)]
 
-def test_each_file_has_one_reader(readers, multiflexx_file):
-    expected = {camea_file: InstrumentName.CAMEA,
+def test_each_file_has_one_reader(camea_2024_files, bambus_file, flatcone_file, marmot_file, readers, multiflexx_file):
+    expected = {camea_2024_files[0]: InstrumentName.CAMEA,
                 bambus_file: InstrumentName.BAMBUS,
                 multiflexx_file: InstrumentName.MULTIFLEXX,
                 flatcone_file: InstrumentName.FLATCONE,
@@ -56,7 +51,7 @@ def test_unreadable_files(readers, tmp_path):
     for path in [empty, text, hdf, tmp_path / 'missing.hdf']:
         assert accepted_by(readers, path) == [], path.name
 
-def test_thales_without_marmot(readers, tmp_path):
+def test_thales_without_marmot(marmot_file, readers, tmp_path):
     path = tmp_path / 'thales.nxs'
     shutil.copy(marmot_file, path)
     with h5py.File(path, 'r+') as f:
@@ -64,14 +59,17 @@ def test_thales_without_marmot(readers, tmp_path):
         f['entry0/instrument_mode'] = np.array([b'normal'])
     assert accepted_by(readers, path) == []
 
-@pytest.mark.parametrize('name, path', [
-    (InstrumentName.CAMEA, bambus_file),
-    (InstrumentName.BAMBUS, camea_file),
-    (InstrumentName.MULTIFLEXX, bambus_file),
-    (InstrumentName.FLATCONE, marmot_file),
-    (InstrumentName.MARMOT, flatcone_file),
+@pytest.mark.parametrize('name, data', [ # Data: the fixture with a file of another instrument
+    (InstrumentName.CAMEA, 'bambus_file'),
+    (InstrumentName.BAMBUS, 'camea_2024_files'),
+    (InstrumentName.MULTIFLEXX, 'bambus_file'),
+    (InstrumentName.FLATCONE, 'marmot_file'),
+    (InstrumentName.MARMOT, 'flatcone_file'),
 ])
-def test_wrong_file_raises(readers, name, path):
+def test_wrong_file_raises(request, readers, name, data):
+    path = request.getfixturevalue(data)
+    if isinstance(path, list):
+        path = path[0]
     with pytest.raises(ValueError, match='is not a .* data file'):
         readers[name](path)
 
@@ -79,7 +77,7 @@ def without_data(source, path, counts):
     """A copy of a Nexus file whose counts are replaced"""
     shutil.copy(source, path)
     reader = DataReaderFactory().get_reader_type(
-        InstrumentName.CAMEA if source == camea_file else InstrumentName.FLATCONE)
+        InstrumentName.CAMEA if source.suffix == '.hdf' else InstrumentName.FLATCONE)
     with h5py.File(path, 'a') as f:
         key = next(p for p in reader.layout.field('counts').paths if p in f)
         del f[key]
@@ -88,19 +86,17 @@ def without_data(source, path, counts):
 
 @pytest.mark.parametrize('counts', [np.zeros((0, 104, 1024), dtype='uint32'), np.array(0)],
                          ids=['no steps', 'scalar'])
-def test_camea_without_data(tmp_path, counts):
-    path = without_data(camea_file, tmp_path / 'empty.hdf', counts)
+def test_camea_without_data(camea_2024_files, tmp_path, counts):
+    path = without_data(camea_2024_files[0], tmp_path / 'empty.hdf', counts)
     with pytest.raises(ValueError, match=r'"empty.hdf" has no data \(0 scan steps\)'):
         DataReaderFactory().create(InstrumentName.CAMEA, path)
 
-@pytest.mark.skipif(not flatcone_file.exists(), reason=f'{flatcone_file} not available')
-def test_flatcone_without_data(tmp_path):
+def test_flatcone_without_data(flatcone_file, tmp_path):
     path = without_data(flatcone_file, tmp_path / 'empty.nxs', np.zeros((31, 0)))
     with pytest.raises(ValueError, match='has no data'):
         DataReaderFactory().create(InstrumentName.FLATCONE, path)
 
-@pytest.mark.skipif(not bambus_file.exists(), reason=f'{bambus_file} not available')
-def test_nicos_without_data(tmp_path):
+def test_nicos_without_data(bambus_file, tmp_path):
     # The header and column titles of a scan, but no rows
     lines = bambus_file.read_text().splitlines()
     end = next(i for i, line in enumerate(lines) if '### Scan data' in line) + 3

@@ -2,7 +2,6 @@ import pytest
 
 import copy
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR import TasUBlibDEG as TasUBlib
 from MJOLNIR.Data.ArrayType import ArrayType
@@ -11,8 +10,6 @@ from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 from MJOLNIR.Data.Mask import circleMask
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 
 def orientation(sample):
     """U of UB = U B"""
@@ -25,13 +22,12 @@ def new_cell(sample):
     return cell
 
 @pytest.fixture
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
-@needs_data
-def test_sample_update_twice():
+def test_sample_update_twice(camea_2024_files):
     """The old Sample.updateSampleParameters kept the old B: a second update took U from it"""
-    sample = CameaDataReader(files[0]).sample
+    sample = CameaDataReader(camea_2024_files[0]).sample
     U = orientation(sample)
     cell = new_cell(sample)
     once = copy.deepcopy(sample)
@@ -41,9 +37,8 @@ def test_sample_update_twice():
     assert np.allclose(orientation(sample), U, atol=1e-14)
     assert np.allclose(sample.UB, once.UB, atol=1e-14)
 
-@needs_data
-def test_reader():
-    reader = CameaDataReader(files[0])
+def test_reader(camea_2024_files):
+    reader = CameaDataReader(camea_2024_files[0])
     reader.set_instrument_calibration(8)
     reader.transform()
     qx, U = reader.qx.copy(), orientation(reader.sample)
@@ -59,21 +54,20 @@ def test_reader():
     with pytest.raises(ValueError, match='a, b, c, alpha, beta, gamma'):
         reader.update_sample_parameters(cell[:3])
 
-@needs_data
-def test_dataset_kept_for_later_files(dataset):
+def test_dataset_kept_for_later_files(camea_2024_files, dataset):
     original = dataset.sample.unitCell.copy()
     cell = new_cell(dataset.sample)
     dataset.update_sample_parameters(cell)
-    dataset.append(files[2]) # The old check refused it: its cell is the file's
+    dataset.append(camea_2024_files[2]) # The old check refused it: its cell is the file's
     assert all(np.allclose(sample.unitCell, cell) for sample in dataset.samples)
     assert np.allclose(dataset[2].h, dataset[2].sample.calculateQxQyToHKL(dataset[2].qx,
                                                                           dataset[2].qy)[0])
     subset = dataset[0:2]
-    subset.append(files[3])
+    subset.append(camea_2024_files[3])
     assert np.allclose(subset[2].sample.unitCell, cell)
     dataset.set_binning(3) # The cell stays: it is on the samples
     assert all(np.allclose(sample.unitCell, cell) for sample in dataset.samples)
-    other = CameaDataReader(files[4])
+    other = CameaDataReader(camea_2024_files[4])
     other.sample.updateSampleParameters(original*[1.1, 1, 1, 1, 1, 1])
     with pytest.raises(ValueError, match='neither'):
         dataset.append(other)
@@ -82,16 +76,14 @@ def test_dataset_kept_for_later_files(dataset):
     dataset.update_sample_parameters(original) # Back to the files' cell
     assert all(np.allclose(sample.unitCell, original) for sample in dataset.samples)
 
-@needs_data
-def test_updated_while_empty():
+def test_updated_while_empty(camea_2024_files):
     dataset = DataSet(InstrumentName.CAMEA)
-    cell = new_cell(CameaDataReader(files[0]).sample)
+    cell = new_cell(CameaDataReader(camea_2024_files[0]).sample)
     dataset.update_sample_parameters(cell)
-    dataset.extend(files[:2])
+    dataset.extend(camea_2024_files[:2])
     assert all(np.allclose(sample.unitCell, cell) for sample in dataset.samples)
 
-@needs_data
-def test_masks_and_background_follow(dataset):
+def test_masks_and_background_follow(camea_2024_files, dataset):
     mask = circleMask(center=[-1.0, 0.0], radius=0.2, coordinates=[ArrayType.H, ArrayType.K])
     dataset.mask = mask
     dataset.generate_background_model()
@@ -100,7 +92,7 @@ def test_masks_and_background_follow(dataset):
     dataset.update_sample_parameters(cell)
     assert not all(np.array_equal(reader.user_mask, before)
                    for reader, before in zip(dataset, masked)) # The mask moved
-    expected = DataSet(InstrumentName.CAMEA, files=files[:2])
+    expected = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     expected.update_sample_parameters(cell)
     expected.mask = mask
     expected.generate_background_model()

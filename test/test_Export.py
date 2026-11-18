@@ -1,22 +1,19 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.Export import to_ufit
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
 ufit = pytest.importorskip('ufit')
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-pytestmark = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 HKL1, HKL2 = [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
-def test_along_q(dataset):
+def test_along_q(camea_2024_files, dataset):
     result = dataset.cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8)
     data = dataset.generate_ufit_dataset(result)
     assert np.allclose(data.y, result.data['Int'], equal_nan=True)
@@ -27,7 +24,7 @@ def test_along_q(dataset):
     assert np.allclose(hkl[0] + np.outer(data.x, [1, 1, 0]), hkl, atol=1e-6)
     assert data.xcol == 'H-1.03\nK-0.03\n0\n-0.1\n[RLU,meV]' # As the old generateUFitDataset
     assert data.meta['instrument'] == 'CAMEA'
-    assert data.meta['datafilename'] == ', '.join(f.name for f in files[:2])
+    assert data.meta['datafilename'] == ', '.join(f.name for f in camea_2024_files[:2])
 
 def test_along_q_without_rlu(dataset):
     q1, q2 = dataset.convert_to_qxqy([HKL1, HKL2])

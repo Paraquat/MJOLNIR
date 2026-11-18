@@ -2,7 +2,6 @@ import pytest
 
 import warnings
 import numpy as np
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -11,8 +10,6 @@ from MJOLNIR.Data import RLUAxes
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.Coordinates import align_to_lattice
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 
 @pytest.fixture(autouse=True)
 def close_figures():
@@ -20,12 +17,11 @@ def close_figures():
     plt.close('all')
 
 @pytest.fixture(scope='module')
-def sample():
+def sample(camea_2024_files):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        return CameaDataReader(files[0]).sample
+        return CameaDataReader(camea_2024_files[0]).sample
 
-@needs_data
 def test_q_axis(sample):
     ax = RLUAxes.create_q_axis(sample)
     assert (ax.get_xlabel(), ax.get_ylabel()) == ('1, 0, 0 [RLU]', '0, 1, 0 [RLU]')
@@ -48,7 +44,6 @@ def test_q_axis_without_lattice():
     assert ax.get_xlabel() == 'Qx [1/AA]' and ax.format_coord(0.3, 0.2) == 'qx = 0.300, qy = 0.200'
     assert ax.get_subplotspec().colspan.start == 1 # ids are used (the old code put it at 111)
 
-@needs_data
 def test_qe_axes(sample):
     ax = RLUAxes.create_qe_axes(sample, axis=1)
     assert ax.get_xlabel() == '-0.000, 1.000, 0.000 [RLU]' and ax.get_ylabel() == 'E [meV]'

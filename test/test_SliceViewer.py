@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 from types import SimpleNamespace
 import matplotlib
 matplotlib.use('Agg')
@@ -12,12 +11,10 @@ from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 from MJOLNIR.Data.SliceViewer import SliceViewer
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-pytestmark = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 @pytest.fixture(scope="module")
 def binned(dataset):

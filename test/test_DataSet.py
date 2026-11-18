@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data import Mask
 from MJOLNIR.Data.DataSet import DataSet, ArrayType
@@ -9,21 +8,19 @@ from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.DataReader import DataReader
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-data_path = Path(__file__).parent.parent / 'sampledata'
-files = sorted(data_path.glob('camea2024*.hdf'))
 
 @pytest.fixture(scope="module") # Read the files: common across all test functions here
-def readers():
-    return [CameaDataReader(f) for f in files]
+def readers(camea_2024_files):
+    return [CameaDataReader(f) for f in camea_2024_files]
 
 def names(dataset):
     return [reader.file.name for reader in dataset]
 
 
-def test_dataset():
+def test_dataset(camea_2024_files):
     dataset = DataSet(InstrumentName.CAMEA)
     dataset.set_binning(3)
-    dataset.add_files(files)
+    dataset.add_files(camea_2024_files)
     assert dataset.number_of_files() == 8
     first_reader = dataset._readers[0]
     second_reader = dataset._readers[1]
@@ -49,8 +46,8 @@ def test_dataset():
     assert h_view[134, 0, 0] == pytest.approx(ref_h_1)
     assert h_view[135, 0, 0] == pytest.approx(ref_h_2)
 
-def test_create_from_paths():
-    dataset = DataSet(files=files[:3], instrument=InstrumentName.CAMEA)
+def test_create_from_paths(camea_2024_files):
+    dataset = DataSet(files=camea_2024_files[:3], instrument=InstrumentName.CAMEA)
     assert len(dataset) == 3
     assert all(isinstance(reader, CameaDataReader) for reader in dataset)
     assert names(dataset) == \
@@ -65,9 +62,9 @@ def test_create_from_readers(readers):
     assert len(dataset) == 8
     assert dataset[0] is readers[0]
 
-def test_path_needs_instrument():
+def test_path_needs_instrument(camea_2024_files):
     with pytest.raises(ValueError):
-        DataSet(files=files[0])
+        DataSet(files=camea_2024_files[0])
     with pytest.raises(TypeError):
         DataSet(files=[42])
 
@@ -87,24 +84,24 @@ def test_nested_iteration(readers):
     pairs = [(a.file.name, b.file.name) for a in dataset for b in dataset]
     assert len(pairs) == 9
 
-def test_append_extend_delete(readers):
+def test_append_extend_delete(camea_2024_files, readers):
     dataset = DataSet(files=readers[:2], instrument=InstrumentName.CAMEA)
     dataset.append(readers[2])
-    dataset.append(files[3]) # Paths are read with the data set's instrument
+    dataset.append(camea_2024_files[3]) # Paths are read with the data set's instrument
     dataset.extend(readers[4:6])
     assert len(dataset) == 6
     assert isinstance(dataset[3], CameaDataReader)
     del dataset[0]
     del dataset[-1]
-    assert names(dataset) == [f.name for f in files[1:5]]
+    assert names(dataset) == [f.name for f in camea_2024_files[1:5]]
     del dataset[1:3]
-    assert names(dataset) == [files[1].name, files[4].name]
+    assert names(dataset) == [camea_2024_files[1].name, camea_2024_files[4].name]
     with pytest.raises(IndexError):
         del dataset[2]
 
-def test_sample_must_match(readers):
+def test_sample_must_match(camea_2024_files, readers):
     dataset = DataSet(files=readers[:1])
-    other = CameaDataReader(files[1])
+    other = CameaDataReader(camea_2024_files[1])
     other.sample = DataReader.sample_from_reflections(
         [4.0, 4.0, 4.0, 90, 90, 90], np.array([1, 0, 0]), np.array([0, 1, 0]))
     with pytest.raises(ValueError):
@@ -114,20 +111,20 @@ def test_sample_must_match(readers):
 class OtherReader(CameaDataReader):
     """A different reader type for the same files"""
 
-def test_single_reader_type(readers):
+def test_single_reader_type(camea_2024_files, readers):
     dataset = DataSet(files=readers[:2])
     assert dataset.reader_type is CameaDataReader
     # Instrument is taken from the reader type, so paths can be added
     assert dataset.instrument == InstrumentName.CAMEA
-    dataset.append(files[2])
+    dataset.append(camea_2024_files[2])
     with pytest.raises(TypeError):
-        dataset.append(OtherReader(files[3]))
+        dataset.append(OtherReader(camea_2024_files[3]))
     assert len(dataset) == 3
 
     with pytest.raises(TypeError):
-        DataSet(files=[readers[0], OtherReader(files[1])])
+        DataSet(files=[readers[0], OtherReader(camea_2024_files[1])])
     with pytest.raises(TypeError):
-        DataSet(files=OtherReader(files[0]), instrument=InstrumentName.CAMEA)
+        DataSet(files=OtherReader(camea_2024_files[0]), instrument=InstrumentName.CAMEA)
     with pytest.raises(TypeError):
         DataSet(files=readers[0], instrument=InstrumentName.BAMBUS)
 
@@ -135,19 +132,19 @@ def test_single_reader_type(readers):
     assert empty.reader_type is CameaDataReader
     assert dataset[5:].reader_type is CameaDataReader
 
-    other = DataSet(files=[OtherReader(f) for f in files[:2]])
+    other = DataSet(files=[OtherReader(f) for f in camea_2024_files[:2]])
     assert other.reader_type is OtherReader
     assert other.instrument is None # Not registered with the factory
     with pytest.raises(ValueError):
-        other.append(files[2])
+        other.append(camea_2024_files[2])
 
-def test_sorting(readers):
+def test_sorting(camea_2024_files, readers):
     dataset = DataSet(files=readers)
     order = dataset.arg_auto_sort()
     # Same order as the old DataSet.argAutoSort for these files
     assert list(order) == [1, 0, 5, 4, 2, 3, 6, 7]
     dataset.auto_sort()
-    assert names(dataset) == [files[i].name for i in order]
+    assert names(dataset) == [camea_2024_files[i].name for i in order]
     Ei = [np.round(reader.Ei[0], 1) for reader in dataset]
     assert Ei == sorted(Ei)
 
@@ -194,15 +191,15 @@ def test_view_calibration(readers):
     assert Ef[6656,] == pytest.approx(readers[1].calibration.Ef[0])
     assert dataset.get_view(ArrayType.BOUND_CAL).shape == (13312, 2)
 
-def test_set_binning():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+def test_set_binning(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     assert [reader.binning for reader in dataset] == [8, 8] # Default CAMEA binning
     assert dataset.get_view(ArrayType.QX).shape == (270, 104, 64)
     dataset.set_binning(3)
     # Data files are transformed again, so derived arrays follow the binning
     assert dataset.get_view(ArrayType.QX).shape == (270, 104, 24)
     assert dataset.get_view(ArrayType.INTENSITY).shape == (270, 104, 24)
-    dataset.append(CameaDataReader(files[2])) # Added files get the binning of the DataSet
+    dataset.append(CameaDataReader(camea_2024_files[2])) # Added files get the binning of the DataSet
     assert dataset[2].binning == 3
 
 def test_view_empty():
@@ -212,10 +209,10 @@ def test_view_empty():
 # Masking: each test makes its own DataSet, so masks do not leak into the shared readers
 
 @pytest.fixture
-def masked_dataset():
+def masked_dataset(camea_2024_files):
     # These tests are about the user's mask, so the instrument's default mask is switched off
     # (it is tested in test_DefaultMask.py)
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     dataset.use_default_mask = False
     return dataset
 
@@ -246,13 +243,13 @@ def test_mask_from_arrays(masked_dataset):
     with pytest.warns(UserWarning, match='every point'):
         masked_dataset.mask = np.ones(shape, dtype=bool)
 
-def test_mask_from_object(masked_dataset):
+def test_mask_from_object(camea_2024_files, masked_dataset):
     mask = circle * low_energy
     arrays = mask(masked_dataset)
     masked_dataset.mask = mask
     assert all(np.array_equal(m, a) for m, a in zip(masked_dataset.mask, arrays))
     assert sum(m.sum() for m in arrays) > 0
-    masked_dataset.append(files[2]) # Files added later are masked too
+    masked_dataset.append(camea_2024_files[2]) # Files added later are masked too
     assert np.array_equal(masked_dataset.mask[2], mask(masked_dataset[2:])[0])
     assert masked_dataset.mask[2].any()
 
@@ -288,8 +285,8 @@ def test_mask_follows_binning(masked_dataset):
 
 # Gathering the unmasked points across files
 
-def test_gather():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2]) # Binning 8: 28080 points masked per file
+def test_gather(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2]) # Binning 8: 28080 points masked per file
     qx = dataset.gather(ArrayType.QX)
     unmasked = 135 * 104 * 64 - 135 * 104 * 2
     assert len(qx) == 2 * unmasked
@@ -301,8 +298,8 @@ def test_gather():
     assert np.asarray(dataset.gather('intensity')).dtype == dataset[0].intensity.dtype
     assert np.max(dataset.gather(ArrayType.ENERGY)) == max(r.energy[~r.mask].max() for r in dataset)
 
-def test_gather_follows_masks():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:1])
+def test_gather_follows_masks(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     total = dataset[0].intensity.size
     assert len(dataset.gather(ArrayType.QX)) == total - 135 * 104 * 2 # Default mask
     dataset.mask = Mask.lineMask(start=0.0, end=0.5, coordinates='energy')
@@ -311,8 +308,8 @@ def test_gather_follows_masks():
     dataset.remove_masking()
     assert len(dataset.gather(ArrayType.QX)) == total
 
-def test_gather_errors():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:1])
+def test_gather_errors(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     with pytest.raises(ValueError, match='use get_view'): # One value per scan step
         dataset.gather(ArrayType.A3)
     with pytest.raises(ValueError):
@@ -320,14 +317,14 @@ def test_gather_errors():
 
 # Samples and coordinates
 
-def test_samples():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:3])
+def test_samples(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:3])
     assert len(dataset.samples) == 3
     assert all(sample is reader.sample for sample, reader in zip(dataset.samples, dataset))
     assert dataset.sample is dataset.samples[0]
 
-def test_coordinate_conversion():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:1])
+def test_coordinate_conversion(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     hkl = np.array([[-0.5, 1.5, 0.0], [1.0, 0.0, 0.0]])
     qxqy = dataset.convert_to_qxqy(hkl)
     assert qxqy.shape == (2, 2)
@@ -339,9 +336,9 @@ def test_coordinate_conversion():
     with pytest.raises(AttributeError):
         dataset.convert_to_hkl([1, 0, 0])
 
-def test_gather_q():
+def test_gather_q(camea_2024_files):
     from MJOLNIR import _tools
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     qx, qy = dataset.gather(ArrayType.QX), dataset.gather(ArrayType.QY)
     # Same orientation in both files: nothing to rotate
     rotated_qx, rotated_qy = dataset.gather_q()
@@ -356,8 +353,8 @@ def test_gather_q():
     assert np.allclose(rotated_qy.arrays[1], expected[1])
     assert np.allclose(rotated_qx.arrays[0], qx.arrays[0]) # The first file defines the frame
 
-def test_gather_q_aligned_to_lattice():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+def test_gather_q_aligned_to_lattice(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     qx, qy = dataset.gather(ArrayType.QX), dataset.gather(ArrayType.QY)
     aligned_x, aligned_y = dataset.gather_q(align_to_lattice=True)
     # Each file rotated by its own sample's RotMat
@@ -374,12 +371,12 @@ def test_gather_q_aligned_to_lattice():
 
 # Subtraction
 
-def two_sets(count=2):
-    return (DataSet(InstrumentName.CAMEA, files=files[:count]),
-            DataSet(InstrumentName.CAMEA, files=files[:count]))
+def two_sets(camea_2024_files, count=2):
+    return (DataSet(InstrumentName.CAMEA, files=camea_2024_files[:count]),
+            DataSet(InstrumentName.CAMEA, files=camea_2024_files[:count]))
 
-def test_subtraction_of_same_data():
-    first, second = two_sets()
+def test_subtraction_of_same_data(camea_2024_files):
+    first, second = two_sets(camea_2024_files)
     difference = first - second
     assert len(difference) == 2 and difference.frozen
     assert all(np.all(reader.intensity[~reader.mask] == 0) for reader in difference)
@@ -389,14 +386,14 @@ def test_subtraction_of_same_data():
     difference.mask = Mask.lineMask(start=0.0, end=0.5, coordinates='energy')
     assert not first[0].user_mask.any() # Masking the difference leaves the original alone
 
-def test_subtraction_scales_by_monitor():
-    first, second = two_sets(1)
+def test_subtraction_scales_by_monitor(camea_2024_files):
+    first, second = two_sets(camea_2024_files, 1)
     second[0].monitor = second[0].monitor*2 # Same counts for twice the monitor
     difference = first - second
     assert np.allclose(difference[0].intensity, first[0].intensity/2)
 
-def test_subtraction_masks():
-    first, second = two_sets(1)
+def test_subtraction_masks(camea_2024_files):
+    first, second = two_sets(camea_2024_files, 1)
     extra = np.zeros(second[0].intensity.shape, dtype=bool)
     extra[:, 3] = True
     second.mask = extra # Masked in the second set only
@@ -407,13 +404,13 @@ def test_subtraction_masks():
     assert difference[0].mask[0].all()
     assert not first[0].user_mask[:, 3].any() # The first set is unchanged
 
-def test_subtraction_is_frozen():
-    first, second = two_sets()
+def test_subtraction_is_frozen(camea_2024_files):
+    first, second = two_sets(camea_2024_files)
     difference = first - second
     with pytest.raises(ValueError, match='derived data'):
         difference.set_binning(3)
     with pytest.raises(ValueError, match='derived data'):
-        difference.append(files[2])
+        difference.append(camea_2024_files[2])
     with pytest.raises(ValueError, match='derived data'):
         difference[0].transform()
     assert difference[0:1].frozen # Slices too
@@ -422,10 +419,10 @@ def test_subtraction_is_frozen():
     assert first[0].intensity.shape == (135, 104, 24)
     assert difference[0].intensity.shape == (135, 104, 64)
 
-def test_subtraction_mismatch():
-    first, second = two_sets()
+def test_subtraction_mismatch(camea_2024_files):
+    first, second = two_sets(camea_2024_files)
     with pytest.raises(ValueError): # Number of files
-        first - DataSet(InstrumentName.CAMEA, files=files[:1])
+        first - DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     second.set_binning(3)
     with pytest.raises(ValueError): # Binning
         first - second
@@ -434,11 +431,11 @@ def test_subtraction_mismatch():
 
 # Cut and plot methods: gather the points and call Cuts and Plotting
 
-def test_cut_methods():
+def test_cut_methods(camea_2024_files):
     import pandas as pd
     from MJOLNIR.Data import Cuts
     from MJOLNIR.Data.Coordinates import align_to_lattice
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     hkl1, hkl2 = [-1, 0, 0], [0, 1, 0]
     qx, qy = dataset.gather_q()
     gather = lambda arr_type: np.asarray(dataset.gather(arr_type))
@@ -464,10 +461,10 @@ def test_cut_methods():
     pd.testing.assert_frame_equal(dataset.cut_q_plane(energy_min=-0.2, energy_max=0.2).data,
                                   expected.data)
 
-def test_cut_methods_without_rlu():
+def test_cut_methods_without_rlu(camea_2024_files):
     # As the old cuts: in Qx, Qy the files are not rotated into a common frame
     from MJOLNIR import _tools
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     second = dataset.samples[1]
     second.RotMat = _tools.Rot(second.theta + 10)
     q1, q2 = dataset.convert_to_qxqy([[-1, 0, 0], [0, 1, 0]])
@@ -476,11 +473,11 @@ def test_cut_methods_without_rlu():
     assert in_q.data['intensity'].sum() != in_hkl.data['intensity'].sum()
     assert np.allclose(in_q.parameters['q1'], q1)
 
-def test_plot_methods():
+def test_plot_methods(camea_2024_files):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     ax = dataset.plot_cut_qe([-1, 0, 0], [0, 1, 0], width=0.1, min_pixel=0.02, energy_min=-1.0,
                              energy_max=0.8, energy_step=0.1, colorbar=True)
     assert ax.type == 'QE' and len(ax.result) == 82 * 18
@@ -491,8 +488,8 @@ def test_plot_methods():
     assert ax.get_xlabel().endswith('[RLU]')
     plt.close('all')
 
-def test_bin_3d():
-    dataset = DataSet(InstrumentName.CAMEA, files=files[:2])
+def test_bin_3d(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     result = dataset.bin_3d(0.1, 0.1, 0.5)
     assert result.data['BinCount'].sum() == len(dataset.gather(ArrayType.QX))
     unrotated = dataset.bin_3d(0.1, 0.1, 0.5, rlu=False) # Each file's own frame

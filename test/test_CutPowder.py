@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -10,8 +9,6 @@ from MJOLNIR.Data import Cuts, Plotting
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 Q_BINS, ENERGY_BINS = np.arange(0.4, 2.0, 0.05), np.arange(-1, 0.81, 0.1)
 
 @pytest.fixture(autouse=True)
@@ -62,10 +59,9 @@ def test_cut_powder_bins_checked():
             Cuts.cut_powder(**toy_points(), q_bins=q_bins, energy_bins=energy_bins)
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
-@needs_data
 def test_dataset_cut_powder_background_and_errors(dataset):
     plain = dataset.cut_powder(Q_BINS, ENERGY_BINS).data
     dataset.generate_background_model()
@@ -82,7 +78,6 @@ def test_dataset_cut_powder_background_and_errors(dataset):
     difference = (dataset - dataset).cut_powder(Q_BINS, ENERGY_BINS).data
     assert np.allclose(difference['Int_err'], np.sqrt(2)*plain['Int_err'], equal_nan=True)
 
-@needs_data
 def test_plot_cut_powder(dataset, tmp_path):
     result = dataset.cut_powder(Q_BINS, ENERGY_BINS)
     ax = Plotting.plot_cut_powder(result)
@@ -102,7 +97,6 @@ def test_plot_cut_powder(dataset, tmp_path):
     ax.to_csv(tmp_path / 'powder.csv')
     assert len((tmp_path / 'powder.csv').read_text().splitlines()) == 2 + len(result)
 
-@needs_data
 def test_plot_cut_powder_options(dataset):
     ax = dataset.plot_cut_powder(Q_BINS, ENERGY_BINS, log=True, vmin=-8, vmax=-2,
                                  colorbar=False)

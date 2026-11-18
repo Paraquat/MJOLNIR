@@ -35,45 +35,45 @@ def dataset(files) -> DataSet:
         return DataSet(InstrumentName.CAMEA, files=files)
 
 @pytest.fixture(scope='module')
-def camea_2024():
-    return dataset(R.CAMEA_2024[:2])
+def camea_2024(camea_2024_files):
+    return dataset(camea_2024_files[:2])
 
 @pytest.fixture(scope='module')
-def camea_2023():
-    return dataset(R.CAMEA_2023)
+def camea_2023(camea_2023_files):
+    return dataset(camea_2023_files)
 
 # Conversion
 
-def reader_for(case: str, folder: Path):
+def reader_for(case: str, inputs, folder: Path):
+    """The reader of a conversion case; inputs: the value of the case's data fixture"""
     factory = DataReaderFactory()
-    if case.startswith('camea2024'):
-        return factory.create(InstrumentName.CAMEA, R.CAMEA_2024[0])
-    if case == 'camea2023_b8':
-        return factory.create(InstrumentName.CAMEA, R.CAMEA_2023[0])
+    if case.startswith('camea'):
+        return factory.create(InstrumentName.CAMEA, inputs[0])
     if case == 'bambus':
-        return factory.create(InstrumentName.BAMBUS, R.BAMBUS)
+        return factory.create(InstrumentName.BAMBUS, inputs)
     if case == 'multiflexx':
         return factory.create(InstrumentName.MULTIFLEXX,
-                              R.multiflexx_file(folder / 'multiflexx_synthetic'))
+                              R.multiflexx_file(inputs, folder / 'multiflexx_synthetic'))
     if case == 'flatcone':
-        return factory.create(InstrumentName.FLATCONE, R.FLATCONE)
+        return factory.create(InstrumentName.FLATCONE, inputs)
     from MJOLNIR.Data.MarmotDataReader import MarmotDataReader
-    return MarmotDataReader(R.MARMOT, calibration_file=R.marmot_table(folder / 'marmot.table'))
+    return MarmotDataReader(inputs, calibration_file=R.marmot_table(folder / 'marmot.table'))
 
-CONVERSION = {'camea2024_b8': (8, None, R.CAMEA_2024), 'camea2024_b3_a3offset': (3, 1.5, R.CAMEA_2024),
-              'camea2023_b8': (8, None, R.CAMEA_2023), 'bambus': (None, None, R.BAMBUS),
-              'multiflexx': (None, None, R.BAMBUS), 'flatcone': (None, None, R.FLATCONE),
-              'marmot': (None, None, R.MARMOT)}
+# Case: (binning, A3 offset, fixture with the input data)
+CONVERSION = {'camea2024_b8': (8, None, 'camea_2024_files'),
+              'camea2024_b3_a3offset': (3, 1.5, 'camea_2024_files'),
+              'camea2023_b8': (8, None, 'camea_2023_files'), 'bambus': (None, None, 'bambus_file'),
+              'multiflexx': (None, None, 'bambus_file'), 'flatcone': (None, None, 'flatcone_file'),
+              'marmot': (None, None, 'marmot_file')}
 
 @pytest.mark.parametrize('case', CONVERSION)
-def test_conversion(case, tmp_path):
-    binning, offset, inputs = CONVERSION[case]
-    if not (inputs if isinstance(inputs, list) else inputs.exists()):
-        pytest.skip(f'input data not available: {inputs}')
+def test_conversion(request, case, tmp_path):
+    binning, offset, data = CONVERSION[case]
+    inputs = request.getfixturevalue(data) # Skips the case when its data is not available
     reference = R.load('conversion')
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        reader = reader_for(case, tmp_path)
+        reader = reader_for(case, inputs, tmp_path)
         if offset is not None:
             reader.A3Offset = np.array([offset])
         reader.set_instrument_calibration(binning)
@@ -101,7 +101,6 @@ def test_conversion(case, tmp_path):
 
 # Cuts
 
-@R.needs(R.CAMEA_2024)
 @pytest.mark.parametrize('case, options', [('default', {}), ('constant_bins', dict(constant_bins=True)),
                                            ('extend', dict(extend=True))])
 def test_cut_1d(camea_2024, case, options):
@@ -113,20 +112,18 @@ def test_cut_1d(camea_2024, case, options):
     hkl = camea_2024.convert_to_hkl(positions[:, :2])
     assert np.allclose(hkl, reference[f'cut1D/{case}/positions'][:, :3])
 
-@R.needs(R.CAMEA_2024)
 @pytest.mark.parametrize('constant_bins', [False, True])
-def test_cut_constant_q(constant_bins):
+def test_cut_constant_q(camea_2024_files, constant_bins):
     """The old cut1DE with width w (a radius) is cut_constant_q with width 2w"""
     reference = R.load('cuts')
     energy_min, energy_max = reference['cut1DE/energy']
-    result = dataset(R.CAMEA_2024[:1]).cut_constant_q(
+    result = dataset(camea_2024_files[:1]).cut_constant_q(
         reference['cut1DE/hkl'], width=0.1, min_pixel=0.05, energy_min=energy_min,
         energy_max=energy_max, constant_bins=constant_bins)
     R.assert_frame(reference, f'cut1DE/{constant_bins}', result.data,
                    skip=['BinDistance']) # cut_constant_q has none (as cut_1d)
     assert np.array_equal(result.bins['energy'], reference[f'cut1DE/{constant_bins}/energy_bins'])
 
-@R.needs(R.CAMEA_2024)
 def test_cut_qe_line(camea_2024):
     reference = R.load('cuts')
     result = camea_2024.cut_qe_line(QE_LINE, QE_LINE_ENERGY, width=0.1, min_pixel=0.02)
@@ -138,16 +135,14 @@ def test_cut_qe_line(camea_2024):
                              if c not in ['Qx', 'Qy', 'H', 'K', 'L', 'Energy', 'Int', 'intensity',
                                           'BinCount', 'BinDistance']])
 
-@R.needs(R.CAMEA_2024)
 def test_cut_powder(camea_2024):
     R.assert_frame(R.load('cuts'), 'cutPowder', camea_2024.cut_powder(POWDER_Q, POWDER_E).data)
 
-@R.needs(R.CAMEA_2024)
 @pytest.mark.parametrize('detector, analyser', RAW_SELECTIONS)
-def test_cut_raw_1d(detector, analyser):
+def test_cut_raw_1d(camea_2024_files, detector, analyser):
     reference = R.load('cuts')
     case = f'cutRaw1D/{detector}_{analyser}'
-    results = dataset(R.CAMEA_2024).cut_raw_1d(detector, analyser)
+    results = dataset(camea_2024_files).cut_raw_1d(detector, analyser)
     assert list(results[0].parameters['scan_parameters']) == list(reference[f'{case}/parameters'])
     assert list(results[0].parameters['scan_units']) == list(reference[f'{case}/units'])
     for index, result in enumerate(results):
@@ -160,10 +155,9 @@ def test_cut_raw_1d(detector, analyser):
                                   reference[f'{case}/{index}/counts'])
 
 @pytest.fixture(scope='module')
-def camea_2023_difference(camea_2023):
-    return camea_2023 - dataset(R.CAMEA_2023)
+def camea_2023_difference(camea_2023_files, camea_2023):
+    return camea_2023 - dataset(camea_2023_files)
 
-@R.needs(R.CAMEA_2023)
 @pytest.mark.parametrize('case', ['plain', 'difference'])
 def test_cut_qe_and_q_plane(request, camea_2023, case):
     """The milestone script's Q-E cut and Q plane, of the data and of a difference"""
@@ -190,7 +184,6 @@ def test_cut_qe_and_q_plane(request, camea_2023, case):
                           reference[f'plotQPlane/{case}/mesh'], equal_nan=True)
     assert np.array_equal(mesh.get_coordinates(), reference[f'plotQPlane/{case}/coordinates'])
 
-@R.needs(R.CAMEA_2023)
 @pytest.mark.parametrize('rlu', [True, False])
 @pytest.mark.parametrize('steps', BIN3D_STEPS)
 def test_bin_3d(camea_2023, rlu, steps):
@@ -204,11 +197,10 @@ def test_bin_3d(camea_2023, rlu, steps):
 
 # Backgrounds
 
-@R.needs(R.CAMEA_2023)
 @pytest.mark.parametrize('combine', [False, True])
-def test_powder_background(combine):
+def test_powder_background(camea_2023_files, combine):
     reference = R.load('background')
-    data = dataset(R.CAMEA_2023)
+    data = dataset(camea_2023_files)
     signal = Mask.circleMask(center=[0.0, 0.0], radius=0.6, coordinates=['qx', 'qy'])(data)
     model = data.generate_background_model(background_mask=signal, dQ=0.025, dE=0.05,
                                            combine_foreground_mask=combine)
@@ -219,14 +211,13 @@ def test_powder_background(combine):
     for index, reader in enumerate(data):
         R.assert_summary(reference, f'{combine}/points/{index}', reader.background)
 
-@R.needs(R.CAMEA_2023)
-def test_amber_background():
+def test_amber_background(camea_2023_files):
     """The voxels given to AMBER, and AMBER run with the old model's conventions (lower voxel
     edges, its radial bins and parameters): the new model's own fixes are in test_BackgroundModel"""
     pytest.importorskip('torch')
     background = pytest.importorskip('AMBER.background')
     reference = R.load('amber')
-    binned = dataset(R.CAMEA_2023[:int(reference['files'])]).bin_3d(0.03, 0.03, 0.05)
+    binned = dataset(camea_2023_files[:int(reference['files'])]).bin_3d(0.03, 0.03, 0.05)
     with np.errstate(all='ignore'):
         intensity = np.divide(binned.grid('intensity')*binned.grid('BinCount'),
                               binned.grid('Monitor')*binned.grid('Normalization'))
@@ -243,17 +234,15 @@ def test_amber_background():
 
 # Sample and axes
 
-@R.needs(R.CAMEA_2024)
-def test_update_sample_parameters():
+def test_update_sample_parameters(camea_2024_files):
     reference = R.load('sample')
-    data = dataset(R.CAMEA_2024[:2])
+    data = dataset(camea_2024_files[:2])
     data.update_sample_parameters(reference['cell'])
     for index, reader in enumerate(data):
         assert np.allclose(reader.sample.UB, reference[f'{index}/UB'], rtol=0, atol=1e-14)
         for name in ['h', 'k', 'l', 'qx', 'qy']:
             R.assert_summary(reference, f'{index}/{name}', getattr(reader, name))
 
-@R.needs(R.CAMEA_2024)
 def test_axes(camea_2024):
     reference = R.load('axes')
     for rlu in (True, False):
@@ -266,7 +255,6 @@ def test_axes(camea_2024):
 
 # Instrument physics
 
-@R.needs(R.CAMEA_2023)
 def test_find_ei_and_second_order_elastic(camea_2023):
     """Within single precision: the old code kept Ei as float32"""
     reference = R.load('physics')
@@ -278,7 +266,6 @@ def test_find_ei_and_second_order_elastic(camea_2023):
         assert np.allclose(camea_2023.second_order_elastic(reference['second_order/peaks'], atol=atol),
                            reference[f'second_order/{index}'], rtol=1e-6, equal_nan=True), atol
 
-@R.needs(R.CAMEA_2024)
 def test_resolution(camea_2024):
     reference = R.load('physics')
     Ei = float(reference['Ei'])

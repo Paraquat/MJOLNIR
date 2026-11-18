@@ -1,15 +1,12 @@
 import pytest
 
-from pathlib import Path
 
 from MJOLNIR.Data.InstrumentName import InstrumentName
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 
-def test_factory():
-    data_path = Path('/home/zamaan/Projects/bambus')
-    files = data_path.glob("camea2024*.hdf")
-    data_file = sorted(list(files))[0]
+def test_factory(camea_2024_files):
+    data_file = camea_2024_files[0]
 
     factory = DataReaderFactory()
     reader = factory.create(InstrumentName.CAMEA, data_file)

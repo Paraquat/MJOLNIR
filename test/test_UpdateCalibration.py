@@ -12,8 +12,6 @@ from MJOLNIR.Data.InstrumentName import InstrumentName
 
 ROOT = Path(__file__).parent.parent
 CALIBRATION = {binning: ROOT / 'Data' / f'Normalization_{binning}.calib' for binning in (1, 3, 5, 8)}
-SAMPLE_DATA = sorted((ROOT / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
 def with_header(tmp_path, source: Path, header: str, repeat: int = 1) -> Path:
     """A copy of a .calib file with another first line, its rows repeated"""
@@ -35,9 +33,8 @@ def test_read_calibration_file(tmp_path):
     with pytest.raises(ValueError, match='not a calibration file'):
         read_calibration_file(with_header(tmp_path, CALIBRATION[1], 'No binning here'))
 
-@needs_data
-def test_reader_update_calibration(tmp_path):
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_reader_update_calibration(camea_2024_files, tmp_path):
+    reader = CameaDataReader(camea_2024_files[0])
     with pytest.warns(UserWarning, match='overwrite is False'):
         assert reader.update_calibration(CALIBRATION[8]) == [] # The file has binning 8
     assert reader.calibration_updates == {}
@@ -47,20 +44,18 @@ def test_reader_update_calibration(tmp_path):
     assert np.array_equal(reader.calibration.Ef, read_calibration_file(CALIBRATION[8])[1].Ef)
     assert not np.array_equal(reader.get_instrument_calibration(8).Ef, reader.calibration.Ef)
 
-@needs_data
-def test_reader_update_calibration_checks(tmp_path):
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_reader_update_calibration_checks(camea_2024_files, tmp_path):
+    reader = CameaDataReader(camea_2024_files[0])
     wrong_rows = with_header(tmp_path, CALIBRATION[1], 'Normalization for 3 pixel(s)')
     with pytest.raises(ValueError, match='needs 2496'):
         reader.update_calibration(wrong_rows, overwrite=True)
     new_binning = with_header(tmp_path, CALIBRATION[1], 'Normalization for 2 pixel(s)', 2)
     assert reader.update_calibration(new_binning) == [2] # New binnings need no overwrite
     assert reader.possible_binnings == [1, 2, 3, 5, 8]
-    assert CameaDataReader(SAMPLE_DATA[0]).possible_binnings == [1, 3, 5, 8]
+    assert CameaDataReader(camea_2024_files[0]).possible_binnings == [1, 3, 5, 8]
 
-@needs_data
-def test_dataset_update_calibration():
-    ds = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:1])
+def test_dataset_update_calibration(camea_2024_files):
+    ds = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     normalization = ds._readers[0].normalization.copy()
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
@@ -69,28 +64,25 @@ def test_dataset_update_calibration():
     reader = ds._readers[0]
     assert np.array_equal(reader.calibration.amp, new.amp) # Transformed again
     assert not np.array_equal(reader.normalization, normalization)
-    ds.append(SAMPLE_DATA[1]) # Files added later get the same calibration
+    ds.append(camea_2024_files[1]) # Files added later get the same calibration
     assert np.array_equal(ds._readers[1].calibration.amp, new.amp)
     ds.set_binning(3)
     assert np.array_equal(ds._readers[1].calibration.Ef, read_calibration_file(CALIBRATION[3])[1].Ef)
 
-@needs_data
-def test_dataset_update_other_binning_keeps_data():
-    ds = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:1])
+def test_dataset_update_other_binning_keeps_data(camea_2024_files):
+    ds = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     intensity = ds._readers[0].intensity
     assert ds.update_calibration(CALIBRATION[3], overwrite=True) == [3]
     assert ds._readers[0].intensity is intensity # Binning 8 unchanged: not transformed again
 
-@needs_data
-def test_frozen_dataset_cannot_be_recalibrated():
-    ds = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:1])
+def test_frozen_dataset_cannot_be_recalibrated(camea_2024_files):
+    ds = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     difference = ds - ds
     with pytest.raises(ValueError, match='recalibrate'):
         difference.update_calibration(CALIBRATION[8], overwrite=True)
 
-@needs_data
-def test_writer_saves_updated_calibrations(tmp_path):
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_writer_saves_updated_calibrations(camea_2024_files, tmp_path):
+    reader = CameaDataReader(camea_2024_files[0])
     reader.update_calibration([CALIBRATION[3], CALIBRATION[8]], overwrite=True)
     writer = CameaDataWriter(reader)
     assert sorted(writer.calibrations) == [3, 8]

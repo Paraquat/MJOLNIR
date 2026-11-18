@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
@@ -12,10 +11,6 @@ from MJOLNIR.Data.MarmotDataReader import MarmotDataReader
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-camea_files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-bambus_file = Path.home() / 'projects' / 'CoRhO4' / 'corh2o4_test.dat'
-flatcone_file = Path.home() / 'projects' / 'marmot+flatcone' / '043555_pastis.nxs'
-marmot_file = Path.home() / 'projects' / 'marmot+flatcone' / '054724.nxs'
 
 def transformed(reader):
     reader.set_instrument_calibration()
@@ -32,7 +27,7 @@ def marmot_calibration(tmp_path_factory):
     return path
 
 @pytest.fixture(scope="module")
-def multiflexx_file(tmp_path_factory):
+def multiflexx_file(bambus_file, tmp_path_factory):
     # No MultiFLEXX NICOS file is available: the BAMBUS header with channels ch0, ..., ch154
     lines = bambus_file.read_text().splitlines()
     header = lines[:next(i for i, line in enumerate(lines) if '### Scan data' in line) + 1]
@@ -55,14 +50,14 @@ def check_spread(reader, monitor_per_step):
     amplitude = reader.calibration.amp.reshape(1, *shape[1:])
     assert np.array_equal(reader.normalization, np.broadcast_to(amplitude, shape), equal_nan=True)
 
-def test_camea():
+def test_camea(camea_2024_files):
     # Files written by NICOS are normalised by entry/monitor_2/data, as by the old DataFile
-    reader = transformed(CameaDataReader(camea_files[0]))
+    reader = transformed(CameaDataReader(camea_2024_files[0]))
     assert reader.monitor.shape == (135, 104, 64)
     assert reader.monitor[0, 0, 0] == 62500
     check_spread(reader, reader.monitor2)
 
-def test_bambus():
+def test_bambus(bambus_file):
     reader = transformed(BAMBUSDataReader(bambus_file))
     check_spread(reader, reader.monitor1)
 
@@ -72,30 +67,30 @@ def test_multiflexx(multiflexx_file):
     assert np.all(reader.monitor1 == 7)
     check_spread(reader, np.ones(reader.n_steps))
 
-def test_flatcone():
+def test_flatcone(flatcone_file):
     reader = transformed(FlatconeDataReader(flatcone_file))
     assert reader.monitor[0, 0, 0] == 5000000
     check_spread(reader, reader.monitor1)
 
-def test_marmot(marmot_calibration):
+def test_marmot(marmot_file, marmot_calibration):
     reader = transformed(MarmotDataReader(marmot_file, calibration_file=marmot_calibration))
     assert reader.monitor[0, 0, 0] == 143373
     check_spread(reader, reader.monitor1)
 
-def test_follows_binning():
-    reader = transformed(CameaDataReader(camea_files[0]))
+def test_follows_binning(camea_2024_files):
+    reader = transformed(CameaDataReader(camea_2024_files[0]))
     reader.set_instrument_calibration(3)
     reader.transform()
     assert reader.monitor.shape == reader.normalization.shape == (135, 104, 24)
 
-def test_wrong_monitor_length():
-    reader = CameaDataReader(camea_files[0])
+def test_wrong_monitor_length(camea_2024_files):
+    reader = CameaDataReader(camea_2024_files[0])
     reader.set_instrument_calibration()
     reader.monitor2 = reader.monitor2[:-1]
     with pytest.raises(ValueError, match='134 monitor values for 135 scan steps'):
         reader.transform()
 
-def test_views():
-    dataset = DataSet(InstrumentName.CAMEA, files=camea_files[:2])
+def test_views(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     assert dataset.get_view(ArrayType.MONITOR).shape == (270, 104, 64)
     assert dataset.get_view(ArrayType.NORMALIZATION).shape == (270, 104, 64)

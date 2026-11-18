@@ -3,7 +3,6 @@ import pytest
 import dataclasses
 import h5py
 import numpy as np
-from pathlib import Path
 from types import SimpleNamespace
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
@@ -11,8 +10,6 @@ from MJOLNIR.Data.CameaDataWriter import CameaDataWriter
 from MJOLNIR.Data.NexusLayout import Field, Group, NexusLayout
 from MJOLNIR.Data.NexusDataWriter import NexusDataWriter
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
 class ToyLayout(NexusLayout):
     instrument = 'TOY'
@@ -106,9 +103,8 @@ def assert_same(a, b):
     else:
         assert np.array_equal(a, b, equal_nan=True)
 
-@needs_data
-def test_camea_writer_new_calibration(tmp_path):
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_camea_writer_new_calibration(camea_2024_files, tmp_path):
+    reader = CameaDataReader(camea_2024_files[0])
     reader.set_instrument_calibration(3)
     calibration = dataclasses.replace(reader.calibration, Ef=reader.calibration.Ef + 0.5)
     target = CameaDataWriter(reader, {3: calibration}).save(tmp_path / 'recalibrated.hdf')
@@ -120,13 +116,12 @@ def test_camea_writer_new_calibration(tmp_path):
         assert_same(dataclasses.asdict(saved.get_instrument_calibration(binning)),
                     dataclasses.asdict(reader.get_instrument_calibration(binning)))
     assert_same(snapshot(saved), snapshot(reader))
-    with h5py.File(SAMPLE_DATA[0]) as source, h5py.File(target) as f:
+    with h5py.File(camea_2024_files[0]) as source, h5py.File(target) as f:
         assert paths(f) == paths(source) # Nothing dropped or added
         assert f['entry/data/data'] == f['entry/CAMEA/detector/data'] # Hard link kept
 
-@needs_data
-def test_camea_writer_default_and_new_binning(tmp_path):
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_camea_writer_default_and_new_binning(camea_2024_files, tmp_path):
+    reader = CameaDataReader(camea_2024_files[0])
     reader.set_instrument_calibration(1)
     writer = CameaDataWriter(reader) # The reader's current calibration
     assert list(writer.calibrations) == [1]
@@ -141,9 +136,8 @@ def test_camea_writer_default_and_new_binning(tmp_path):
     with h5py.File(saved.file) as f:
         assert f['entry/CAMEA/calib2'].attrs['NX_class'] == b'NXcollection'
 
-@needs_data
-def test_camea_writer_checks_calibration_shape(tmp_path):
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_camea_writer_checks_calibration_shape(camea_2024_files, tmp_path):
+    reader = CameaDataReader(camea_2024_files[0])
     calibration = reader.get_instrument_calibration(1)
     with pytest.raises(ValueError, match='expected'):
         CameaDataWriter(reader, {3: calibration}).save(tmp_path / 'wrong.hdf')

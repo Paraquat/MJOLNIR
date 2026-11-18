@@ -1,15 +1,11 @@
 import pytest
 
-from pathlib import Path
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 
 @pytest.fixture(scope="module") # Read the file: common across all test functions here
-def datareader():
-    data_path = Path('/home/zamaan/Projects/bambus')
-    files = data_path.glob("camea2024*.hdf")
-    data_file = sorted(list(files))[0]
-    return CameaDataReader(data_file)
+def datareader(camea_2024_files):
+    return CameaDataReader(camea_2024_files[0])
 
 def test_read(datareader):
     camea_file = datareader

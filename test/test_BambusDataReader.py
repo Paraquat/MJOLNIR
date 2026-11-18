@@ -1,14 +1,12 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.BambusDataReader import BAMBUSDataReader
 
 @pytest.fixture(scope="module") # Read the file: common across all test functions here
-def datareader():
-    data_file = Path.home() / 'projects' / 'CoRhO4' / 'corh2o4_test.dat'
-    return BAMBUSDataReader(data_file)
+def datareader(bambus_file):
+    return BAMBUSDataReader(bambus_file)
 
 def test_read(datareader):
     bambus_file = datareader

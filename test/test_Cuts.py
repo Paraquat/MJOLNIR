@@ -2,7 +2,6 @@ import pytest
 
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 from MJOLNIR.Data import Cuts
 from MJOLNIR.Data.CutResult import CutResult, COLUMNS
@@ -10,14 +9,13 @@ from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
 
 # Reference values below were checked against the old DataSet.cut1D / cutQE on the same data
 # (identical, except Int_err of cut1D, which the old code truncated to whole counts)
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 @pytest.fixture(scope="module")
 def points(dataset):

@@ -1,19 +1,16 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data import Mask
 from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-data_path = Path(__file__).parent.parent / 'sampledata'
-files = sorted(data_path.glob('camea2024*.hdf'))
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 def test_array_type_is_string():
     assert ArrayType.QX == 'qx'

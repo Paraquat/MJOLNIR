@@ -2,15 +2,12 @@ import pytest
 
 import h5py
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.BambusDataReader import BAMBUSDataReader
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.DataReaderFactory import DataReaderFactory
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-BAMBUS_FILE = Path.home() / 'projects' / 'CoRhO4' / 'corh2o4_test.dat'
 
 @pytest.fixture
 def camea_like(tmp_path):
@@ -55,12 +52,11 @@ def test_shallow_keys():
     assert 'protonBeam' not in BAMBUSDataReader.shallow_keys()
     assert {'A3', 'title', 'startTime', 'temperature'} <= set(BAMBUSDataReader.shallow_keys())
 
-@pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
-def test_shallow_read_matches_camea_reader():
+def test_shallow_read_matches_camea_reader(camea_2024_files):
     keys = ['twoTheta', 'A3', 'A4', 'Ei', *CameaDataReader.metadata_keys()]
-    results = DataReaderFactory().shallow_read(InstrumentName.CAMEA, SAMPLE_DATA[:2], keys)
+    results = DataReaderFactory().shallow_read(InstrumentName.CAMEA, camea_2024_files[:2], keys)
     assert len(results) == 2
-    for data_file, values in zip(SAMPLE_DATA, results):
+    for data_file, values in zip(camea_2024_files, results):
         reader = CameaDataReader(data_file)
         for key in ['A3', 'A4', 'Ei']:
             assert np.array_equal(values[key], getattr(reader, key))
@@ -68,12 +64,11 @@ def test_shallow_read_matches_camea_reader():
         for key in CameaDataReader.metadata_keys():
             assert values[key] == reader._metadata.get(key), key
 
-@pytest.mark.skipif(not BAMBUS_FILE.exists(), reason='CoRhO4 Bambus file not available')
-def test_shallow_read_nicos():
-    values = BAMBUSDataReader.shallow_read(BAMBUS_FILE, ['name', 'twoTheta', 'title',
+def test_shallow_read_nicos(bambus_file):
+    values = BAMBUSDataReader.shallow_read(bambus_file, ['name', 'twoTheta', 'title',
                                                          'monitor1', 'temperature'])
-    reader = BAMBUSDataReader(BAMBUS_FILE)
-    assert values['name'] == BAMBUS_FILE.name
+    reader = BAMBUSDataReader(bambus_file)
+    assert values['name'] == bambus_file.name
     assert np.array_equal(values['twoTheta'], reader.twotheta)
     assert values['title'] == reader._metadata['title']
     assert np.array_equal(values['monitor1'], reader.monitor1)

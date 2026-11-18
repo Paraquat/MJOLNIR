@@ -1,15 +1,12 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR import _tools
 from MJOLNIR.Data.AbsoluteNormalization import absolute_normalization_factor, MAGNETIC_CONSTANT
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 HKL1, HKL2 = [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]
 
 def test_factor():
@@ -47,13 +44,12 @@ def test_factor_needs_a_sample():
         absolute_normalization_factor(2.0, 'TbFeO3', units='atomic')
 
 @pytest.fixture
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 def cut(dataset, **options):
     return dataset.cut_1d(HKL1, HKL2, 0.1, 0.02, -1.0, 0.8, **options).data
 
-@needs_data
 def test_normalize_and_undo(dataset):
     before = cut(dataset)
     normalization = [reader.normalization.copy() for reader in dataset._readers]
@@ -71,14 +67,13 @@ def test_normalize_and_undo(dataset):
     assert all(np.array_equal(reader.normalization, original)
                for reader, original in zip(dataset._readers, normalization))
 
-@needs_data
-def test_kept_through_changes(dataset):
+def test_kept_through_changes(camea_2024_files, dataset):
     factor = dataset.absolute_normalize(2.0, 'TbFeO3')
     normalised = cut(dataset)
     dataset.set_binning(3) # The old reconversion lost the normalisation
     dataset.set_binning(8)
     assert np.allclose(cut(dataset)['Int'], normalised['Int'], equal_nan=True)
-    dataset.append(files[2])
+    dataset.append(camea_2024_files[2])
     assert dataset._readers[-1].normalization_factor == factor
     subset = dataset[0:2]
     assert subset.absolute_normalization == factor
@@ -89,7 +84,6 @@ def test_kept_through_changes(dataset):
     assert all(reader.normalization_factor == 1.0 for reader in difference._readers)
     assert all(reader.normalization_factor == factor for reader in dataset._readers)
 
-@needs_data
 def test_with_background(dataset):
     dataset.generate_background_model()
     before = cut(dataset, background_subtraction=True)

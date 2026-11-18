@@ -8,26 +8,24 @@ summary: shape, number of NaN, sum, sum of squares, minimum, maximum and the val
 SAMPLE_SIZE fixed positions. Cut results are stored whole, one array per column.
 """
 from pathlib import Path
+from types import SimpleNamespace
 import numpy as np
-import pytest
 
 REFERENCE = Path(__file__).parent / 'reference'
 SAMPLE_SIZE = 5000
 
-# Input data (not in the repository yet; question 36 of the refactoring log)
-SAMPLE_DATA = Path(__file__).parent.parent / 'sampledata'
-PROJECTS = Path.home() / 'projects'
-CAMEA_2024 = sorted(SAMPLE_DATA.glob('camea2024*.hdf'))
-CAMEA_2023 = sorted((PROJECTS / 'camea_test').glob('camea2023*.hdf'))
-BAMBUS = PROJECTS / 'CoRhO4' / 'corh2o4_test.dat'
-FLATCONE = PROJECTS / 'marmot+flatcone' / '043555_pastis.nxs'
-MARMOT = PROJECTS / 'marmot+flatcone' / '054724.nxs'
+# Input data (git-ignored; question 36 of the refactoring log). The tests take it from the fixtures
+# of the root conftest.py (directory: --data-dir, $MJOLNIR_TEST_DATA or sampledata); inputs() gives
+# the same files to scripts such as reference/generate.py.
 
-def needs(*paths):
-    """Skip unless every input file exists (a list counts as missing when empty)"""
-    missing = [p for p in paths if (isinstance(p, list) and not p)
-               or (not isinstance(p, list) and not Path(p).exists())]
-    return pytest.mark.skipif(bool(missing), reason=f'input data not available: {missing}')
+def inputs(data_dir: Path) -> SimpleNamespace:
+    """The input files in data_dir, under the names the fixtures of conftest.py use"""
+    data_dir = Path(data_dir)
+    return SimpleNamespace(camea_2024_files=sorted(data_dir.glob('camea2024*.hdf')),
+                           camea_2023_files=sorted(data_dir.glob('camea2023*.hdf')),
+                           bambus_file=data_dir / 'corh2o4_test.dat',
+                           flatcone_file=data_dir / '043555_pastis.nxs',
+                           marmot_file=data_dir / '054724.nxs')
 
 def load(name: str) -> dict:
     """The arrays of reference file name (without extension)"""
@@ -97,10 +95,10 @@ def marmot_table(path: Path) -> Path:
                header='Detector,Energy,Pixel,Amplitude,Center,Width,Background,lowerBin,upperBin,A4Offset')
     return path
 
-def multiflexx_file(path: Path) -> Path:
+def multiflexx_file(bambus_file: Path, path: Path) -> Path:
     """A synthetic MultiFLEXX file (none is available): the Bambus file's header with a 'mira'
     instrument line, 21 steps of sth and 155 channels of random counts (seeded)"""
-    source = BAMBUS.read_text().splitlines()
+    source = bambus_file.read_text().splitlines()
     end = next(i for i, line in enumerate(source) if '### Scan data' in line)
     header = source[:end + 1]
     header.insert(header.index('### Instrument setup') + 1, '#                 mira_alias : mira')

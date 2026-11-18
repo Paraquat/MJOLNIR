@@ -11,11 +11,9 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 import os
-from pathlib import Path
 
 # Any CAMEA file serves for the argument checks of generateCalibration; a real calibration
 # test needs a vanadium scan (question 44 of the refactoring log)
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
 
 def test_Instrument_init():
     Instr = Instrument()
@@ -310,13 +308,12 @@ def test_instrument_create_xml():
     assert(len(Instr2.wedges)==8)
 
 
-@pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
-def test_Normalization_tables(tmp_path):
+def test_Normalization_tables(camea_2024_files, tmp_path):
 
     Instr = Instrument(fileName=os.path.join('Data','CAMEA_Updated.xml'))
     Instr.initialize()
 
-    NF = str(SAMPLE_DATA[0])
+    NF = str(camea_2024_files[0])
 
     with pytest.raises(AttributeError, match='No binning'): # No binning specified
         Instr.generateCalibration(Vanadiumdatafile=NF, savelocation=str(tmp_path) + os.sep,
@@ -328,11 +325,11 @@ def test_Normalization_tables(tmp_path):
 
 
 @pytest.mark.skip(reason='needs the vanadium scan camea2023n000083.hdf (question 44)')
-def test_generate_calibration(quick, tmp_path):
+def test_generate_calibration(data_dir, quick, tmp_path):
     Instr = Instrument(fileName=os.path.join('Data','CAMEA_Updated.xml'))
     Instr.initialize()
 
-    NF = os.path.join('sampledata','camea2023n000083.hdf')
+    NF = str(data_dir / 'camea2023n000083.hdf')
     if not quick==True:
         Instr.generateCalibration(Vanadiumdatafile=NF,  savelocation=str(tmp_path) + os.sep,plot=False,tables=[1,3,8],sampleMass=4.7)
     else:

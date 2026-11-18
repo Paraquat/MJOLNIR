@@ -2,7 +2,6 @@ import pytest
 
 import warnings
 import numpy as np
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -13,8 +12,6 @@ from MJOLNIR.Data.CutResult import COLUMNS
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not files, reason='sampledata/camea2024*.hdf not available')
 HKL1, HKL2 = [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]
 ENERGY_BINS = np.linspace(-0.5, 1.5, 6)
 
@@ -24,10 +21,10 @@ def close_figures():
     plt.close('all')
 
 @pytest.fixture(scope='module')
-def dataset():
+def dataset(camea_2024_files):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        return DataSet(InstrumentName.CAMEA, files=files[:2])
+        return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 def click(ax, x, y):
     """A left click at data position (x, y), through the canvas"""
@@ -81,7 +78,6 @@ def test_bin_text():
     assert Plotting.bin_text(row) == ('Int = 1.2500e-03, Cts = 39, Norm = 1.500, Mon = 1000000, '
                                       'NormCount = 12')
 
-@needs_data
 @pytest.mark.parametrize('plot', PLOTS)
 def test_read_out(dataset, plot):
     clicks = []
@@ -95,14 +91,12 @@ def test_read_out(dataset, plot):
     click(ax, x, y)
     assert len(clicks) == 1
 
-@needs_data
 @pytest.mark.parametrize('plot', ['plot_1d', 'plot_qe', 'plot_powder', 'plot_q_plane'])
 def test_read_out_outside_the_bins(dataset, plot):
     ax, _, _ = PLOTS[plot](dataset, on_click=None)
     assert ax.bin_at(1e3, 1e3) is None
     assert ax.read_out(1e3, 1e3) == ax.format_coord(1e3, 1e3)
 
-@needs_data
 def test_read_out_raw_1d_and_default(dataset, capsys):
     ax = dataset.plot_raw_1d()
     x, y = ax.results[0].data.iloc[0][['A3', COLUMNS['intensity']]]
@@ -110,7 +104,6 @@ def test_read_out_raw_1d_and_default(dataset, capsys):
     click(ax, x, y)
     assert capsys.readouterr().out.strip().startswith('A3 [degree] = ') # Printed by default
 
-@needs_data
 def test_read_out_replaced_on_shared_axes(dataset):
     first, second = [], []
     ax, _, _ = plot_1d(dataset, on_click=first.append)
@@ -118,7 +111,6 @@ def test_read_out_replaced_on_shared_axes(dataset):
     click(ax, x, y)
     assert first == [] and len(second) == 1
 
-@needs_data
 def test_slice_viewer_read_out(dataset):
     clicks = []
     viewer = dataset.view_3d(0.05, 0.05, 0.2, on_click=clicks.append)
@@ -136,7 +128,6 @@ def test_slice_viewer_read_out(dataset):
     assert len(clicks) == 1
     assert viewer.read_out(1e3, 1e3) == viewer._format_coord(1e3, 1e3)
 
-@needs_data
 def test_q_plane_on_created_axes(dataset):
     ax = dataset.create_q_axis()
     assert dataset.plot_q_plane(energy_min=0.0, energy_max=0.5, ax=ax, on_click=None) is ax

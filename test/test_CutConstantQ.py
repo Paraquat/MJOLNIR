@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR import _tools
 from MJOLNIR.Data import Cuts
@@ -9,8 +8,6 @@ from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
 def toy_points(**extra):
     """Points at distances 0, 0.03, 0.049, 0.051 from q = (1, 0), energies 1, 1, 2, 2"""
@@ -83,9 +80,8 @@ def data_point(dataset):
     return (dataset.convert_to_hkl(np.array([qx[i], qy[i]])),
             float(np.percentile(energy, 10)), float(np.percentile(energy, 90)))
 
-@needs_data
-def test_files_aligned_with_rlu():
-    dataset = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:2])
+def test_files_aligned_with_rlu(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     hkl, energy_min, energy_max = data_point(dataset)
     second = dataset.samples[1]
     second.RotMat = _tools.Rot(second.theta + 10) # Another orientation, as in test_gather_q
@@ -105,9 +101,8 @@ def test_files_aligned_with_rlu():
                                        energy_min=energy_min, energy_max=energy_max, rlu=False)
     assert result.data['BinCount'].sum() != unaligned.data['BinCount'].sum()
 
-@needs_data
-def test_difference_errors():
-    dataset = DataSet(InstrumentName.CAMEA, files=SAMPLE_DATA[:1])
+def test_difference_errors(camea_2024_files):
+    dataset = DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
     hkl, energy_min, energy_max = data_point(dataset)
     difference = dataset - dataset # Zero counts, variance 2 * counts
     reader = difference._readers[0]

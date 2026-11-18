@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -11,12 +10,11 @@ from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.DataSet import DataSet
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
 HKL1, HKL2 = np.array([-1.0, 0.0, 0.0]), np.array([0.0, 1.0, 0.0])
 
 @pytest.fixture(scope="module")
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 @pytest.fixture(scope="module")
 def result(dataset):

@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -13,8 +12,6 @@ from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.InstrumentName import InstrumentName
 from MJOLNIR.Data.SliceViewer import SliceViewer
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
 @pytest.fixture(autouse=True)
 def settings_file(tmp_path, monkeypatch):
@@ -34,11 +31,10 @@ def test_instrument_option(module):
 
 ## History
 
-@needs_data
-def test_History_lines(capsys):
-    MJOLNIRHistory.main([str(SAMPLE_DATA[0]), str(SAMPLE_DATA[1])])
+def test_History_lines(camea_2024_files, capsys):
+    MJOLNIRHistory.main([str(camea_2024_files[0]), str(camea_2024_files[1])])
     lines = capsys.readouterr().out
-    for path in SAMPLE_DATA[:2]:
+    for path in camea_2024_files[:2]:
         values = CameaDataReader.shallow_read(path, ['scanCommand', 'title'])
         assert path.name+': '+values['scanCommand']+'\t'+values['title']+'\n' in lines
 
@@ -48,10 +44,9 @@ def test_History_wrong_format(capsys, tmp_path):
     MJOLNIRHistory.main([str(path)])
     assert capsys.readouterr().out == 'notdata.hdf not correct format\n'
 
-@needs_data
-def test_History_save_and_reuse(capsys, tmp_path):
+def test_History_save_and_reuse(camea_2024_files, capsys, tmp_path):
     save = tmp_path / 'history'
-    MJOLNIRHistory.main([str(SAMPLE_DATA[0]), '-s', str(save)])
+    MJOLNIRHistory.main([str(camea_2024_files[0]), '-s', str(save)])
     first = capsys.readouterr().out
     assert (tmp_path / 'history.txt').read_text() == first
 
@@ -62,33 +57,29 @@ def test_History_save_and_reuse(capsys, tmp_path):
 
 ## Calibration inspector
 
-@needs_data
-def test_CalibrationInspector_saves_all_plots(tmp_path):
-    args = MJOLNIRCalibrationInspector.parser.parse_args([str(SAMPLE_DATA[0]), '-s', str(tmp_path / 'plots'), '-b', '1'])
+def test_CalibrationInspector_saves_all_plots(camea_2024_files, tmp_path):
+    args = MJOLNIRCalibrationInspector.parser.parse_args([str(camea_2024_files[0]), '-s', str(tmp_path / 'plots'), '-b', '1'])
     axes = MJOLNIRCalibrationInspector.inspect(args)
     assert list(axes) == ['A4', 'Normalization', 'Ef', 'EfOverview']
     names = sorted(p.name for p in (tmp_path / 'plots').iterdir())
     assert names == ['Final_Energy_Individual_1.png', 'Final_Energy_Overview_1.png',
                      'Instrument_calibration_1.png', 'Normalization_1.png']
 
-@needs_data
-def test_CalibrationInspector_one_plot(tmp_path):
+def test_CalibrationInspector_one_plot(camea_2024_files, tmp_path):
     save = tmp_path / 'ef.png'
-    args = MJOLNIRCalibrationInspector.parser.parse_args([str(SAMPLE_DATA[0]), '-p', 'ef', 'unknown', '-s', str(save)])
+    args = MJOLNIRCalibrationInspector.parser.parse_args([str(camea_2024_files[0]), '-p', 'ef', 'unknown', '-s', str(save)])
     with pytest.warns(UserWarning, match='"unknown" not understood'):
         axes = MJOLNIRCalibrationInspector.inspect(args)
     assert list(axes) == ['Ef']
     assert save.is_file()
 
-@needs_data
-def test_CalibrationInspector_wrong_binning():
-    args = MJOLNIRCalibrationInspector.parser.parse_args([str(SAMPLE_DATA[0]), '-b', '2'])
+def test_CalibrationInspector_wrong_binning(camea_2024_files):
+    args = MJOLNIRCalibrationInspector.parser.parse_args([str(camea_2024_files[0]), '-b', '2'])
     with pytest.raises(ValueError, match='Binning 2 not in the possible binnings'):
         MJOLNIRCalibrationInspector.inspect(args)
 
-@needs_data
-def test_calibration_plots_show_the_calibration():
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_calibration_plots_show_the_calibration(camea_2024_files):
+    reader = CameaDataReader(camea_2024_files[0])
     calibration = reader.get_instrument_calibration(8)
     A4 = calibration.A4.reshape(reader.n_detectors, -1)
     normalization = (calibration.amp * calibration.width * np.sqrt(2 * np.pi)).reshape(reader.n_detectors, -1)
@@ -109,9 +100,8 @@ def test_calibration_plots_show_the_calibration():
 
 ## 3D view
 
-@needs_data
-def test_3DView(settings_file):
-    args = MJOLNIR3DView.parser.parse_args([str(SAMPLE_DATA[0]), '-d', '0.1', '0.1', '0.2', '-m', '0', '-M', '1e-5'])
+def test_3DView(camea_2024_files, settings_file):
+    args = MJOLNIR3DView.parser.parse_args([str(camea_2024_files[0]), '-d', '0.1', '0.1', '0.2', '-m', '0', '-M', '1e-5'])
     dataSet, viewer = MJOLNIR3DView.view(args)
     assert isinstance(viewer, SliceViewer)
     assert viewer._clim == (0.0, 1e-5)
@@ -119,5 +109,5 @@ def test_3DView(settings_file):
 
     args = MJOLNIR3DView.parser.parse_args(['-r', '-b', '1', '-d', '0.1', '0.1', '0.2'])
     dataSet, viewer = MJOLNIR3DView.view(args)
-    assert [reader.file for reader in dataSet] == [SAMPLE_DATA[0]]
+    assert [reader.file for reader in dataSet] == [camea_2024_files[0]]
     assert {reader.binning for reader in dataSet} == {1}

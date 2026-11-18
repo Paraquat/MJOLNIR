@@ -4,7 +4,8 @@ data for test_Reference.py, so the comparisons keep running after the old code i
 The old code was deleted on 2026-11-13: this script no longer runs on the current code. It is
 kept as the record of how the reference data was made. To run it again, check out commit
 15909fd (the last with the old code) and run it there, from the repository root, with the
-input files of test/reference_data.py available:
+input files of test/reference_data.py available (in
+$MJOLNIR_TEST_DATA, else sampledata):
 
     python test/reference/generate.py [name ...]
 
@@ -13,6 +14,7 @@ all). amber needs the AMBER-ds4ms package. Each writes test/reference/<name>.npz
 settings are those of the comparisons made while porting; the values were identical to the
 new code's then, apart from the differences test_Reference.py lists.
 """
+import os
 import sys
 import tempfile
 import warnings
@@ -33,6 +35,7 @@ from MJOLNIR.Data.ArrayType import ArrayType
 from MJOLNIR.Data.InstrumentName import InstrumentName
 from MJOLNIR.Data import Mask
 
+D = R.inputs(os.environ.get('MJOLNIR_TEST_DATA', Path(__file__).parents[2] / 'sampledata'))
 warnings.simplefilter('ignore')
 quiet = lambda *args, **kwargs: None
 
@@ -70,24 +73,24 @@ def conversion():
         entries[f'{case}/scan_parameters'] = np.array(list(old.scanParameters), dtype=str)
         entries[f'{case}/scan_values'] = np.asarray(old.scanValues, dtype=float)
 
-    for case, path, binning, offset in [('camea2024_b8', R.CAMEA_2024[0], 8, None),
-                                        ('camea2024_b3_a3offset', R.CAMEA_2024[0], 3, 1.5),
-                                        ('camea2023_b8', R.CAMEA_2023[0], 8, None)]:
+    for case, path, binning, offset in [('camea2024_b8', D.camea_2024_files[0], 8, None),
+                                        ('camea2024_b3_a3offset', D.camea_2024_files[0], 3, 1.5),
+                                        ('camea2023_b8', D.camea_2023_files[0], 8, None)]:
         old = DataFile(str(path))
         if offset is not None:
             old.A3Off = np.array([offset])
         converted = old.convert(binning, printFunction=quiet)
         store(case, old, converted, converted.I.shape)
-    for case, path, shape in [('bambus', R.BAMBUS, (-1, 20, 5)),
-                              ('flatcone', R.FLATCONE, (-1, 31, 1))]:
+    for case, path, shape in [('bambus', D.bambus_file, (-1, 20, 5)),
+                              ('flatcone', D.flatcone_file, (-1, 31, 1))]:
         old = DataFile(str(path))
         store(case, old, old.convert(1, printFunction=quiet), shape)
     with tempfile.TemporaryDirectory() as folder:
-        old = DataFile(str(R.multiflexx_file(Path(folder) / 'multiflexx_synthetic')))
+        old = DataFile(str(R.multiflexx_file(D.bambus_file, Path(folder) / 'multiflexx_synthetic')))
         store('multiflexx', old, old.convert(1, printFunction=quiet), (-1, 31, 5))
         # The old Marmot loader is only reachable by hand (as test_MarmotDataReader's table)
         old = DataFile.__new__(DataFile)
-        old.fileLocation, old.name, old.type = str(R.MARMOT), R.MARMOT.name, 'Marmot'
+        old.fileLocation, old.name, old.type = str(D.marmot_file), D.marmot_file.name, 'Marmot'
         old._binning, old._mask = 1, False
         DataFileModule.loadMarmot(old, str(R.marmot_table(Path(folder) / 'marmot.table')))
         store('marmot', old, old.convert(1, printFunction=quiet), (-1, 30, 256))
@@ -95,7 +98,7 @@ def conversion():
 
 def cuts():
     entries = {}
-    old = old_dataset(R.CAMEA_2024[:2])
+    old = old_dataset(D.camea_2024_files[:2])
     for case, options in [('default', {}), ('constant_bins', dict(constantBins=True)),
                           ('extend', dict(extend=True))]:
         data, bins = old.cut1D(HKL1, HKL2, width=0.1, minPixel=0.02, EMin=-1.0, EMax=0.8, **options)
@@ -109,8 +112,8 @@ def cuts():
     entries.update(R.frame('cutPowder', old.cutPowder(POWDER_E, POWDER_Q)))
 
     # cut1DE on one file, at a measured point (as test_CutConstantQ chose it)
-    old = old_dataset(R.CAMEA_2024[:1])
-    new = DataSet(InstrumentName.CAMEA, files=R.CAMEA_2024[:1])
+    old = old_dataset(D.camea_2024_files[:1])
+    new = DataSet(InstrumentName.CAMEA, files=D.camea_2024_files[:1])
     qx, qy = np.asarray(new.gather(ArrayType.QX)), np.asarray(new.gather(ArrayType.QY))
     energy = np.asarray(new.gather(ArrayType.ENERGY))
     i = len(qx)//3
@@ -124,7 +127,7 @@ def cuts():
         entries.update(R.frame(f'cut1DE/{constant}', data))
         entries[f'cut1DE/{constant}/energy_bins'] = np.asarray(bins[0][0], dtype=float)
 
-    raw = OldDataSet(dataFiles=[str(f) for f in R.CAMEA_2024]) # Raw counts: no conversion
+    raw = OldDataSet(dataFiles=[str(f) for f in D.camea_2024_files]) # Raw counts: no conversion
     for detector, analyser in RAW_SELECTIONS:
         X, I, parameters, units = raw.cutRaw1D(detectorSelection=detector, analyzerSelection=analyser)
         case = f'cutRaw1D/{detector}_{analyser}'
@@ -139,7 +142,7 @@ def cuts():
             entries[f'{case}/{index}/counts'] = np.asarray(counts, dtype=float)
 
     # The milestone script's Q-E cut and Q plane (camea_test), also of a difference
-    old, other = old_dataset(R.CAMEA_2023), old_dataset(R.CAMEA_2023)
+    old, other = old_dataset(D.camea_2023_files), old_dataset(D.camea_2023_files)
     energy_max = float(old.energy.max())
     entries['cutQE/energy_max'] = np.array(energy_max)
     for case, dataset in [('plain', old), ('difference', old - other)]:
@@ -159,7 +162,7 @@ def cuts():
 
 def bin3d():
     entries = {}
-    old = old_dataset(R.CAMEA_2023)
+    old = old_dataset(D.camea_2023_files)
     for rlu in (True, False):
         for steps in BIN3D_STEPS:
             (I, monitor, normalization, count), bins = old.binData3D(*steps, rlu=rlu)
@@ -176,10 +179,10 @@ def background():
     """The powder background with a signal mask (a circle around Q = 0 in Qx, Qy, evaluated by
     the new Mask.py, which the old code takes as arrays)"""
     entries = {}
-    new = DataSet(InstrumentName.CAMEA, files=R.CAMEA_2023)
+    new = DataSet(InstrumentName.CAMEA, files=D.camea_2023_files)
     signal = Mask.circleMask(center=[0.0, 0.0], radius=0.6, coordinates=['qx', 'qy'])(new)
     for combine in (False, True):
-        old = old_dataset(R.CAMEA_2023)
+        old = old_dataset(D.camea_2023_files)
         old.generateBackgroundModel(backgroundMask=[m.copy() for m in signal], dQ=0.025, dE=0.05,
                                     combineForegroundMask=combine)
         model = old.backgroundModel
@@ -195,7 +198,7 @@ def amber():
     """AMBER on the first two camea_test files, 5 iterations: the voxel intensities the old model
     gave AMBER and its background, with the old conventions"""
     from MJOLNIR.Data import BackgroundModel_old
-    files = R.CAMEA_2023[:2]
+    files = D.camea_2023_files[:2]
     old = old_dataset(files)
     model = BackgroundModel_old.AMBERBackground(old, dQx=0.03, dQy=0.03, dE=0.05)
     model.set_radial_bins()
@@ -211,7 +214,7 @@ def amber():
 def sample():
     """updateSampleParameters: a and b 1% longer, gamma 91 degrees, then converted"""
     entries = {}
-    old = OldDataSet(dataFiles=[str(f) for f in R.CAMEA_2024[:2]])
+    old = OldDataSet(dataFiles=[str(f) for f in D.camea_2024_files[:2]])
     cell = np.asarray(old[0].sample.unitCell, dtype=float).copy()
     cell[:2] *= 1.01
     cell[5] = 91.0
@@ -227,7 +230,7 @@ def sample():
 def axes():
     """Labels and read-out of the old createQAxis and createQEAxes"""
     entries = {}
-    old = old_dataset(R.CAMEA_2024[:2])
+    old = old_dataset(D.camea_2024_files[:2])
     for rlu in (True, False):
         ax = old.createQAxis(rlu=rlu, withoutOnClick=True)
         entries[f'q/{rlu}'] = np.array([ax.get_xlabel(), ax.get_ylabel(), ax.format_coord(0.3, 0.2)])
@@ -253,7 +256,7 @@ def physics():
     matrices (2024 files, binning 8: at other binnings the old code took the wrong analyser's
     distance)"""
     entries = {}
-    old = old_dataset(R.CAMEA_2023)
+    old = old_dataset(D.camea_2023_files)
     entries['find_ei/energy_transfers'] = ENERGY_TRANSFERS
     for index, energy in enumerate(ENERGY_TRANSFERS):
         entries[f'find_ei/{index}'] = np.asarray(old.findEi(energy), dtype=float)
@@ -263,7 +266,7 @@ def physics():
         entries[f'second_order/{index}'] = np.asarray(
             old.checkSecondOrderElastic(SECOND_ORDER_PEAKS, atol=atol, printing=False), dtype=float)
 
-    old = old_dataset(R.CAMEA_2024[:2])
+    old = old_dataset(D.camea_2024_files[:2])
     Ei = float(np.asarray(old[0].Ei).ravel()[0])
     entries['Ei'] = np.array(Ei)
     entries['resolution/positions'] = RESOLUTION_POSITIONS

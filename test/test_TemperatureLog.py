@@ -4,12 +4,9 @@ import shutil
 import warnings
 import h5py
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader, interval_means
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-needs_data = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
 def without(tmp_path, source, *paths):
     """Copy of a sample file with some datasets removed (no real NICOS file without a
@@ -40,14 +37,12 @@ def test_interval_means_between_log_points():
     means = interval_means(np.array([0.0, 10.0]), np.array([4.0, 6.0]), [2.0], [4.0])
     assert np.allclose(means, 4.6)
 
-@needs_data
-def test_stored_temperature_kept():
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_stored_temperature_kept(camea_2024_files):
+    reader = CameaDataReader(camea_2024_files[0])
     assert reader._metadata['temperature_from_log'] is False
 
-@needs_data
-@pytest.mark.parametrize('source', SAMPLE_DATA)
-def test_temperature_from_log(tmp_path, source):
+def test_temperature_from_log(tmp_path, camea_2024_file): # Parametrized over the files in conftest
+    source = camea_2024_file
     stored = CameaDataReader(source).environment.temperature
     reader = read_quietly(without(tmp_path, source, 'entry/sample/temperature'))
     assert reader._metadata['temperature_from_log'] is True
@@ -58,17 +53,15 @@ def test_temperature_from_log(tmp_path, source):
     assert np.sqrt(np.mean((temperature - stored)**2)) < 0.005
     assert np.sqrt(np.mean((temperature - stored)**2)) < 0.5*np.std(stored)
 
-@needs_data
 @pytest.mark.parametrize('missing', ['entry/sample/temperature_log',
                                      'entry/control/absolute_time'])
-def test_no_log(tmp_path, missing):
-    reader = read_quietly(without(tmp_path, SAMPLE_DATA[0], 'entry/sample/temperature', missing))
+def test_no_log(camea_2024_files, tmp_path, missing):
+    reader = read_quietly(without(tmp_path, camea_2024_files[0], 'entry/sample/temperature', missing))
     assert reader.environment.temperature is None
     assert reader._metadata['temperature_from_log'] is False
 
-@needs_data
-def test_log_without_start(tmp_path):
-    path = without(tmp_path, SAMPLE_DATA[0], 'entry/sample/temperature')
+def test_log_without_start(camea_2024_files, tmp_path):
+    path = without(tmp_path, camea_2024_files[0], 'entry/sample/temperature')
     with h5py.File(path, 'r+') as f:
         del f['entry/sample/temperature_log/time'].attrs['start']
     with pytest.warns(UserWarning, match='no start time'):

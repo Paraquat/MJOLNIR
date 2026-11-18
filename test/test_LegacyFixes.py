@@ -2,19 +2,16 @@ import pytest
 
 import warnings
 import numpy as np
-from pathlib import Path
 
 from MJOLNIR.Data.CameaDataReader import CameaDataReader
 from MJOLNIR.Data.LegacyFixes import CameaMonitor2018
 from MJOLNIR.Data.NexusDataWriter import NexusDataWriter
 
-SAMPLE_DATA = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
-pytestmark = pytest.mark.skipif(not SAMPLE_DATA, reason='sampledata/camea2024*.hdf not available')
 
-def copy_with(tmp_path, name, **values):
+def copy_with(camea_2024_files, tmp_path, name, **values):
     """Copy of a sample file with some layout fields replaced (no real 2018 file is
     available, question 42)"""
-    reader = CameaDataReader(SAMPLE_DATA[0])
+    reader = CameaDataReader(camea_2024_files[0])
     writer = NexusDataWriter(reader)
     for key, value in values.items():
         writer.set(key, value)
@@ -29,14 +26,14 @@ def wrong_monitor(reader):
     """The normalisation monitor (monitor2 in the NICOS sample file), halved"""
     return reader.monitor2 // 2
 
-def test_current_file_is_unchanged():
-    reader = CameaDataReader(SAMPLE_DATA[0])
+def test_current_file_is_unchanged(camea_2024_files):
+    reader = CameaDataReader(camea_2024_files[0])
     assert reader._metadata['legacy_fixes'] == []
     assert CameaDataReader.legacy_fixes[0].applies(reader) is False
 
-def test_2018_monitor_replaced_by_preset(tmp_path):
-    original, _ = copy_with(tmp_path, 'unused')
-    _, path = copy_with(tmp_path, 'monitor2018', startTime=[b'2018-03-01 10:00:00'],
+def test_2018_monitor_replaced_by_preset(camea_2024_files, tmp_path):
+    original, _ = copy_with(camea_2024_files, tmp_path, 'unused')
+    _, path = copy_with(camea_2024_files, tmp_path, 'monitor2018', startTime=[b'2018-03-01 10:00:00'],
                         monitor2=wrong_monitor(original))
     with pytest.warns(UserWarning, match='2018 monitor replaced by the preset'):
         reader = CameaDataReader(path)
@@ -52,15 +49,15 @@ def test_2018_monitor_replaced_by_preset(tmp_path):
     ('other_year', {'startTime': [b'2019-03-01 10:00:00']}),
     ('time_mode', {'startTime': [b'2018-03-01 10:00:00'], 'mode': [b'time']}),
 ])
-def test_not_applied(tmp_path, name, values):
-    original, _ = copy_with(tmp_path, 'unused')
-    _, path = copy_with(tmp_path, name, monitor2=wrong_monitor(original), **values)
+def test_not_applied(camea_2024_files, tmp_path, name, values):
+    original, _ = copy_with(camea_2024_files, tmp_path, 'unused')
+    _, path = copy_with(camea_2024_files, tmp_path, name, monitor2=wrong_monitor(original), **values)
     reader = read_quietly(path)
     assert reader._metadata['legacy_fixes'] == []
     assert np.array_equal(reader.monitor2, wrong_monitor(original))
 
-def test_right_monitor_not_replaced(tmp_path):
+def test_right_monitor_not_replaced(camea_2024_files, tmp_path):
     # The sample file's monitor2 already equals the preset
-    _, path = copy_with(tmp_path, 'right2018', startTime=[b'2018-03-01 10:00:00'])
+    _, path = copy_with(camea_2024_files, tmp_path, 'right2018', startTime=[b'2018-03-01 10:00:00'])
     reader = read_quietly(path)
     assert reader._metadata['legacy_fixes'] == []

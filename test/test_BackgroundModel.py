@@ -1,7 +1,6 @@
 import pytest
 
 import numpy as np
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -11,7 +10,6 @@ from MJOLNIR.Data.BackgroundModel import PowderBackground, AMBERBackground
 from MJOLNIR.Data.DataSet import DataSet, ArrayType
 from MJOLNIR.Data.InstrumentName import InstrumentName
 
-files = sorted((Path(__file__).parent.parent / 'sampledata').glob('camea2024*.hdf'))
 
 # The model on its own, from arrays
 
@@ -66,8 +64,8 @@ def test_sample_outside(fitted):
 signal = Mask.circleMask(center=[-1, 0], radius=0.25, coordinates=['h', 'k'])
 
 @pytest.fixture
-def dataset():
-    return DataSet(InstrumentName.CAMEA, files=files[:2])
+def dataset(camea_2024_files):
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
 
 def test_generate(dataset):
     model = dataset.generate_background_model(background_mask=signal)
@@ -117,16 +115,16 @@ def test_follows_binning(dataset):
     assert dataset.background_model is None
     assert all(reader.background is None for reader in dataset)
 
-def test_append_and_slice(dataset):
+def test_append_and_slice(camea_2024_files, dataset):
     model = dataset.generate_background_model(background_mask=signal)
-    dataset.append(files[2]) # Added files get their background from the existing model
+    dataset.append(camea_2024_files[2]) # Added files get their background from the existing model
     assert dataset[2].background.shape == dataset[2].intensity.shape
     assert dataset.background_model is model
     assert dataset[:2].background_model is model
 
-def test_difference_and_frozen(dataset):
+def test_difference_and_frozen(camea_2024_files, dataset):
     dataset.generate_background_model(background_mask=signal)
-    difference = dataset - DataSet(InstrumentName.CAMEA, files=files[:2])
+    difference = dataset - DataSet(InstrumentName.CAMEA, files=camea_2024_files[:2])
     assert all(reader.background is None for reader in difference)
     assert difference.background_model is None
     with pytest.raises(Exception, match='background'):
@@ -172,9 +170,9 @@ def test_amber_missing(monkeypatch, dataset):
         dataset.generate_amber_background(n_epochs=1, verbose=False)
 
 @pytest.fixture
-def amber_dataset():
+def amber_dataset(camea_2024_files):
     pytest.importorskip('AMBER')
-    return DataSet(InstrumentName.CAMEA, files=files[:1])
+    return DataSet(InstrumentName.CAMEA, files=camea_2024_files[:1])
 
 def test_amber(amber_dataset):
     binned = amber_dataset.bin_3d(0.1, 0.1, 0.2)
