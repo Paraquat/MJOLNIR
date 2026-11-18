@@ -232,11 +232,13 @@ work is the open items in the sections further down; tick both.
       `DataSet_old` and `Instrument.py`: remove them with those. Moved to
       Milestone 3 (2026-11-12): `Viewer1D.py`, `DraggableShapes.py`, `_interactiveSettings.py`
       (none imports the old code)
-- [ ] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions). Still to do:
-      move `Viewer3DPyQtGraph.py` to MJOLNIR-GUI or drop it (it needs Qt and fails on import
-      with pyqtgraph 0.13: `QtGui.QWidget` and `QtGui.QMainWindow` moved to `QtWidgets`).
-      Done: `Viewer3D.py` deleted with the old code (2026-11-13; replaced by `SliceViewer.py`,
-      also on the docs page `docs/Data/Gui.rst`)
+- [x] 3D viewer split (decided 2026-10-19; refactoring log, Design decisions). `Viewer3D.py`
+      deleted with the old code (2026-11-13; replaced by `SliceViewer.py`, also on the docs
+      page `docs/Data/Gui.rst`). `Viewer3DPyQtGraph.py` dropped from MJOLNIR (2026-11-18), to
+      be moved to MJOLNIR-GUI in Milestone 3 ("GUI views on the new API"); the last version is
+      in commit 6236ae6. Nothing in MJOLNIR used it since the old `View3D(customSlicer=True)`
+      went, and it failed on import with pyqtgraph 0.13. `pyqtgraph`, which only it used, is
+      removed from `install_requires`
 - [x] `Statistics/CutObject.py`: Dropped (2026-11-13), see "Code still using the old API"
 - [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
       `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
@@ -396,8 +398,16 @@ runs on the new `DataSet` and readers, and every view works.
       cuts in the GUI's cut managers (replaces the ten `cut1DFunction...`/`cut2DFunction...`
       arguments of `View3D`); embed `viewer.figure` in the Qt window; slice saving through
       `save_slices` (replaces `saveToFile(..., gui=...)`)
-- [ ] If kept, the PyQtGraph free-plane slicer (`customSlicer=True`) lives in the GUI, on a
-      `bin_3d` result, ported to `QtWidgets`
+- [ ] PyQtGraph slicer (the "Custom" mode of the View 3D manager, `customSlicer=True`): move
+      `Viewer3DPyQtGraph.py` into the GUI from MJOLNIR commit 6236ae6 (dropped from MJOLNIR
+      2026-11-18). It shows a constant-energy slice over a summed energy range, and a Q-E cut
+      along a line (ROI) that can be moved, rotated and resized, updating live. To do: port to
+      `QtWidgets` (`QWidget`, `QGridLayout`, `QMainWindow` left `QtGui`) and pyqtgraph 0.13
+      (`ImageItem.scale`/`translate` are gone: `setTransform`); take a `bin_3d` result in place
+      of the old `(intensity, monitor, normalisation, count)` tuple and bin arrays, and the
+      sample's projection vectors for the axes; open it from the View 3D manager, as the old
+      `DataSet.View3D` did, and from `generateScripts.py`; add `pyqtgraph` to the GUI's
+      requirements (MJOLNIR no longer installs it)
 - [ ] Normalisation manager: `ds.absolute_normalize(sample_mass, sample_chemical_formula or
       sample_molar_mass, units='magnetic' or 'nuclear', ...)`; the sample mass and formula
       (or molar mass) are now required, so the dialog must ask for them
