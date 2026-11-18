@@ -1,5 +1,6 @@
 import pytest
 
+import re
 import warnings
 import numpy as np
 import matplotlib
@@ -22,6 +23,10 @@ def sample(camea_2024_files):
         warnings.simplefilter('ignore')
         return CameaDataReader(camea_2024_files[0]).sample
 
+def unsigned_zeros(text: str) -> str:
+    """text with '-0.000' as '0.000': the sign of a value that is zero to rounding is noise"""
+    return re.sub(r'-(0\.0+)(?!\d*[1-9])', r'\1', text)
+
 def test_q_axis(sample):
     ax = RLUAxes.create_q_axis(sample)
     assert (ax.get_xlabel(), ax.get_ylabel()) == ('1, 0, 0 [RLU]', '0, 1, 0 [RLU]')
@@ -29,7 +34,8 @@ def test_q_axis(sample):
     assert np.allclose(ax.sample.orientationMatrix, aligned.orientationMatrix)
     assert ax.sample is not sample and sample.theta != 0.0 # The given sample is not changed
     qx, qy = aligned.calculateHKLToQxQy(1.0, 0.0, 0.0)
-    assert ax.format_coord(qx, qy).startswith('h = 1.000, k = 0.000') # Read-out in H, K, L
+    # Read-out in H, K, L; k is zero to rounding, so its sign is not checked
+    assert unsigned_zeros(ax.format_coord(qx, qy)).startswith('h = 1.000, k = 0.000')
     ax.set_axis([0, 0, 0], [1, 1, 0])
     ax.set_xticks_base(0.25)
     ax.set_yticks_number(5)
@@ -46,7 +52,8 @@ def test_q_axis_without_lattice():
 
 def test_qe_axes(sample):
     ax = RLUAxes.create_qe_axes(sample, axis=1)
-    assert ax.get_xlabel() == '-0.000, 1.000, 0.000 [RLU]' and ax.get_ylabel() == 'E [meV]'
+    assert unsigned_zeros(ax.get_xlabel()) == '0.000, 1.000, 0.000 [RLU]'
+    assert ax.get_ylabel() == 'E [meV]'
     # Projection vectors without a sample (the old createQEAxes needed a data set anyway)
     ax = RLUAxes.create_qe_axes(projection_vector1=[1, 1, 0], projection_vector2=[0, 0, 1])
     assert ax.get_xlabel() == '1.000, 1.000, 0.000 [RLU]'

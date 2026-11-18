@@ -38,9 +38,11 @@ class Sample:
 
             self.polarAngle = np.array(sample.get('polar_angle'))
             self.rotationAngle = np.array(sample.get('rotation_angle'))
-            self.unitCell = np.array(sample.get('unit_cell'))
-            self.plane_vector1 = np.array(sample.get('plane_vector_1'))
-            self.plane_vector2 = np.array(sample.get('plane_vector_2'))
+            # Double precision: files store these as float32, and numpy's float32 trigonometry
+            # (used for UB) differs in the last bits between CPUs
+            self.unitCell = np.array(sample.get('unit_cell'), dtype=np.float64)
+            self.plane_vector1 = np.array(sample.get('plane_vector_1'), dtype=np.float64)
+            self.plane_vector2 = np.array(sample.get('plane_vector_2'), dtype=np.float64)
             crossProduct = np.cross(self.plane_vector1[:3],self.plane_vector2[:3])
             if recalculateUB is True: # Recalculate the ub from the given peaks (ignoring sgu and sgl!)
                 self.plane_vector1 = np.delete(self.plane_vector1,3)

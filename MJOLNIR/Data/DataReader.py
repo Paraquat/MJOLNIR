@@ -364,11 +364,13 @@ class DataReader(ABC):
 
     def transform(self):
         self._check_not_frozen('transform')
-        A4 = np.deg2rad(self.calibration.A4)
+        # Angles and energies are converted in double precision: files store them as float32,
+        # and numpy's float32 trigonometry differs in the last bits between CPUs (SIMD paths)
+        A4 = np.deg2rad(np.asarray(self.calibration.A4, dtype=np.float64))
         A4 = A4.reshape(self.n_detectors, self.binning * self.n_analysers, order='C')
         pixelEdge = self.calibration.bound.reshape(
             self.n_detectors, self.n_analysers, self.binning, 2)
-        A4File = self.A4.reshape((-1,1,1))
+        A4File = np.asarray(self.A4, dtype=np.float64).reshape((-1,1,1))
         A4Mean = (
             A4.reshape((1, self.n_detectors, self.binning*self.n_analysers)) +
             np.deg2rad(A4File-self.A4Offset))
@@ -377,7 +379,7 @@ class DataReader(ABC):
         self.intensity = self.rebin(self.binning, shape, pixelEdge)
         self.intensity_error = None # Counts: counting statistics
 
-        EfMean = self.calibration.Ef.reshape(
+        EfMean = np.asarray(self.calibration.Ef, dtype=np.float64).reshape(
             1, A4.shape[0], self.n_analysers*self.binning)
         # Normalization and monitor per point, like the data: (steps, detectors, energy bins)
         self.normalization = self._base_normalization()
@@ -388,11 +390,12 @@ class DataReader(ABC):
             raise ValueError(f'"{self.file.name}" has {monitor.size} monitor values for '
                              f'{self.n_steps} scan steps')
         self.monitor = monitor.reshape(-1, 1, 1) * np.ones((1, *self.intensity.shape[1:]))
-        A3 = np.deg2rad(self.A3) + np.deg2rad(self.A3Offset)
+        A3 = (np.deg2rad(np.asarray(self.A3, dtype=np.float64))
+              + np.deg2rad(np.asarray(self.A3Offset, dtype=np.float64)))
         if A3.shape[0]==1:
             A3 = A3*np.ones(self.n_steps)
         A3 = A3.reshape((self.n_steps, 1, 1))
-        Ei = self.Ei.copy().reshape(-1, 1, 1)
+        Ei = np.array(self.Ei, dtype=np.float64).reshape(-1, 1, 1)
         self.energy = (Ei - EfMean) * np.ones((self.n_steps, 1, 1))
         UBINV = np.linalg.inv(self.sample.orientationMatrix)
         HKL, self.qx, self.qy = TasUBlib.calcTasQH(

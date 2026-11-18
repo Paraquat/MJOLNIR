@@ -81,7 +81,7 @@ def test_conversion(request, case, tmp_path):
     for old, new in [('I', 'intensity'), ('Norm', 'normalization'), ('Monitor', 'monitor'),
                      ('qx', 'qx'), ('qy', 'qy'), ('energy', 'energy'), ('h', 'h'), ('k', 'k'),
                      ('l', 'l')]:
-        values, rtol, atol = getattr(reader, new), 1e-12, 0.0
+        values, rtol, atol = getattr(reader, new), R.ROUNDING, R.ROUNDING
         if case == 'flatcone' and old == 'I':
             # Flatcone counts are floats; the old conversion truncated them toward zero
             values = np.trunc(values)
@@ -182,7 +182,8 @@ def test_cut_qe_and_q_plane(request, camea_2023, case):
     mesh = Plotting.plot_q_plane(result, sample=data.sample).pmeshs[0]
     assert np.array_equal(np.ma.filled(np.asarray(mesh.get_array(), dtype=float), np.nan),
                           reference[f'plotQPlane/{case}/mesh'], equal_nan=True)
-    assert np.array_equal(mesh.get_coordinates(), reference[f'plotQPlane/{case}/coordinates'])
+    assert np.allclose(mesh.get_coordinates(), reference[f'plotQPlane/{case}/coordinates'],
+                       rtol=R.ROUNDING, atol=R.ROUNDING)
 
 @pytest.mark.parametrize('rlu', [True, False])
 @pytest.mark.parametrize('steps', BIN3D_STEPS)
@@ -191,7 +192,8 @@ def test_bin_3d(camea_2023, rlu, steps):
     case = f'{rlu}/{"_".join(map(str, steps))}'
     result = camea_2023.bin_3d(*steps, rlu=rlu)
     for axis in ['qx', 'qy', 'energy']:
-        assert np.array_equal(result.bins[axis], reference[f'{case}/{axis}']), axis
+        assert np.allclose(result.bins[axis], reference[f'{case}/{axis}'],
+                           rtol=R.ROUNDING, atol=R.ROUNDING), axis
     for name in ['intensity', 'Monitor', 'Normalization', 'BinCount']:
         R.assert_summary(reference, f'{case}/{name}', result.grid(name), rtol=0)
 

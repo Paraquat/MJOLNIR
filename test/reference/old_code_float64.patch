@@ -1,0 +1,60 @@
+diff --git a/MJOLNIR/Data/DataFile.py b/MJOLNIR/Data/DataFile.py
+index e645624..d3a71c3 100644
+--- a/MJOLNIR/Data/DataFile.py
++++ b/MJOLNIR/Data/DataFile.py
+@@ -1321,14 +1321,14 @@ class DataFile(object):
+         if A3Zero is None:
+             A3Zero=0.0
+         else:
+-            A3Zero = np.deg2rad(np.array(A3Zero))
++            A3Zero = np.deg2rad(np.array(A3Zero, dtype=np.float64))
+ 
+-        A4 = np.deg2rad(A4Normalization)
++        A4 = np.deg2rad(np.asarray(A4Normalization, dtype=np.float64))
+ 
+         A4=A4.reshape(self.detectors,binning*self.EPrDetector,order='C')
+ 
+         PixelEdge = EdgesNormalization.reshape(self.detectors,self.EPrDetector,binning,2).astype(int)
+-        A4File = self.A4.copy()
++        A4File = np.array(self.A4, dtype=np.float64)
+         
+         A4File = A4File.reshape((-1,1,1))
+ 
+@@ -1341,17 +1341,17 @@ class DataFile(object):
+                     Intensity[:,i,j*binning+k] = np.sum(Data[:,i,PixelEdge[i,j,k,0]:PixelEdge[i,j,k,1]],axis=1)
+ 
+         
+-        EfMean = EfNormalization[:,1].reshape(1,A4.shape[0],self.EPrDetector*binning)
++        EfMean = np.asarray(EfNormalization[:,1], dtype=np.float64).reshape(1,A4.shape[0],self.EPrDetector*binning)
+         EfNormalization = EfNormalization[:,0]#.reshape(1,A4.shape[0],EPrDetector*binning)#
+         #EfNormalization = EfNormalization[:,0]*(np.sqrt(2*np.pi)*EfNormalization[:,2])
+         
+         EfNormalization = EfNormalization.reshape((1,A4.shape[0],self.EPrDetector*binning))
+-        A3 = np.deg2rad(np.array(self.A3).copy())+A3Zero #file.get('/entry/sample/rotation_angle/')
++        A3 = np.deg2rad(np.array(self.A3, dtype=np.float64))+A3Zero #file.get('/entry/sample/rotation_angle/')
+         if A3.shape[0]==1:
+             A3 = A3*np.ones((steps))
+         
+         A3.resize((steps,1,1))
+-        Ei = self.Ei.copy().reshape(-1,1,1)#np.array(instrument.get('monochromator/energy'))
++        Ei = np.array(self.Ei, dtype=np.float64).reshape(-1,1,1)#np.array(instrument.get('monochromator/energy'))
+         if False:
+             kf = factorsqrtEK*np.sqrt(EfMean)#.reshape(1,detectors,binning*EPrDetector)
+             
+diff --git a/MJOLNIR/Data/Sample.py b/MJOLNIR/Data/Sample.py
+index e3965db..fcaf7f1 100644
+--- a/MJOLNIR/Data/Sample.py
++++ b/MJOLNIR/Data/Sample.py
+@@ -43,9 +43,9 @@ class Sample(object):
+             
+             self.polarAngle = np.array(sample.get('polar_angle'))
+             self.rotationAngle = np.array(sample.get('rotation_angle'))
+-            self.unitCell = np.array(sample.get('unit_cell'))
+-            self.plane_vector1 = np.array(sample.get('plane_vector_1'))
+-            self.plane_vector2 = np.array(sample.get('plane_vector_2'))
++            self.unitCell = np.array(sample.get('unit_cell'), dtype=np.float64)
++            self.plane_vector1 = np.array(sample.get('plane_vector_1'), dtype=np.float64)
++            self.plane_vector2 = np.array(sample.get('plane_vector_2'), dtype=np.float64)
+             crossProduct = np.cross(self.plane_vector1[:3],self.plane_vector2[:3])
+             if recalculateUB is True: # Recalculate the ub from the given peaks (ignoring sgu and sgl!)
+                 self.plane_vector1 = np.delete(self.plane_vector1,3)

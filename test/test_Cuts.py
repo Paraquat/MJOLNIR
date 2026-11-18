@@ -38,8 +38,8 @@ def test_cut_1d(dataset, points, q1q2):
     assert len(result) == 88
     assert list(data.columns) == [COLUMNS[key] for key in ['qx', 'qy', 'h', 'k', 'l', 'e',
         'intensity', 'mon', 'norm', 'binCount', 'intError', 'int']]
-    assert data['intensity'].sum() == 187234
-    assert data['BinCount'].sum() == 86501
+    assert data['intensity'].sum() == 187237
+    assert data['BinCount'].sum() == 86502
     assert data['BinCount'].dtype == int
     peak = np.nanargmax(data['Int'])
     assert data['Int'].iloc[peak] == pytest.approx(6.422700, rel=1e-6)
@@ -79,9 +79,9 @@ def test_cut_qe(dataset, points, q1q2):
     assert len(result) == 82 * 18 # One row per Q bin and energy bin
     assert list(data.columns) == [COLUMNS[key] for key in ['qx', 'qy', 'h', 'k', 'l', 'e',
         'int', 'intError', 'intensity', 'mon', 'norm', 'binCount']]
-    assert data['intensity'].sum() == 137092
-    assert data['BinCount'].sum() == 81124
-    assert np.nansum(data['Int']) == pytest.approx(516.756264, rel=1e-6)
+    assert data['intensity'].sum() == 137095
+    assert data['BinCount'].sum() == 81125
+    assert np.nansum(data['Int']) == pytest.approx(516.747147, rel=1e-6)
     # Rows go through the Q bins for each energy bin; Energy is the lower edge of the bin
     assert np.array_equal(np.unique(data['Energy']), energy[:-1])
     assert np.allclose(data['Energy'].iloc[:82], energy[0])
@@ -117,9 +117,9 @@ def test_cut_q_plane(dataset, aligned_points):
     assert len(result) == 49 * 43
     assert data['intensity'].sum() == 3401023
     assert data['BinCount'].sum() == 366390
-    # With numpy 2 (numpy 1.26: 2235.266187): the samples' angles, stored in single precision,
-    # round differently, which moves one point into the next bin; the old code moves the same
-    assert np.nansum(data['Int']) == pytest.approx(2235.265437, rel=1e-9)
+    # Angles and energies are converted in double precision (files store single precision, whose
+    # trigonometry differed between CPUs and numpy versions, moving points into the next bin)
+    assert np.nansum(data['Int']) == pytest.approx(2235.266660866142, rel=1e-9)
     assert data['intensity'].dtype == aligned_points['intensity'].dtype
     assert np.allclose(data['Energy'], 0.0) # Middle of the range
     assert np.diff(result.bins['qx'][0]) == pytest.approx(0.05)

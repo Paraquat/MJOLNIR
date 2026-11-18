@@ -13,6 +13,9 @@ import numpy as np
 
 REFERENCE = Path(__file__).parent / 'reference'
 SAMPLE_SIZE = 5000
+# Tolerance for rounding: numpy's float64 trigonometry differs in the last bits between CPUs
+# (SIMD paths), so values computed from angles are not bit-identical across machines
+ROUNDING = 1e-12
 
 # Input data (git-ignored; question 36 of the refactoring log). The tests take it from the fixtures
 # of the root conftest.py (directory: --data-dir, $MJOLNIR_TEST_DATA or sampledata); inputs() gives
@@ -73,8 +76,9 @@ def frame(prefix: str, data) -> dict:
         entries[f'{prefix}/{column}'] = np.asarray(data[column], dtype=float)
     return entries
 
-def assert_frame(reference: dict, prefix: str, data, skip=(), rtol: float = 0.0):
-    """Every saved column (but skip) of a DataFrame matches; exactly with rtol 0"""
+def assert_frame(reference: dict, prefix: str, data, skip=(), rtol: float = ROUNDING):
+    """Every saved column (but skip) of a DataFrame matches: within rtol, and within rtol times
+    the column's largest value near zero; exactly with rtol 0"""
     columns = [c for c in reference[f'{prefix}/columns'] if c not in skip]
     assert len(data) == len(reference[f'{prefix}/{columns[0]}']), f'{prefix}: rows'
     for column in columns:
@@ -83,7 +87,9 @@ def assert_frame(reference: dict, prefix: str, data, skip=(), rtol: float = 0.0)
         if rtol == 0:
             assert np.array_equal(values, expected, equal_nan=True), f'{prefix}/{column}'
         else:
-            assert np.allclose(values, expected, rtol=rtol, atol=0, equal_nan=True), \
+            finite = np.abs(expected[np.isfinite(expected)])
+            atol = rtol*finite.max() if finite.size else 0.0
+            assert np.allclose(values, expected, rtol=rtol, atol=atol, equal_nan=True), \
                 f'{prefix}/{column}'
 
 def marmot_table(path: Path) -> Path:
