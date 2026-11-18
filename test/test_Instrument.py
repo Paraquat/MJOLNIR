@@ -11,6 +11,10 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 import os
+from pathlib import Path
+
+ROOT = Path(__file__).parent.parent
+CAMEA_XML = str(ROOT / 'Data' / 'CAMEA_Updated.xml')
 
 # Any CAMEA file serves for the argument checks of generateCalibration; a real calibration
 # test needs a vanadium scan (question 44 of the refactoring log)
@@ -310,7 +314,7 @@ def test_instrument_create_xml():
 
 def test_Normalization_tables(camea_2024_files, tmp_path):
 
-    Instr = Instrument(fileName=os.path.join('Data','CAMEA_Updated.xml'))
+    Instr = Instrument(fileName=CAMEA_XML)
     Instr.initialize()
 
     NF = str(camea_2024_files[0])
@@ -326,7 +330,7 @@ def test_Normalization_tables(camea_2024_files, tmp_path):
 
 @pytest.mark.skip(reason='needs the vanadium scan camea2023n000083.hdf (question 44)')
 def test_generate_calibration(data_dir, quick, tmp_path):
-    Instr = Instrument(fileName=os.path.join('Data','CAMEA_Updated.xml'))
+    Instr = Instrument(fileName=CAMEA_XML)
     Instr.initialize()
 
     NF = str(data_dir / 'camea2023n000083.hdf')

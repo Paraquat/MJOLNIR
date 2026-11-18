@@ -5,9 +5,7 @@ MJOLNIR Module
 """
 #import Geometry, Statistic, Data
 
-import sys
 import os
-sys.path.append('.')
 
 __version__ = '2.0.0'
 __author__ = 'Jakob Lass'

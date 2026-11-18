@@ -1,7 +1,3 @@
-import sys
-sys.path.append('.')
-sys.path.append('..')
-sys.path.append('../..')
 import numpy as np
 import pickle as pickle
 from MJOLNIR import _tools

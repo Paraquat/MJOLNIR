@@ -1,7 +1,3 @@
-import sys
-sys.path.append('.')
-sys.path.append('..')
-sys.path.append('../..')
 import numpy as np
 import h5py as hdf
 from MJOLNIR import _tools

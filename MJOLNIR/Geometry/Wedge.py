@@ -1,7 +1,3 @@
-import sys
-sys.path.append('.')
-sys.path.append('..')
-sys.path.append('../..')
 import numpy as np
 from MJOLNIR.Geometry import GeometryConcept,Analyser,Detector
 from MJOLNIR import _tools

@@ -1,7 +1,5 @@
 """This is the data module inteded to be used as a stand-alone data reduction and visualization.
 """
-import sys
-sys.path.append('.')
 try: # Imports needed for Windows generation of installers of MJOLNIRGui
     import numpy.random.common
     import numpy.random.bounded_integers
