@@ -244,9 +244,10 @@ work is the open items in the sections further down; tick both.
 - [x] `Statistics/CutObject.py`: Dropped (2026-11-13), see "Code still using the old API"
 - [x] `Geometry/Instrument.py`: no longer imports `DataFile`. `generateCalibration` built a
       `DataFile` of the vanadium file that nothing used (only a commented-out line); removed
-- [ ] `Geometry/Instrument.py`. Still to do: `generateCalibration` (writes the `.calib`
-      files the readers load; keep): a test pytest collects, once a vanadium scan is available
-      (question 44). Done (2026-11-13): `calculateResoultionMatrix` (ported to
+- [x] `Geometry/Instrument.py`. `generateCalibration` (writes the `.calib` files the readers
+      load; kept): its full test (`test_generate_calibration`) is written but skipped until a
+      vanadium scan is available (question 44); moved to "Open issues" in the refactoring log
+      (2026-11-18). Done (2026-11-13): `calculateResoultionMatrix` (ported to
       `Data/Resolution.py`) dropped with `DataSet_old`, its only caller;
       - Kept for MJOLNIR-GUI's prediction tool: `prediction` (now on
         `RLUAxes.create_q_axis(sample)`), `converterToA3A4`, `converterToQxQy`,
@@ -1069,7 +1070,8 @@ which are resolved by not porting it: `CameaDataWriter` replaces `saveHDF`.
       new code tested on Python 3.11, 3.12, 3.13 and 3.14. Needed `StrEnum`; the
       `np.NDArray` annotations (only working on 3.14) replaced by `numpy.typing.NDArray`
 - [ ] `.travis.yml` still tests Python 3.5-3.9 on Travis CI: replace or remove. Not part of
-      Milestone 2 (2026-11-17): the remote has no CI at the moment
+      Milestone 2 (2026-11-17): the remote has no CI at the moment. Listed under "Open
+      issues" in the refactoring log (2026-11-18)
 - [x] numpy 2.3 or newer required (`setup.cfg`, `requirements.txt`, docs/Introduction.rst);
       the old `numpy<2.0` pin let Python 3.14 run with numpy 1.26, which does not support
       it and computes wrong results there (`b -= 0.5*a` inside a function also changed `a`
