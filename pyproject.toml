@@ -1,6 +1,60 @@
 [build-system]
-requires = ["setuptools <= 80.10.2"]
+requires = ["setuptools >= 77, <= 80.10.2"]  # >= 77 for the SPDX license string
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "MJOLNIR"
+dynamic = ["version"]
+description = "Neutron Scattering software suite"
+readme = "README.md"
+license = "MPL-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Jakob Lass", email = "MJOLNIRPackage@gmail.com" }]
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "matplotlib>=3",
+    "numpy>=2.3",
+    "h5py>=2.5",
+    "scipy",
+    "datetime",
+    "pytest>=4.6",
+    "pyperclip",
+    "decorator",
+    "pandas",
+    "sympy",
+    "pip>=20",
+    "ufit>=1.4.0",
+    "regex",
+]
+
+[project.optional-dependencies]
+AMBER = ["AMBER-ds4ms"]
+gui = ["MJOLNIRGui"]
+
+[project.scripts]
+MJOLNIRHistory = "MJOLNIR.CommandLineScripts.MJOLNIRHistory:main"
+MJOLNIRCalibrationInspector = "MJOLNIR.CommandLineScripts.MJOLNIRCalibrationInspector:main"
+MJOLNIR3DView = "MJOLNIR.CommandLineScripts.MJOLNIR3DView:main"
+
+[project.urls]
+Homepage = "https://github.com/MJOLNIRPackage/MJOLNIR"
+
+[tool.setuptools.dynamic]
+version = { attr = "MJOLNIR.__version__" }
+# Package discovery and package data stay in setup.cfg
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
