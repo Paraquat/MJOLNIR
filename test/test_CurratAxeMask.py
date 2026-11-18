@@ -49,8 +49,10 @@ def test_mask_object_on_dataset(dataset):
     assert np.array_equal(result[0], calculateCurratAxeMask(dataset[0], bragg, dqx=0.05, dqy=0.08))
     assert result[0].sum() == 4410
 
+@pytest.mark.filterwarnings('error::RuntimeWarning')
 def test_other_instrument(bambus_file):
-    # Not specific to CAMEA: any reader with an Ei, calibrated Ef and sample works
+    # Not specific to CAMEA: any reader with an Ei, calibrated Ef and sample works. [0, 0, 4] is
+    # out of reach at the lowest Ef: no spurion there, and no warning
     reader = BAMBUSDataReader(bambus_file)
     reader.set_instrument_calibration()
     reader.transform()

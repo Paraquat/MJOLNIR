@@ -358,23 +358,27 @@ class Sample:
         Ef = np.asarray(Ef).flatten() # Shape (n)
         Bragg = np.asarray(Bragg).reshape(-1,3) # shape (l,3)
 
-        QlLocal = []
-        if spurionType.lower() == 'monochromator':
-            for B in Bragg:
-                Ql = []
-                Angles = np.array([TasUBlib.calcTasQAngles(self.orientationMatrix,self.planeNormal,1.0,0.0,np.array([B[0],B[1],B[2],e,e]))[:2] for e in Ef])
-                for ei in Ei:
-                    Ql.append(np.array([TasUBlib.calcTasQH(self.orientationMatrixINV,angle,ei,e,0) for angle,e in zip(Angles,Ef)])[:,1])
-                QlLocal.append(Ql)
-        elif spurionType.lower() == 'analyser':
-            for B in Bragg:
-                Ql = []
-                for ei in Ei:
-                    Angles2 = np.array(TasUBlib.calcTasQAngles(self.orientationMatrix,self.planeNormal,1.0,0.0,np.array([B[0],B[1],B[2],ei,ei]))[:2])
-                    Ql.append(np.array([TasUBlib.calcTasQH(self.orientationMatrixINV,Angles2,ei,e,0.0) for e in Ef])[:,1]) # Extract Qx,Qy
-                QlLocal.append(Ql)
-        else:
+        if spurionType.lower() not in ('monochromator', 'analyser'):
             raise AttributeError(f'Provided spurionType not understood. Expected "Monochromator" or "Analyser" but received "{spurionType}".')
+
+        QlLocal = []
+        # A Bragg peak beyond the reach of an energy (|Q| > 2k: the scattering triangle cannot
+        # close) has no spurion there: its angles, and so its position, are NaN by design
+        with np.errstate(invalid='ignore'):
+            if spurionType.lower() == 'monochromator':
+                for B in Bragg:
+                    Ql = []
+                    Angles = np.array([TasUBlib.calcTasQAngles(self.orientationMatrix,self.planeNormal,1.0,0.0,np.array([B[0],B[1],B[2],e,e]))[:2] for e in Ef])
+                    for ei in Ei:
+                        Ql.append(np.array([TasUBlib.calcTasQH(self.orientationMatrixINV,angle,ei,e,0) for angle,e in zip(Angles,Ef)])[:,1])
+                    QlLocal.append(Ql)
+            else:
+                for B in Bragg:
+                    Ql = []
+                    for ei in Ei:
+                        Angles2 = np.array(TasUBlib.calcTasQAngles(self.orientationMatrix,self.planeNormal,1.0,0.0,np.array([B[0],B[1],B[2],ei,ei]))[:2])
+                        Ql.append(np.array([TasUBlib.calcTasQH(self.orientationMatrixINV,Angles2,ei,e,0.0) for e in Ef])[:,1]) # Extract Qx,Qy
+                    QlLocal.append(Ql)
 
         returnVal = np.array(QlLocal) # Shape (l,m,n,3)
 
