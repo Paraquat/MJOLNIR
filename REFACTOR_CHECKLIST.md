@@ -48,7 +48,13 @@ plots match the reference images next to it. Several items repeat ones further d
       The old plots' font came from importing `ufit`, which changes matplotlib's font on
       import; the new code does not import it, so its plots use matplotlib's default font
 
-## Milestone 2: remove the old DataFile.py and DataSet_old.py
+## Milestone 2: remove the old DataFile.py and DataSet_old.py (reached 2026-11-18)
+
+Reached on 2026-11-18, at version 2.0.0: the old modules were deleted on 2026-11-13, every
+item below is ticked, and the test suite passes (489 passed, 1 skipped, 3 deselected for the
+hard-coded Linux data path, 1 xfailed). What still waits on outside information or a decision
+is listed under "Open issues" in the refactoring log: the ILL A4 offset, the
+`generateCalibration` test, CI, `symmetrize` and the place for test data.
 
 Reached when `MJOLNIR/Data/DataFile.py`, `MJOLNIR/Data/DataSet_old.py` and
 `MJOLNIR/Data/BackgroundModel_old.py` are deleted, nothing in the repository imports them, and
@@ -114,10 +120,15 @@ work is the open items in the sections further down; tick both.
       44). `test_tools.py::test_absoluteNormalization` is marked xfail (strict): it fails
       on master as well, by a factor of 2 (question 46). `test_Instrument_error` no longer
       returns a value (pytest warning)
-- [ ] One place for test data (question 36; available to a CI too, should one be set up);
+- [x] One place for test data (question 36; available to a CI too, should one be set up);
       remove the hard-coded paths
       (`/home/zamaan/Projects/bambus` in `test_CameaDataReader.py` and
-      `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`)
+      `test_DataReaderFactory.py`, `~/projects/CoRhO4`, `~/projects/marmot+flatcone`).
+      Moved to "Open issues" in the refactoring log (2026-11-18), with the suggested
+      approach: small files committed to `test/data/`, the CAMEA files archived (Zenodo or
+      a stable PSI link) and fetched with pooch in `test/conftest.py` (cached, checksummed,
+      `MJOLNIR_TEST_DATA` for a local copy), nothing in the `MJOLNIR/` package. Waits on
+      where the data are hosted and permission from PSI and ILL to publish them
 
 ### Port the remaining features (items further down)
 - [x] Files. Done: `shallowRead`, error for files without data. Dropped: converted `.nxs`,
