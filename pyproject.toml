@@ -36,7 +36,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-AMBER = ["AMBER-ds4ms"]
+# torch comes with AMBER-ds4ms; it is named here so that uv takes it from the CPU index below
+AMBER = ["AMBER-ds4ms", "torch"]
 gui = ["MJOLNIRGui"]
 
 [dependency-groups]
@@ -57,6 +58,16 @@ Homepage = "https://github.com/MJOLNIRPackage/MJOLNIR"
 [tool.setuptools.dynamic]
 version = { attr = "MJOLNIR.__version__" }
 # Package discovery and package data stay in setup.cfg
+
+# CPU-only torch for uv environments (the default PyPI build pulls in several GB of CUDA
+# libraries). Applies to uv sync/lock only; pip users of the package get torch from PyPI
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true # Only packages that name this index in tool.uv.sources come from it
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
