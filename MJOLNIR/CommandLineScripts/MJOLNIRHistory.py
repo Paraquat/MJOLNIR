@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Created on Tue Jul 24 14:46:53 2018
 
@@ -62,7 +61,7 @@ def main(argv=None):
             saveFile+='.txt'
         if os.path.isfile(saveFile):
             oldName = '_old.'.join([x for x in saveFile.split('.')])
-            print('File already exists. Renaming old file to {}'.format(oldName))
+            print(f'File already exists. Renaming old file to {oldName}')
             os.rename(saveFile,oldName)
         with open(saveFile,'w') as f:
             f.write(''.join(lines))

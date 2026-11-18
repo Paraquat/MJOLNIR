@@ -437,7 +437,7 @@ class rectangleMask(MaskingObject):
         else:
             if y is None:
                 if x.shape[0] != 2:
-                    raise AttributeError('Dimensionality of x is to be (2,N), received {}'.format(x.shape))
+                    raise AttributeError(f'Dimensionality of x is to be (2,N), received {x.shape}')
                 points = np.array(x)
             else:
                 points = np.array([x,y])
@@ -599,7 +599,7 @@ class boxMask(MaskingObject):
         else:
             if y is None:
                 if x.shape[0] != 3:
-                    raise AttributeError('Dimensionality of x is to be (3,N), received {}'.format(x.shape))
+                    raise AttributeError(f'Dimensionality of x is to be (3,N), received {x.shape}')
                 points = x
             else:
                 if z is None:
@@ -699,14 +699,14 @@ class circleMask(MaskingObject):
             if self.dimensionality == '2D':
                 if y is None:
                     if x.shape[0] != 2:
-                        raise AttributeError('Dimensionality of x is to be (2,N), received {}'.format(x.shape))
+                        raise AttributeError(f'Dimensionality of x is to be (2,N), received {x.shape}')
                     points = x
                 else:
                     points = np.array([x,y])
             elif self.dimensionality == '3D':
                 if y is None or z is None:
                     if x.shape[0] != 3:
-                        raise AttributeError('Dimensionality of x is to be (3,N), received {}'.format(x.shape))
+                        raise AttributeError(f'Dimensionality of x is to be (3,N), received {x.shape}')
                     points = x
                 else:
                     points = np.array([x,y,z])
@@ -751,7 +751,7 @@ class indexMask(MaskingObject):
         points = x
 
         if not len(points.shape)>self.axis:
-            raise AttributeError('Masking axis is {}, but shape of x is {}.'.format(self.axis,points))
+            raise AttributeError(f'Masking axis is {self.axis}, but shape of x is {points}.')
 
         arange = np.arange(points.shape[self.axis]).flatten()
 
@@ -800,7 +800,7 @@ def calculateCurratAxeMask(reader,braggPeaks,dqx=None,dqy=None,dH=None,dK=None,d
     """
     if dqx is None or dqy is None:
         if any(radius is None for radius in [dH, dK, dL]):
-            raise AttributeError('Provided masking radius not understood. Either dqx and dqy are to be given or dH, dK, and dL.\nRecieved: \n{}'.format('\n'.join(['    {}\t= {}'.format(x,v) for x,v in zip(['dqx','dqy','dH','dK','dL'],[dqx,dqy,dH,dK,dL])])))
+            raise AttributeError('Provided masking radius not understood. Either dqx and dqy are to be given or dH, dK, and dL.\nRecieved: \n{}'.format('\n'.join([f'    {x}\t= {v}' for x,v in zip(['dqx','dqy','dH','dK','dL'],[dqx,dqy,dH,dK,dL])])))
         rlu = True
     else:
         rlu = False

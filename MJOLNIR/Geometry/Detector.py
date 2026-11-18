@@ -23,7 +23,7 @@ class Detector(GeometryConcept.GeometryObject):
             - NotImplementedError
             
         """
-        super(Detector,self).__init__(position,direction)
+        super().__init__(position,direction)
 
     @property
     def type(self):
@@ -88,7 +88,7 @@ class TubeDetector1D(Detector):
 
         """
 
-        super(TubeDetector1D,self).__init__(position,direction)
+        super().__init__(position,direction)
         self.pixels = pixels
         self.length = length
         self.diameter = diameter

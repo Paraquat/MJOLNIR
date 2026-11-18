@@ -45,7 +45,7 @@ class Instrument(GeometryConcept.GeometryConcept):
             else:
                 raise ValueError('File not of type XML.')
         else:
-            super(Instrument,self).__init__(position)
+            super().__init__(position)
             
             for key in kwargs:
                 self.settings[key]=kwargs[key]
@@ -111,9 +111,9 @@ class Instrument(GeometryConcept.GeometryConcept):
         raise NotImplementedError('Settings cannot be overwritten.')
 
     def __str__(self):
-        string = '{} with settings:\n'.format(self.__class__)
+        string = f'{self.__class__} with settings:\n'
         for attrib in self.settings:
-            string+='{}:\t{}\n'.format(attrib,self.settings[attrib])
+            string+=f'{attrib}:\t{self.settings[attrib]}\n'
         string+='\n'    
         string+='Containing the following wedges:\n'
         for wedge in self.wedges:
@@ -190,7 +190,7 @@ class Instrument(GeometryConcept.GeometryConcept):
         XMLString = '<?xml version="1.0"?>\n'
         XMLString+= '<Instrument '
         for attrib in self.settings:
-            XMLString+="{}='{}' ".format(attrib,self.settings[attrib])
+            XMLString+=f"{attrib}='{self.settings[attrib]}' "
 
         XMLString+="position='"+','.join([str(x) for x in self.position])+"'"
         XMLString+='>\n'
@@ -198,22 +198,22 @@ class Instrument(GeometryConcept.GeometryConcept):
         for wedge in self.wedges:
             XMLString+="\t<Wedge "
             for attrib in wedge.settings:
-                XMLString+="{}='{}' ".format(attrib,wedge.settings[attrib])
+                XMLString+=f"{attrib}='{wedge.settings[attrib]}' "
 
             XMLString+="position='"+','.join([str(x) for x in wedge.position])+"'"
             XMLString+='>\n'
 
             for item in wedge.analysers + wedge.detectors:
                 itemClass = str(item.__class__).split('.')[-1][:-2]
-                XMLString+="\t\t<{}".format(itemClass)
+                XMLString+=f"\t\t<{itemClass}"
                 for key in item.__dict__:
                     value = item.__getattribute__(key)
                     if isinstance(value,type(np.array([0,0,0]))):
                         valueStr = ','.join([str(x) for x in item.__getattribute__(key)])
                     else:
                         valueStr = str(value)
-                    XMLString+=" {}='{}'".format(str(key)[1:],valueStr)
-                XMLString+="></{}>\n".format(itemClass)
+                    XMLString+=f" {str(key)[1:]}='{valueStr}'"
+                XMLString+=f"></{itemClass}>\n"
                 
             
             XMLString+="\t</Wedge>\n"
@@ -272,7 +272,7 @@ class Instrument(GeometryConcept.GeometryConcept):
         offset = 28.0# -4.835960288880082# offset such that last pixel of detector 0 is at 0
 
         today = datetime.date.today().strftime("%d/%m/%Y")
-        string = "<?xml version='1.0'?>\n<Instrument Initialized='False' Author='MJOLNIR' Date ='{}' position='0.0,0.0,0.0'>\n".format(today)
+        string = f"<?xml version='1.0'?>\n<Instrument Initialized='False' Author='MJOLNIR' Date ='{today}' position='0.0,0.0,0.0'>\n"
         for W in -np.arange(wedges):
             
             string+="\t<Wedge position='0.0,0.0,0.0' concept='ManyToMany'>\n"
@@ -378,7 +378,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 if VanFileInstrumentType == A4FileInstrumentType:
                     InstrumentType = VanFileInstrumentType
                 else:
-                    raise AttributeError('The provided Vanadium and Powder files does not have the same instrument type ({} and {} respectively).'.format(VanFileInstrumentType,A4FileInstrumentType))        
+                    raise AttributeError(f'The provided Vanadium and Powder files does not have the same instrument type ({VanFileInstrumentType} and {A4FileInstrumentType} respectively).')        
             InstrumentType = VanFileInstrumentType
             if InstrumentType=='CAMEA':
 
@@ -390,7 +390,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                     if isinstance(table,int):
                         bins.append(table)
                     else:
-                        raise AttributeError("Provided table attribute ({}) not recognized an integer.".format(table))
+                        raise AttributeError(f"Provided table attribute ({table}) not recognized an integer.")
                 if len(bins)==0:
                     raise AttributeError("No binning has been chosen for normalization routine.")
 
@@ -430,7 +430,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 detectorsorInWedge = len(self.A4[0])
                 wedges = len(self.A4)
                 if pixels!=Data.shape[2]:
-                    raise ValueError('The number of pixels ({}) in the data file does not match instrument description ({})!'.format(pixels,Data.shape[2]))
+                    raise ValueError(f'The number of pixels ({pixels}) in the data file does not match instrument description ({Data.shape[2]})!')
 
                 # Initial finding of peaks
                 peakPos = np.ones((detectors,analysers),dtype=float)*(-1)
@@ -472,12 +472,12 @@ class Instrument(GeometryConcept.GeometryConcept):
                         try:
                             res = scipy.optimize.curve_fit(Gaussian,np.arange(ESummedData.shape[1]),dataSubtracted[i,:],p0=[guess])
                         except RuntimeError:
-                            raise RuntimeError('Fitting did not converge at detector {} analyser {}'.format(i,j))
+                            raise RuntimeError(f'Fitting did not converge at detector {i} analyser {j}')
                         peakPos[i,j] = res[0][1]
                         peakVal[i,j] = res[0][0]
                         peakWidth[i,j]= res[0][2]
                         if peakPos[i,j]>ESummedData.shape[1]:
-                            raise ValueError('Peak found at {} for analyser {} and detector {}'.format(peakPos[i,j],j,i))
+                            raise ValueError(f'Peak found at {peakPos[i,j]} for analyser {j} and detector {i}')
                         # Generate peak as the one fitted and subtract it from signal
                         x=np.arange(pixels)
                         y = Gaussian(x,peakVal[i,j],peakPos[i,j],peakWidth[i,j],peakBackg[i,j])
@@ -499,7 +499,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                             plt.plot(x,y,'k')
                             plt.xlabel('Pixel')
                             plt.ylabel('Intensity [arb]')
-                            plt.title('Detector {}'.format(i+13*k))
+                            plt.title(f'Detector {i+13*k}')
                             plt.ylim(0,np.max(ESummedData[i+13*k])*1.1)
 
                         plt.tight_layout()
@@ -525,7 +525,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 peaks=np.sum(sortedPeakPos<7*pixels,axis=1) # Number of peaks found
 
                 if np.any(peaks!=analysers):
-                    raise ValueError('Wrong number of peaks, {} found in detector(s): {}\nIn total error in {} detector(s).'.format(peaks[peaks!=analysers],np.arange(peaks.shape[0])[peaks!=analysers],np.sum(peaks!=analysers)))
+                    raise ValueError(f'Wrong number of peaks, {peaks[peaks!=analysers]} found in detector(s): {np.arange(peaks.shape[0])[peaks!=analysers]}\nIn total error in {np.sum(peaks!=analysers)} detector(s).')
 
                 pixelpos  = np.array([peakPos[i,argSort[i]] for i in range(detectors)])
                 widths    = np.array([peakWidth[i,argSort[i]] for i in range(detectors)])
@@ -547,7 +547,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                 for i in range(detectors):
                     if plot: # pragma: no cover
                         plt.clf()
-                        plt.title('Detector {} Active pixels'.format(i))
+                        plt.title(f'Detector {i} Active pixels')
                         plt.scatter(x,ESummedData[i],s=4,color='black')
                     for j in range(analysers):
                         activePixels[i,j] = np.logical_and(x>lowerPixel[i,j],x<upperPixel[i,j])
@@ -569,12 +569,12 @@ class Instrument(GeometryConcept.GeometryConcept):
                 activePixelRanges = []
                 for detpixels in bins:
                     if detpixels*analysers*3>len(Ei):
-                        warnings.warn('Fitting might be unstable due to {} pixels being fitted using only {} energies ({} free parameters).'.format(detpixels,len(Ei),detpixels*analysers*3),category=RuntimeWarning,stacklevel=2)
+                        warnings.warn(f'Fitting might be unstable due to {detpixels} pixels being fitted using only {len(Ei)} energies ({detpixels*analysers*3} free parameters).',category=RuntimeWarning,stacklevel=2)
                         
                     if plot: # pragma: no cover
                         EiX = np.linspace(Ei[0],Ei[-1],len(Ei))
-                        if not os.path.exists(savelocation+'/{}_pixels'.format(detpixels)):
-                            os.makedirs(savelocation+'/{}_pixels'.format(detpixels)) 
+                        if not os.path.exists(savelocation+f'/{detpixels}_pixels'):
+                            os.makedirs(savelocation+f'/{detpixels}_pixels') 
                         colors=np.zeros((3,detpixels))
                         if pixels==1:
                             colors[:,0]=[0.65,0.2,0.45]
@@ -582,7 +582,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                             colors[0]=np.linspace(0.3,1.0,detpixels)
                             colors[1]=np.linspace(0.2,0.2,detpixels)
                             colors[2]=np.linspace(0.8,0.1,detpixels)
-                        plt.suptitle('{} pixels'.format(detpixels))
+                        plt.suptitle(f'{detpixels} pixels')
 
                     fittedParameters=np.zeros((detectors,analysers,detpixels,4))
                     activePixelDetector=[]
@@ -596,7 +596,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                         else:
                             if plot: # pragma: no cover
                                 plt.clf()
-                                plt.title('Detector {}, {} pixels'.format(i,detpixels))
+                                plt.title(f'Detector {i}, {detpixels} pixels')
                                 x =np.linspace(0,detpixels,len(Ei))
                             for j in range(analysers):
                                 center = int(round(sortedPeakPos[i,j]))
@@ -640,15 +640,15 @@ class Instrument(GeometryConcept.GeometryConcept):
                                         
                                         
                                     except: # pragma: no cover
-                                        if not os.path.exists(savelocation+'/{}_pixels'.format(detpixels)):
-                                            os.makedirs(savelocation+'/{}_pixels'.format(detpixels))
+                                        if not os.path.exists(savelocation+f'/{detpixels}_pixels'):
+                                            os.makedirs(savelocation+f'/{detpixels}_pixels')
                                         if not plot:
                                             plt.ioff
                                         plt.figure()
                                         plt.scatter(EiLocal,binPixelData)
                                         plt.plot(Ei,fitFunc(Ei,*guess))
                                     
-                                        plt.savefig(savelocation+'/{}_pixels/Detector{}_{}.png'.format(detpixels,i,k),format='png',dpi=150)
+                                        plt.savefig(savelocation+f'/{detpixels}_pixels/Detector{i}_{k}.png',format='png',dpi=150)
                                         plt.close()
                                     
                                     fittedParameters[i,j,k]=list(res[0])+[0.0]
@@ -664,10 +664,10 @@ class Instrument(GeometryConcept.GeometryConcept):
                             plt.xlabel('Ei [meV]')
                             plt.ylabel('Weight [arb]')
                             plt.tight_layout(rect=(0,0,1,0.95))
-                            plt.savefig(savelocation+'/{}_pixels/Detector{}.png'.format(detpixels,i),format='png',dpi=150)
-                            print('Saving: {}'.format(savelocation+'/{}_pixels/Detector{}.png'.format(detpixels,i)))
+                            plt.savefig(savelocation+f'/{detpixels}_pixels/Detector{i}.png',format='png',dpi=150)
+                            print('Saving: {}'.format(savelocation+f'/{detpixels}_pixels/Detector{i}.png'))
 
-                    if not A4datafile is False: # pragma: no cover
+                    if A4datafile is not False: # pragma: no cover
                         # Perform A4 calibration
                         A4FileValue = np.array(A4FileInstrument.get('detector/polar_angle'))
                         EiFile = np.array(A4FileInstrument.get('monochromator/energy'))[0]
@@ -723,7 +723,7 @@ class Instrument(GeometryConcept.GeometryConcept):
                         if plot==True: # pragma: no cover
                             if not os.path.exists(savelocation+'A4'):
                                 os.makedirs(savelocation+'A4')
-                            plt.savefig(savelocation+'A4'+'/A4_{}.png'.format(detpixels),format='png',dpi=150)
+                            plt.savefig(savelocation+'A4'+f'/A4_{detpixels}.png',format='png',dpi=150)
 
                         A4FitValue+=2*theta*180.0/np.pi # offset relative to expected from powder line
 
@@ -732,12 +732,12 @@ class Instrument(GeometryConcept.GeometryConcept):
                             plt.scatter(range(A4.shape[0]),A4FitValue)
                             plt.scatter(range(A4.shape[0]),MeanA4Instr[:,int(np.round(np.mean(SoftwarePixel)))]*180.0/np.pi)
                             plt.legend(['File','Geometry'])
-                            plt.savefig(savelocation+'A4'+'/Points_{}.png'.format(detpixels),format='png',dpi=150)
+                            plt.savefig(savelocation+'A4'+f'/Points_{detpixels}.png',format='png',dpi=150)
 
                             diff = A4FitValue-MeanA4Instr[:,int(np.round(np.mean(SoftwarePixel)))]*180.0/np.pi#+2*theta*180.0/np.pi
                             plt.clf()
                             plt.scatter(range(A4.shape[0]),diff)
-                            plt.savefig(savelocation+'A4'+'/diff_{}.png'.format(detpixels),format='png',dpi=150)
+                            plt.savefig(savelocation+'A4'+f'/diff_{detpixels}.png',format='png',dpi=150)
 
                     else: # Use nominal A4 values from calculation
                         #A4FitValue = []
@@ -763,21 +763,21 @@ class Instrument(GeometryConcept.GeometryConcept):
 
                     fitParameters.append(fittedParameters)
                     activePixelRanges.append(np.array(activePixelDetector))
-                    tableString = 'Normalization for {} pixel(s) using VanData {} and A4Data{}{}\nPerformed {}\nDetector,Energy,Pixel,IntegratedIntensity,Center,Width,Background,lowerBin,upperBin,A4Offset\n'.format(detpixels,Vanadiumdatafile,A4datafile,(sampleMass!=0)*', using Vanadium mass {}'.format(sampleMass),datetime.datetime.now())
+                    tableString = 'Normalization for {} pixel(s) using VanData {} and A4Data{}{}\nPerformed {}\nDetector,Energy,Pixel,IntegratedIntensity,Center,Width,Background,lowerBin,upperBin,A4Offset\n'.format(detpixels,Vanadiumdatafile,A4datafile,(sampleMass!=0)*f', using Vanadium mass {sampleMass}',datetime.datetime.now())
                     for i in range(len(fittedParameters)):
                         for j in range(len(fittedParameters[i])):
                             for k in range(len(fittedParameters[i][j])):
                                 tableString+=str(i)+','+str(j)+','+str(k)+','+','.join([str(x) for x in fittedParameters[i][j][k]])
                                 tableString+=','+str(activePixelRanges[-1][i][j][k])+','+str(activePixelRanges[-1][i][j][k+1])
                                 tableString+=','+str(A4FitValue[i,j,k])+'\n'
-                    tableName = 'Normalization_{}.calib'.format(detpixels)
-                    print('Saving {} pixel data to {}'.format(detpixels,savelocation+tableName))
+                    tableName = f'Normalization_{detpixels}.calib'
+                    print(f'Saving {detpixels} pixel data to {savelocation+tableName}')
                     file = open(savelocation+tableName,mode='w')
 
                     file.write(tableString)
                     file.close()
         
-            if not A4datafile is False: # pragma: no cover
+            if A4datafile is not False: # pragma: no cover
                 A4File.close()
 
 def parseXML(Instr,fileName):
@@ -801,7 +801,7 @@ def parseXML(Instr,fileName):
         if wedge.tag in dir(Wedge):
             Wedgeclass_ = getattr(Wedge, wedge.tag)
         else:
-            raise ValueError("Element is supposed to be a Wedge, but got '{}'.".format(wedge.tag))
+            raise ValueError(f"Element is supposed to be a Wedge, but got '{wedge.tag}'.")
         wedgeSettings = {}
         
         for attrib in wedge.keys():
@@ -821,7 +821,7 @@ def parseXML(Instr,fileName):
             elif item.tag in dir(Analyser):
                 class_ = getattr(Analyser,item.tag)
             else:
-                raise ValueError("Item '{}' not recognized as MJOLNIR detector or analyser.".format(item.tag))
+                raise ValueError(f"Item '{item.tag}' not recognized as MJOLNIR detector or analyser.")
             
             itemSettings = {}
             for attrib in item.keys():
@@ -847,9 +847,9 @@ def parseXML(Instr,fileName):
                 print(e.args[0])
                 raise ValueError('Item {} misses argument(s):{}'.format(class_,e.args[0].split(':')[0]))
             except AttributeError as e:
-                raise AttributeError('Error in passing {} with attributes {}'.format(class_,itemSettings))
+                raise AttributeError(f'Error in passing {class_} with attributes {itemSettings}')
             except ValueError:
-                raise ValueError('Item {} not initialized due to error.'.format(class_))
+                raise ValueError(f'Item {class_} not initialized due to error.')
             #print(temp_item)
             temp_wedge.append(temp_item)
             #print()
@@ -968,7 +968,7 @@ def getInstrumentInfo(name):
         A4Width = 0.5 # Pad the prediction in A4 with this value (otherwise only lines will be shown)
         axes = 6
     else:
-        raise AttributeError('Provided instrument "{}" not understood'.format(name))
+        raise AttributeError(f'Provided instrument "{name}" not understood')
     
     return detectors,wedges,energies,calib,A4Width,axes
 
@@ -1041,7 +1041,7 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
         PillarOffsets = []
         
     if not len(PillarOffsets) == len(PillarSizes):
-        raise AttributeError('Number of provided pillars ({:}) does not match number of pillar offsets ({:}).'.format(len(PillarOffsets),len(PillarSizes)))
+        raise AttributeError(f'Number of provided pillars ({len(PillarOffsets)}) does not match number of pillar offsets ({len(PillarSizes)}).')
         
     detectors,wedges,energies,calib,A4Width,axes = getInstrumentInfo(instrument)
     Ax = []
@@ -1068,7 +1068,7 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
     
     def format_axes_func(self,x,y,Ei,Ef,A3Off=sample.theta,A4Sign=-1.0):# pragma: no cover
         A3,A4 = converterToA3A4(x,y,Ei,Ef,-A3Off,A4Sign=A4Sign)
-        return ax.sample.format_coord(x,y)+', A3 = {:.2f} deg, A4 = {:.2f} deg, Ef = {:.2f}'.format(A3,A4,Ef)
+        return ax.sample.format_coord(x,y)+f', A3 = {A3:.2f} deg, A4 = {A4:.2f} deg, Ef = {Ef:.2f}'
     
     for i,(ax,Ef,A4) in enumerate(zip(Ax,EfInstrument.reshape(detectors,energies).T,A4Instrument.reshape(detectors,energies).T)):
         ax.Ef = np.nanmean(Ef)
@@ -1153,7 +1153,7 @@ def prediction(A3Start,A3Stop,A3Steps,A4Positions,Ei,sample,PillarSizes=None,Pil
             
         ax.set_xlabel(_tools.generateLabelDirection(sample.projectionVector1) + ' RLU')
         ax.set_ylabel(_tools.generateLabelDirection(sample.projectionVector2) + ' RLU')
-        ax.set_title(r'$\Delta $E {:.2f}'.format(Ei-np.nanmean(Ef))+' meV, E$_f$ {:.2f} meV'.format(np.nanmean(Ef)),pad=10+10*(not np.isclose(ax.sample.projectionAngle,np.pi/2.0)))
+        ax.set_title(rf'$\Delta $E {Ei-np.nanmean(Ef):.2f}'+f' meV, E$_f$ {np.nanmean(Ef):.2f} meV',pad=10+10*(not np.isclose(ax.sample.projectionAngle,np.pi/2.0)))
         
     
     Ax[-1].set_xlabel(_tools.generateLabelDirection(sample.projectionVector1) + ' RLU')

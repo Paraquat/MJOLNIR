@@ -107,7 +107,7 @@ def KwargChecker(function=None,include=None):
 def extractArgsList(func,newFunc,function,include):
     N = func.__code__.co_argcount # Number of arguments with which the function is called
     argList = list(newFunc._original.__code__.co_varnames[:N]) # List of arguments
-    if not function is None:
+    if function is not None:
         if isinstance(function,(list,np.ndarray)): # allow function kwarg to be list or ndarray
             for f in function:
                 for arg in f.__code__.co_varnames[:f.__code__.co_argcount]: # extract all arguments from function
@@ -115,7 +115,7 @@ def extractArgsList(func,newFunc,function,include):
         else: # if single function
             for arg in function.__code__.co_varnames[:function.__code__.co_argcount]:
                 argList.append(str(arg))
-    if not include is None:
+    if include is not None:
         if isinstance(include,(list,np.ndarray)):
             for arg in include:
                 argList.append(str(arg))
@@ -127,7 +127,7 @@ def extractArgsList(func,newFunc,function,include):
 
 def extractKwargsList(function,include):
     argList = []#
-    if not function is None:
+    if function is not None:
         if isinstance(function,(list,np.ndarray)): # allow function kwarg to be list or ndarray
             for f in function:
                 for arg in f.__code__.co_varnames[:f.__code__.co_argcount]: # extract all arguments from function
@@ -135,7 +135,7 @@ def extractKwargsList(function,include):
         else: # if single function
             for arg in function.__code__.co_varnames[:function.__code__.co_argcount]:
                 argList.append(str(arg))
-    if not include is None:
+    if include is not None:
         if isinstance(include,(list,np.ndarray)):
             for arg in include:
                 argList.append(str(arg))
@@ -152,7 +152,7 @@ def checkArgumentList(argList,kwargs):
             similarity = np.array([SequenceMatcher(None, key.lower(), x.lower()).ratio() for x in argList])
             maxVal = np.max(similarity)
             maxId = np.argmax(similarity)
-            notFound.append('Key-word argument "{}" not understood. Did you mean "{}"?'.format(key,argList[maxId]))
+            notFound.append(f'Key-word argument "{key}" not understood. Did you mean "{argList[maxId]}"?')
     if len(notFound)>0:
         if len(notFound)>1:
             errorMsg = 'The following key-word arguments are not understood:\n'
@@ -175,7 +175,7 @@ def my_timer_N(N=0): # pragma: no cover
         - AttributeError
     """
     if N<0:
-        raise AttributeError('Number of runs need to be bigger or equal to 1 or equal to 0 for no timing, but {} given.'.format(N))
+        raise AttributeError(f'Number of runs need to be bigger or equal to 1 or equal to 0 for no timing, but {N} given.')
     def my_timer(func):
         import time
         def newFunc(*args,**kwargs):
@@ -189,9 +189,9 @@ def my_timer_N(N=0): # pragma: no cover
                     stopT = time.time()
                     Time.append(stopT-startT)
                 if N>1:
-                    print('Function "{}" took: {}s (\\pm{}s)'.format(func.__name__,np.mean(Time),np.std(Time)/np.sqrt(N)))
+                    print(f'Function "{func.__name__}" took: {np.mean(Time)}s (\\pm{np.std(Time)/np.sqrt(N)}s)')
                 else:
-                    print('Function "{}" took: {}s'.format(func.__name__,Time[0]))
+                    print(f'Function "{func.__name__}" took: {Time[0]}s')
             return returnval
         return newFunc
     return my_timer
@@ -204,11 +204,11 @@ def beautifyArgs(args=(),kwargs=None): # pragma: no cover
     returnStr = ''
     if not args == ():
         args = list(args)
-        returnStr =', '.join([str(x) if type(x)!=str else '"{}"'.format(x) for x in args])
+        returnStr =', '.join([str(x) if type(x)!=str else f'"{x}"' for x in args])
         if not kwargs == {}:
             returnStr+=', '
     if not kwargs == {}:
-        kwformat = ['{}={}'.format(key,kwargs[key]) if type(kwargs[key])!=str else '{}="{}"'.format(key,kwargs[key])  for key in kwargs]
+        kwformat = [f'{key}={kwargs[key]}' if type(kwargs[key])!=str else f'{key}="{kwargs[key]}"'  for key in kwargs]
         returnStr+=', '.join([str(x) for x in kwformat])
     return returnStr
 
@@ -224,7 +224,7 @@ def createLogger(self,name,stream=sys.stdout,level=logging.ERROR): # pragma: no 
 def logMethod(self,original_function):  # pragma: no cover
     @functools.wraps(original_function)     
     def new_function(*args,**kwargs):
-        self._log.info('Calling {}({})'.format(new_function.original_function.__name__,beautifyArgs(args,kwargs)))
+        self._log.info(f'Calling {new_function.original_function.__name__}({beautifyArgs(args,kwargs)})')
         try:
             x = original_function(*args,**kwargs)
         except Exception as WrapperError:
@@ -235,7 +235,7 @@ def logMethod(self,original_function):  # pragma: no cover
     return new_function  
 
 def logAttribute(self,original_attribute): # pragma: no cover
-    self._log.info('Calling attribute {}'.format(str(original_attribute)))                                     
+    self._log.info(f'Calling attribute {str(original_attribute)}')                                     
     
 
 def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL): # pragma: no cover
@@ -246,7 +246,7 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
             
             def __init__(self,*args,**kwargs):
                 createLogger(self,name=log,stream=stream,level=level)
-                self._log.info('Calling {}({})'.format(Cls.__name__,beautifyArgs(args,kwargs)))
+                self._log.info(f'Calling {Cls.__name__}({beautifyArgs(args,kwargs)})')
                 self._Instance = Cls(*args,**kwargs)
 
                 
@@ -258,7 +258,7 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
                 the attribute is an instance method then `time_this` is applied.
                 """
                 try:
-                    x = super(NewCls,self).__getattribute__(s)
+                    x = super().__getattribute__(s)
                     skip = True
                 except AttributeError:
                     # A missing attribute on the wrapped instance propagates as AttributeError
@@ -275,7 +275,7 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
                 #print('\n'.join([x for x in self._log]))
         d = Cls.__dict__
         keys = d.keys()
-        copy = [x for x in list(Cls.__dict__) if not x in list(NewCls.__dict__)]
+        copy = [x for x in list(Cls.__dict__) if x not in list(NewCls.__dict__)]
         
         for key in copy+['__doc__']:
             if key=='__dict__' or key in ['__getattribute__','__init__']: #  Check if the value in dict is a function
@@ -344,10 +344,10 @@ def binEdges(values,tolerance,startPoint=None,endPoint=None):
     
     bin_edges = np.array(bin_edges)
 
-    if not endPoint is None:
+    if endPoint is not None:
         if endPoint-bin_edges[-1]<tolerance:
             bin_edges = np.concatenate([bin_edges[:np.sum(bin_edges<endPoint)],[endPoint]])
-    if not startPoint is None:
+    if startPoint is not None:
         if bin_edges[0]-startPoint<tolerance or bin_edges[0]<startPoint:
             bin_edges = np.concatenate([[startPoint],bin_edges[np.sum(bin_edges<startPoint):]])
     return bin_edges
@@ -398,7 +398,7 @@ def fileListGenerator(numberString,folder,year=2018, format = None, instrument =
         elif instrument.lower() == 'flatcone':
             format = '{1:06d}'
         else:
-            raise AttributeError('Provided instrument "{}" not understood'.format(instrument))
+            raise AttributeError(f'Provided instrument "{instrument}" not understood')
 
 
     for sp in splits:
@@ -407,7 +407,7 @@ def fileListGenerator(numberString,folder,year=2018, format = None, instrument =
         if isRange:
             spSplits = sp.split('-')
             if len(spSplits)>2:
-                raise AttributeError('Sequence "{}" not understood - too many dashes.'.format(sp))
+                raise AttributeError(f'Sequence "{sp}" not understood - too many dashes.')
             startNumber = int(spSplits[0])
             endNumber = int(spSplits[1])
             if startNumber>endNumber:
@@ -457,7 +457,7 @@ def RoundBinning(X,deltas,Data=None):
     else:
         binning = np.array([deltas]).reshape(-1,1)
         if not points.shape[0]==binning.shape[0]:
-            raise AttributeError('Shape mismatch between X and deltas. Expected {} deltas for X with shape {}, recieved {}'.format(points.shape[0],points.shape,deltas))
+            raise AttributeError(f'Shape mismatch between X and deltas. Expected {points.shape[0]} deltas for X with shape {points.shape}, recieved {deltas}')
         
     binningLog = np.log10(binning)
     binningOrder = np.floor(binningLog)
@@ -469,7 +469,7 @@ def RoundBinning(X,deltas,Data=None):
     
     BinnedPoints = binPoints*np.power(10,binningOrder)/binningScale
     
-    if not Data is None:
+    if Data is not None:
         if isinstance(Data,list):
             returnData = [np.histogram(indices,bins=BinnedPoints.shape[1],weights=x)[0] for x in Data]
         else:
@@ -736,10 +736,10 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
     m is the number of data points measured        
     """
     spinWaveEnergy = np.asarray(spinWaveEnergy)
-    if not spinWaveEnergyErr is None:
+    if spinWaveEnergyErr is not None:
         spinWaveEnergyErr = np.asarray(spinWaveEnergyErr)
         if not spinWaveEnergy.shape == spinWaveEnergyErr.shape:
-            raise AttributeError('Arrays for spinWaveEnergy(shape: {}), spinWaveEnergyErr(shape: {}) have to have same shape.'.format(spinWaveEnergy.shape,spinWaveEnergyErr.shape))
+            raise AttributeError(f'Arrays for spinWaveEnergy(shape: {spinWaveEnergy.shape}), spinWaveEnergyErr(shape: {spinWaveEnergyErr.shape}) have to have same shape.')
    
         
     spinWaveWidth = np.asarray(spinWaveWidth)
@@ -747,7 +747,7 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
     position = np.asarray(position)
     
     if not np.all([spinWaveEnergy.shape == spinWaveWidth.shape,spinWaveEnergy.shape == spinWaveAmplitude.shape]):
-        raise AttributeError('Arrays for spinWaveEnergy(shape: {}), spinWaveWidth(shape: {}), and spinWaveAmplitude(shape: {}) have to have same shape.'.format(spinWaveEnergy.shape,spinWaveWidth.shape,spinWaveAmplitude.shape))
+        raise AttributeError(f'Arrays for spinWaveEnergy(shape: {spinWaveEnergy.shape}), spinWaveWidth(shape: {spinWaveWidth.shape}), and spinWaveAmplitude(shape: {spinWaveAmplitude.shape}) have to have same shape.')
         
     if len(spinWaveEnergy.shape) == 1:
         spinWaveEnergy = spinWaveEnergy.reshape((1,-1))
@@ -757,10 +757,10 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
     spinWaves,dataPoints = spinWaveEnergy.shape
     
     if not position.shape == (3,dataPoints):
-        raise AttributeError('With provided spin wave parameters, expected position of shape (3,{}) but recieved {}.'.format(dataPoints,position.shape))
+        raise AttributeError(f'With provided spin wave parameters, expected position of shape (3,{dataPoints}) but recieved {position.shape}.')
     
     
-    if not spinWaveEnergyErr is None:
+    if spinWaveEnergyErr is not None:
         columns = 4
     else:
         columns = 3
@@ -774,7 +774,7 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
     widthIndices = np.array([7+x*columns for x in range(spinWaves)],dtype=int)
     amplitudeIndices = np.array([5+x*columns for x in range(spinWaves)],dtype=int)
     
-    if not spinWaveEnergyErr is None:
+    if spinWaveEnergyErr is not None:
         errorIndices = np.array([8+x*columns for x in range(spinWaves)],dtype=int)
         dataMatrix[errorIndices,:] = spinWaveEnergyErr
     
@@ -783,11 +783,11 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
     dataMatrix[amplitudeIndices,:] = spinWaveAmplitude
     
     headers = ['QH','QK','QL','ENlim1','ENlim2']
-    if not spinWaveEnergyErr is None:
-        headers+=list(np.concatenate([['I{}'.format(x+1),'EN{}'.format(x+1),'sigma{}'.format(x+1),'EErr{}'.format(x+1)] for x in range(spinWaves)]))
+    if spinWaveEnergyErr is not None:
+        headers+=list(np.concatenate([[f'I{x+1}',f'EN{x+1}',f'sigma{x+1}',f'EErr{x+1}'] for x in range(spinWaves)]))
     else:
-        headers+=list(np.concatenate([['I{}'.format(x+1),'EN{}'.format(x+1),'sigma{}'.format(x+1)] for x in range(spinWaves)]))
-    titles = ''.join(['{:>14s} '.format(x) for x in headers])
+        headers+=list(np.concatenate([[f'I{x+1}',f'EN{x+1}',f'sigma{x+1}'] for x in range(spinWaves)]))
+    titles = ''.join([f'{x:>14s} ' for x in headers])
 
     
     np.savetxt(file,dataMatrix.T,fmt='%+.7e',delimiter = ' ', header=titles,comments='')
@@ -940,7 +940,7 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
     start = sampleChemicalFormula.count('(')
     stop = sampleChemicalFormula.count(')')
     if not start==stop:
-        raise AttributeError('The number of starting and closing parenthesis do not match. Got {} "(" and {} ")"'.format(start,stop))
+        raise AttributeError(f'The number of starting and closing parenthesis do not match. Got {start} "(" and {stop} ")"')
 
 
     
@@ -996,7 +996,7 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
     for part,mult in splitted:
         for elem in element.findall(part):
             m = float(mult)*(float(elem[1]) if elem[1]!='' else 1)
-            if not elem[0] in elements:
+            if elem[0] not in elements:
                 elements[elem[0]]=m
             else:
                 elements[elem[0]]+=m
@@ -1023,7 +1023,7 @@ def calculateMolarMass(sampleChemicalFormula,formulaUnitsPerUnitCell=1,returnEle
             
         sampleMolarMass += relative_atomic_masses[idx]*element[1]
     if error:
-        raise AttributeError('Element "{}" not recognized...'.format(element[0]))
+        raise AttributeError(f'Element "{element[0]}" not recognized...')
     sampleMolarMass*=formulaUnitsPerUnitCell
 
     for key in elements.keys():
@@ -1072,7 +1072,7 @@ def calculateAbsoluteNormalization(sampleMass=None,sampleChemicalFormula=None,sa
     
     """
 
-    if not sampleMass is None: # No normalization to sample!
+    if sampleMass is not None: # No normalization to sample!
         if sampleMolarMass is None:
             sampleMolarMass = calculateMolarMass(sampleChemicalFormula=sampleChemicalFormula,
                                                 formulaUnitsPerUnitCell=formulaUnitsPerUnitCell)
@@ -1134,7 +1134,7 @@ def EnergyWavelength(wavelength):
 
 def ScatteringAngle(d,Energy=None,Wavelength=None,K=None,degrees = True):
     """Calculate scattering angle [deg or rad] from d [AA] and one of the following [Energy [meV], Wavelength [AA], K[1/AA]]."""
-    pars = np.array([not x is None for x in [Energy,Wavelength,K]],dtype=bool)
+    pars = np.array([x is not None for x in [Energy,Wavelength,K]],dtype=bool)
     parsNames = np.array(['Energy','Wavelength','K'])
     if np.all(pars==False): # No provided
         raise AttributeError('None of the energy, wavelenght, or k were provided...')
@@ -1164,7 +1164,7 @@ def ScatteringAngle(d,Energy=None,Wavelength=None,K=None,degrees = True):
 def DSpacing(TwoTheta,Energy=None,Wavelength=None,K=None,degrees = True):
     """Calculate d spacing [AA] from scattering angle [deg or rad] and one of the following [Energy [meV], Wavelength [AA], K[1/AA]]."""
     
-    pars = np.array([not x is None for x in [Energy,Wavelength,K]],dtype=bool)
+    pars = np.array([x is not None for x in [Energy,Wavelength,K]],dtype=bool)
     parsNames = np.array(['Energy','Wavelength','K'])
     if np.all(pars==False): # No provided
         raise AttributeError('None of the energy, wavelenght, or k were provided...')

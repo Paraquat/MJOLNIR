@@ -18,7 +18,7 @@ def sind(x):
 def camelCase(string,split='_'):
     """Convert string to camel case from <split> seperated"""
 
-    if not split in string:
+    if split not in string:
         return string
     splitString = string.split(split)
     first = splitString[0]
@@ -27,7 +27,7 @@ def camelCase(string,split='_'):
     combi = [first]+others
     return ''.join([str(x) for x in combi])
 
-class Sample(object):
+class Sample:
     """Sample object to store all information of the sample from the experiment"""
     @_tools.KwargChecker()
     def __init__(self,a=2.0*np.pi,b=2.0*np.pi,c=2.0*np.pi,alpha=90,beta=90,gamma=90,sample=None,name='Unknown',projectionVector1=None, projectionVector2 = None,recalculateUB=False):
@@ -299,7 +299,7 @@ class Sample(object):
         """Format coordinates from QxQy in rotated frame into HKL."""
         x, y = np.asarray(x), np.asarray(y)
         rlu = self.calculateQxQyToHKL(x,y)#np.dot(self.orientationMatrixINV,np.array([x,y,0]))
-        return "h = {0:.3f}, k = {1:.3f}, l = {2:.3f}".format(rlu[0],rlu[1],rlu[2])
+        return f"h = {rlu[0]:.3f}, k = {rlu[1]:.3f}, l = {rlu[2]:.3f}"
 
     def calculateQxQyToHKL(self,x,y):
         """convert from Qx,Qy to HKL."""
@@ -376,7 +376,7 @@ class Sample(object):
                     Ql.append(np.array([TasUBlib.calcTasQH(self.orientationMatrixINV,Angles2,ei,e,0.0) for e in Ef])[:,1]) # Extract Qx,Qy
                 QlLocal.append(Ql)
         else:
-            raise AttributeError('Provided spurionType not understood. Expected "Monochromator" or "Analyser" but received "{}".'.format(spurionType))
+            raise AttributeError(f'Provided spurionType not understood. Expected "Monochromator" or "Analyser" but received "{spurionType}".')
 
         returnVal = np.array(QlLocal) # Shape (l,m,n,3)
         
@@ -454,7 +454,7 @@ class Sample(object):
 def calcProjectionVectors(R1,R2,norm=None):
     r1 = R1[:3]
     r2 = R2[:3]
-    if not norm is None:
+    if norm is not None:
         NV = norm
     else:
         NV = np.cross(r1,r2)
@@ -462,7 +462,7 @@ def calcProjectionVectors(R1,R2,norm=None):
     
     Zeros = np.isclose(NV,0.0)
     if np.sum(Zeros)==3:
-        raise AttributeError('The two plane vectors are equivalent, {}, {}!'.format(r1,r2))
+        raise AttributeError(f'The two plane vectors are equivalent, {r1}, {r2}!')
     
     
     if np.sum(Zeros) == 2 or np.sum(Zeros)==1: # Easy case where the two vectors are to be along the x, y, or z directions

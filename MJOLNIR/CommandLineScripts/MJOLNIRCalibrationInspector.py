@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Created on Tue Jul 24 14:46:53 2018
 
@@ -34,7 +33,7 @@ def switch(argument):
     for plotType in PlotType:
         if plotType.upper() == argument.upper():
             return plotType
-    warnings.warn('Plot type "{}" not understood and will be skipped.'.format(argument))
+    warnings.warn(f'Plot type "{argument}" not understood and will be skipped.')
 
 
 parser = argparse.ArgumentParser(description="Inspection tool to visualize calibration tables in a data file.")
@@ -55,7 +54,7 @@ def inspect(args):
     reader = DataReaderFactory().create(_tools.instrumentName(args), Path(file))
     binning = reader.default_binning if args.binning is None else args.binning
     if binning not in reader.possible_binnings:
-        raise ValueError('Binning {} not in the possible binnings {} of "{}"'.format(binning, reader.possible_binnings, file))
+        raise ValueError(f'Binning {binning} not in the possible binnings {reader.possible_binnings} of "{file}"')
     calibration = reader.get_instrument_calibration(binning)
 
     plots = []

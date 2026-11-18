@@ -22,7 +22,7 @@ class Analyser(GeometryConcept.GeometryObject):
 
             - mosaicity (float): The standard deviation of mosaicity in arcminutes (default 60)
         """
-        super(Analyser,self).__init__(position,direction)
+        super().__init__(position,direction)
         self.d_spacing = d_spacing
         self.mosaicity = mosaicity
         
@@ -122,7 +122,7 @@ class FlatAnalyser(Analyser):
         
 
         """
-        super(FlatAnalyser,self).__init__(position,direction,d_spacing,mosaicity)
+        super().__init__(position,direction,d_spacing,mosaicity)
         self.width = width
         self.height = height
 

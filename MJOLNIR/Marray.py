@@ -1,7 +1,7 @@
 import numpy as np
 import itertools
 
-class Marray(object):
+class Marray:
     """Collection object for masked arrays"""
     def __init__(self, data=None, cls = np.ma.MaskedArray):
         if data is None:
@@ -73,7 +73,7 @@ class Marray(object):
                 return AttributeError('Provided mask does not fit the length of Marray.')
         else:
             if len(mask) != len(self._data):
-                raise AttributeError('Provided mask does not fit the length of Marray. Mask has length {} while array has length {}'.format(len(mask),len(self)))
+                raise AttributeError(f'Provided mask does not fit the length of Marray. Mask has length {len(mask)} while array has length {len(self)}')
             else:
                 if self.multidimensional:
                     for i in range(len(self)):
@@ -185,7 +185,7 @@ class Marray(object):
                             data.append(d.reshape(s))
                     self.data = data
                 else:
-                    raise AttributeError('Shape provided ({}) does not fit Marray of length {}'.format(shape,len(self)))
+                    raise AttributeError(f'Shape provided ({shape}) does not fit Marray of length {len(self)}')
         else:
             try:
                 len(shape)
@@ -284,7 +284,7 @@ class Marray(object):
 
 def axisChecker(axis):
     """Checks the axis provided in numpy functions. Returns axis decremented by one and boolean if 0 is in original axis."""
-    if not axis is None:
+    if axis is not None:
         try:
             ax = np.asarray(axis)
         except TypeError:

@@ -13,7 +13,7 @@ header = "  detector,    energy,     pixel, amplitude,    center,     width,back
 with open(bambus_file, 'w') as outfile:
     outfile.write(header)
 
-count = 0;
+count = 0
 for wedge_idx in range(n_wedges):
     for det_idx in range(detectors_per_wedge):
         a4 = 19.0 - wedge_idx * angle_increment

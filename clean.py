@@ -12,7 +12,7 @@ if not len(sys.argv)==1:
 		folder+='/'
 	if not len(content)==0:
 		for f in content:
-			if not f in keepFiles:
+			if f not in keepFiles:
 				os.remove(folder+f)
 #			else:
 #				print('Keeping: '+f)

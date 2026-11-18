@@ -53,7 +53,7 @@ def test_BooleanAlgebra():
     class simpleMaskingObject(MaskingObject):
         dimensionality = '1D'
         def __init__(self,coordinates=None,maskInside=True):
-            super(simpleMaskingObject,self).__init__(coordinates=coordinates,maskInside=maskInside)
+            super().__init__(coordinates=coordinates,maskInside=maskInside)
             
         
         def call(self):
@@ -146,7 +146,7 @@ def test_lineMask():
     X,Y,Z = np.array(np.meshgrid(np.linspace(0,1,50),np.linspace(0,1,50),np.linspace(0,1,50))).reshape(3,-1)
     
     
-    class p(object):
+    class p:
         pass
     
     points = p()
@@ -170,7 +170,7 @@ def test_lineMask():
 def test_rectangleMask():
     X,Y,Z = np.array(np.meshgrid(np.linspace(0,3,50),np.linspace(0,3,50),np.linspace(0,3,50))).reshape(3,-1)
     
-    class p(object):
+    class p:
         pass
     
     points = p()
@@ -208,7 +208,7 @@ def test_rectangleMask():
 def test_circleMask():
     X,Y,Z = np.array(np.meshgrid(np.linspace(0,3,50),np.linspace(0,3,50),np.linspace(0,3,50))).reshape(3,-1)
     
-    class p(object):
+    class p:
         pass
     
     points = p()
@@ -240,7 +240,7 @@ def test_circleMask():
 def test_boxMask():
     X,Y,Z = np.array(np.meshgrid(np.linspace(0,2,100),np.linspace(0,2,100),np.linspace(0,2,100))).reshape(3,-1)
     
-    class p(object):
+    class p:
         pass
     
     points = p()

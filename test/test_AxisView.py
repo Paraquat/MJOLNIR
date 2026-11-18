@@ -30,7 +30,7 @@ def test_axisview():
     assert slice1[2] == pytest.approx(13.0)
 
     # iteration
-    count = 0;
+    count = 0
     for val in view1[:, 0]:
         if count == 0:
             assert val == pytest.approx(1.0)

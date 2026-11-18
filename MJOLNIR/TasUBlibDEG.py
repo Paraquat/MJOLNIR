@@ -63,7 +63,7 @@ def calcTheta(ki,kf,stt,alt=False):
     if alt:
         return arctan2d(-np.abs(kf) * sind(stt), np.abs(ki) - np.abs(kf) * cosd(stt))
     else:
-        return arctan2d(np.abs(ki) - np.abs(kf) * cosd(stt), np.abs(kf) * sind(stt));
+        return arctan2d(np.abs(ki) - np.abs(kf) * cosd(stt), np.abs(kf) * sind(stt))
 
 
 def calcTasUVectorFromAngles(r, alt=False):
@@ -119,7 +119,7 @@ def buildRMatrix(UB, planeNormal, qe):
     U1V/=np.linalg.norm(U1V)
     U2V = np.cross(np.dot(UB,planeNormal).T, U1V.T).T
     if np.linalg.norm(U2V)<0.001:
-        raise AttributeError('Calculate length of U2V too small ({})'.format(U2V))
+        raise AttributeError(f'Calculate length of U2V too small ({U2V})')
     
     TV = buildTVMatrix(U1V, U2V)
     TVinv = np.linalg.inv(TV)
@@ -133,7 +133,7 @@ def calcTasQAngles(UB,planeNormal,ss,A3Off,qe):
     sgu = arctan2d(R[2,1]/cossgl, R[2,2]/cossgl)
     
     QC = tasReflectionToQC(qe, UB)
-    q = np.linalg.norm(QC);
+    q = np.linalg.norm(QC)
     
     Ei = qe[3]
     Ef = qe[4]
@@ -165,10 +165,10 @@ def calcTasQH(UBINV,angles,Ei,Ef,A3Off=0,alt=False):
   ki = np.sqrt(Ei)*factorsqrtEK
   kf = np.sqrt(Ef)*factorsqrtEK
   
-  QV = calcTasUVectorFromAngles(r,alt);
+  QV = calcTasUVectorFromAngles(r,alt)
   
   q = np.sqrt(ki**2 +kf**2-
-           2. *ki *kf * cosd(A4));
+           2. *ki *kf * cosd(A4))
   
   if len(QV.shape)>2: # If multidimensional QV
     q = np.expand_dims(np.swapaxes(q,0,2),3)
@@ -224,7 +224,7 @@ def calTwoTheta(B,qe,ss):
   ki,kf = np.sqrt([Ei,Ef])*factorsqrtEK
   QC = np.dot(B,qe[:3])
   
-  q = np.linalg.norm(QC);
+  q = np.linalg.norm(QC)
  
   cos2t = (ki * ki + kf * kf - q * q) /\
               (2. * np.abs(ki) * np.abs(kf))

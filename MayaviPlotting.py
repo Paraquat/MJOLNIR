@@ -47,7 +47,7 @@ if False:
     #pc = ax.pcolormesh(Qx[:,:,Eslice].T,Qy[:,:,Eslice].T,Int[:,:,Eslice].T,vmin=VMIN,vmax=VMAX,zorder=10,cmap=my_cmap)
     ax.set_ylabel('$Q_y$ [1/AA]')
     ax.set_xlabel('$Q_x$ [1/AA]')
-    plt.title('$\hbar \omega =$ {:.02f}'.format(np.mean(energy_bin[:,:,Eslice])) + ' meV')
+    plt.title(f'$\hbar \omega =$ {np.mean(energy_bin[:,:,Eslice]):.02f}' + ' meV')
 
 else:
     for Eslice in range(len(energy_bin[0,0])-1):

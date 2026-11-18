@@ -84,9 +84,9 @@ def test_TasUBDEG_CalculateAngles(): # TODO: Redo these calculations as one need
 
         a3,a4,sgu,sgl = calcTasQAngles(UB,planeNormal,ss,A3Off,qe)
 
-        print('------------------\nA3:{}\nA4{}'.format(a3,a4))
+        print(f'------------------\nA3:{a3}\nA4{a4}')
         hkl = calcTasQH(UBINV,[a3,a4],qe[3],qe[4])[0]
-        print('{}'.format(hkl))
+        print(f'{hkl}')
         assert(np.all(np.isclose([sgu,sgl],0.0))) # Sgu and sgl are 0 by definition
         assert(np.all(np.isclose(hkl,qe[:3])))
     

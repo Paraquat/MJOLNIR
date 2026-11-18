@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Mon Mar 12 16:43:47 2018
 
@@ -27,7 +26,7 @@ def parseXML(filename):
 		if wedge.tag in dir(Wedge):
 			Wedgeclass_ = getattr(Wedge, wedge.tag)
 		else:
-			raise ValueError("Element is supposed to be a Wedge, but got '{}'.".format(wedge.tag))
+			raise ValueError(f"Element is supposed to be a Wedge, but got '{wedge.tag}'.")
 		wedgeSettings = {}
 		
 		for attrib in wedge.keys():
@@ -47,7 +46,7 @@ def parseXML(filename):
 			elif item.tag in dir(Analyser):
 				class_ = getattr(Analyser,item.tag)
 			else:
-				raise ValueError("Item '{}' not recognized as MJOLNIR detector or analyser.".format(item.tag))
+				raise ValueError(f"Item '{item.tag}' not recognized as MJOLNIR detector or analyser.")
 			
 			itemSettings = {}
 			for attrib in item.keys():
@@ -66,7 +65,7 @@ def parseXML(filename):
 				print(e.args[0])
 				raise ValueError('Item {} misses argument(s):{}'.format(class_,e.args[0].split(':')[1]))
 			except ValueError:
-				raise ValueError('Item {} not initialized due to error.'.format(class_))
+				raise ValueError(f'Item {class_} not initialized due to error.')
 			#print(temp_item)
 			temp_wedge.append(temp_item)
 			#print()
@@ -79,26 +78,26 @@ def createXMLString(instrument):
 	XMLString = '<?xml version="1.0"?>\n'
 	XMLString+= '<Instrument '
 	for attrib in instrument.settings:
-		XMLString+="{}='{}' ".format(attrib,instrument.settings[attrib])
+		XMLString+=f"{attrib}='{instrument.settings[attrib]}' "
 	XMLString+='>\n'
 		
 	for wedge in instrument.wedges:
 		XMLString+="\t<Wedge "
 		for attrib in wedge.settings:
-			XMLString+="{}='{}' ".format(attrib,wedge.settings[attrib])
+			XMLString+=f"{attrib}='{wedge.settings[attrib]}' "
 		XMLString+='>\n'
 
 		for item in wedge.analysers + wedge.detectors:
 			itemClass = str(item.__class__).split('.')[-1][:-2]
-			XMLString+="\t\t<{}".format(itemClass)
+			XMLString+=f"\t\t<{itemClass}"
 			for key in item.__dict__:
 				value = item.__getattribute__(key)
 				if isinstance(value,type(np.array([0,0,0]))):
 					valueStr = ','.join([str(x) for x in item.__getattribute__(key)])
 				else:
 					valueStr = str(value)
-				XMLString+=" {}='{}'".format(str(key)[1:],valueStr)
-			XMLString+="></{}>\n".format(itemClass)
+				XMLString+=f" {str(key)[1:]}='{valueStr}'"
+			XMLString+=f"></{itemClass}>\n"
 			
 		
 		XMLString+="\t</Wedge>\n"

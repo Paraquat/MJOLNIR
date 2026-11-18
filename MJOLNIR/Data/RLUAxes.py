@@ -66,7 +66,7 @@ class MaxNLocator(mticker.MaxNLocator):
                 symmetric=False,
                 prune=None):
         # trim argument has no effect. It has been left for API compatibility
-        super(MaxNLocator,self).__init__(nbins, steps=steps,
+        super().__init__(nbins, steps=steps,
                                     integer=integer,
                                     symmetric=symmetric, prune=prune)
         self.create_dummy_axis()
@@ -87,7 +87,7 @@ class MultipleLocator(mticker.MultipleLocator):
     def __init__(self,base=None):
         if base is None:
             base = 0.25
-        super(MultipleLocator,self).__init__(base)
+        super().__init__(base)
         self.create_dummy_axis()
         self._factor = 1#0.0
         self._multiplerVals = np.array([1,2,4,5,10])
@@ -158,7 +158,7 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
     for d,diff,locator in zip(direction,difference,locators):
         forceUpdate = True
         if isinstance(locator,MultipleLocator):
-            if not np.isclose(getattr(axis,'_old{}limDiff'.format(d.capitalize())),diff) \
+            if not np.isclose(getattr(axis,f'_old{d.capitalize()}limDiff'),diff) \
             or forceUpdate:# if new image size
 
                 points = np.array(np.meshgrid(xlim,ylim)).reshape(-1,2) # Generate the 4 corner points
@@ -167,23 +167,23 @@ def axisChanged(event,axis=None,forceUpdate=False,direction='both'):
                     span = np.max(Qs[:,0])-np.min(Qs[:,0])
                 else:
                     span = np.max(Qs[:,1])-np.min(Qs[:,1])
-                if not hasattr(axis,'{}ticks'.format(d)):
-                    setattr(axis,'{}ticks'.format(d),7)
+                if not hasattr(axis,f'{d}ticks'):
+                    setattr(axis,f'{d}ticks',7)
                 
-                ticks = getattr(axis,'{}ticks'.format(d))
-                setattr(axis,'_old{}limDiff'.format(d.capitalize()),diff)
+                ticks = getattr(axis,f'{d}ticks')
+                setattr(axis,f'_old{d.capitalize()}limDiff',diff)
             
 
-            if not hasattr(axis,'{}base'.format(d)):
+            if not hasattr(axis,f'{d}base'):
                 base = calculateBase(locator,span,ticks)
             else:
-                base = getattr(axis,'{}base'.format(d))
+                base = getattr(axis,f'{d}base')
 
             locator.set_params(base=base)
         
         elif isinstance(locator,MaxNLocator):
-            if hasattr(axis,'{}ticks'.format(d)):
-                ticks = getattr(axis,'{}ticks'.format(d))
+            if hasattr(axis,f'{d}ticks'):
+                ticks = getattr(axis,f'{d}ticks')
             else:
                 ticks = 7
             locator.set_params(nbins = ticks)
@@ -279,7 +279,7 @@ def create_q_axis(sample, rlu: bool = True, figure=None, ids=(1, 1, 1), basex=No
         ax.format_coord = ax.sample.format_coord
     else:
         def format_coord(x,y):
-            return ', '.join([label+' = {:.3f}'.format(val) for val,label in zip([x,y],['qx','qy'])])
+            return ', '.join([label+f' = {val:.3f}' for val,label in zip([x,y],['qx','qy'])])
         ax.format_coord = format_coord
 
     if ax.rlu:
@@ -404,7 +404,7 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
         if not np.all([x.shape==(3,) for x in [v1,v2]])\
         or not np.all([len(x.shape)==1 for x in [v1,v2]])\
         or np.all([x.shape==(2,) for x in [v1,v2]]):
-            raise AttributeError('Provided vector(s) is not 3D/2D: projectionVector1.shape={} or projectionVector2.shape={}'.format(v1.shape,v2.shape))
+            raise AttributeError(f'Provided vector(s) is not 3D/2D: projectionVector1.shape={v1.shape} or projectionVector2.shape={v2.shape}')
         angle = np.arccos(np.dot(v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2)))
         if rlu is True:
             orientationMatrix = np.ones(3)
@@ -423,8 +423,8 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
     projectionVectorQY = _tools.LengthOrder(projectionVectorQY)
     projectionVectorQXLength = np.linalg.norm(np.dot(orientationMatrix,projectionVectorQY))
     projectionVectorQYLength = np.linalg.norm(np.dot(orientationMatrix,projectionVectorQX))
-    projectionVectorQXFormated = ', '.join(['{:.3f}'.format(x) for x in projectionVectorQX])
-    projectionVectorQYFormated = ', '.join(['{:.3f}'.format(x) for x in projectionVectorQY])
+    projectionVectorQXFormated = ', '.join([f'{x:.3f}' for x in projectionVectorQX])
+    projectionVectorQYFormated = ', '.join([f'{x:.3f}' for x in projectionVectorQY])
 
     if axis == 0:
         projectionVectorLength = projectionVectorQYLength
@@ -439,7 +439,7 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
         projectionVector = projectionVectorQY
         projectionVectorOrthogonal = projectionVectorQX
     else:
-        raise AttributeError('Provided axis of {} is not allowed. Should be either 0 or 1.'.format(axis))
+        raise AttributeError(f'Provided axis of {axis} is not allowed. Should be either 0 or 1.')
 
     if figure is None:
 
@@ -477,14 +477,14 @@ def create_qe_axes(sample=None, axis: int = 0, figure=None, projection_vector1=N
         return np.asarray(x)/l*v1+v*step, np.asarray(y)
 
     def format_coord(x,y,rlu=rlu,labels=labels): # pragma: no cover # x is H,K,L and y is  energy
-        xformated = ', '.join(['{} = {}'.format(Y[0],Y[1]) for Y in zip(labels,['{:.4f}'.format(X) for X in x])])
-        return '{}, E={:.4f}'.format(xformated,y)
+        xformated = ', '.join([f'{Y[0]} = {Y[1]}' for Y in zip(labels,[f'{X:.4f}' for X in x])])
+        return f'{xformated}, E={y:.4f}'
 
 
     if rlu:
-        ax.set_xlabel('{} [RLU]'.format(projectionVectorFormated))
+        ax.set_xlabel(f'{projectionVectorFormated} [RLU]')
     else:
-        ax.set_xlabel('{} [1/A]'.format(projectionVectorFormated))
+        ax.set_xlabel(f'{projectionVectorFormated} [1/A]')
 
     ax.set_ylabel('E [meV]')
     ax._length = projectionVectorLengthORthogonal

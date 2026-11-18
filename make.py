@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Created on Wed Jul 14 11:54:33 2021
 
@@ -19,7 +18,7 @@ DEBUG = False
 possibleArguments = ['test', 'tutorials', 'wheel', 'html', 'upload', 'testVersion', 'version']
 
 parser = argparse.ArgumentParser(description="Make tool replacing linux Makefile.")
-parser.add_argument("task", nargs='?', default='help', type=str, help="Type of task to be performed. Possible tasks are: {}. Run without argument to see help menu.".format(OxfordList(possibleArguments)))
+parser.add_argument("task", nargs='?', default='help', type=str, help=f"Type of task to be performed. Possible tasks are: {OxfordList(possibleArguments)}. Run without argument to see help menu.")
 parser.add_argument("version", nargs='?',default=None, type=str, help="Version number to be created. Default is previous plus 1, i.e. x.y.z -> x.y.z+1")
 
 def callHelp(parser=parser):
@@ -68,7 +67,7 @@ def getLatestVersions():
             a = a[np.asarray([len(x)>0 for x in a])]
             a = '.'.join(a)
             a = a.replace('post.','post')
-            if not a in versions:
+            if a not in versions:
                 versions[a] = [os.path.getctime(os.path.join(r'C:\Users\lass_j\Documents\Software\MJOLNIR',b)),[b]]
             else:
                 versions[a][1].append(b)
@@ -102,7 +101,7 @@ def uploadPyPi(server='testpypi'):
     for b in build:
         print('Uploading ' + str(b) + ' to '+server)
         if not DEBUG:
-            os.system('twine upload {} -r {}'.format(b,server))
+            os.system(f'twine upload {b} -r {server}')
 
 
 def upload():
@@ -167,11 +166,11 @@ elif args.task.lower() == 'version':
     if not DEBUG:
         os.system("git add {}".format(' '.join(addFiles)))
         os.system('git commit -m "Update version"')
-        os.system('git tag -a {0} -m "{0}"'.format(version))
+        os.system(f'git tag -a {version} -m "{version}"')
     else:
         print("git add {}".format(' '.join(addFiles)))
         print('git commit -m "Update version"')
-        print('git tag -a {0} -m "{0}"'.format(version))
+        print(f'git tag -a {version} -m "{version}"')
     makeWheel()
     if not DEBUG:
         os.system("git push")

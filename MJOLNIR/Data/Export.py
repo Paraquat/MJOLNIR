@@ -61,7 +61,7 @@ def to_ufit(result: CutResult, rlu: bool = True, meta: dict | None = None):
             else:
                 xlabel.append(name + f'{offset:+}')
         energy = 0.5*(parameters['energy_min'] + parameters['energy_max'])
-        xcol = '\n'.join(xlabel) + '\n' + '{:.3}'.format(np.round(energy, e_rounding)) + '\n' + unit
+        xcol = '\n'.join(xlabel) + '\n' + f'{np.round(energy, e_rounding):.3}' + '\n' + unit
     else: # Along energy (cut_constant_q)
         q_rounding = max(int(-np.round(np.log10(parameters['width']))), 1)
         x = data[COLUMNS['e']].to_numpy(dtype=float)

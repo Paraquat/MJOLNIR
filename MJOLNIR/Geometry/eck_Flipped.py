@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 #
 # implementation of the eckold-sobolev algo
@@ -80,7 +79,7 @@ def mirror_matrix(iSize, iComp):
     mat = np.identity(iSize)
     mat[iComp, iComp] = -1.
 
-    return mat;
+    return mat
 
 
 #
@@ -238,7 +237,7 @@ def calc_eck(param):
     E = param["E"]
     Q = param["Q"]
 
-    if not 'flipped' in param:
+    if 'flipped' not in param:
         param['flipped'] = True
     
     flipped = param['flipped']
@@ -424,11 +423,11 @@ def calc_eck(param):
     # --------------------------------------------------------------------------
     # integrate last 2 vars -> equs 57 & 58 in [eck14]
 
-    U2 = reso.quadric_proj(U1, 5);
-    U = reso.quadric_proj(U2, 4);
+    U2 = reso.quadric_proj(U1, 5)
+    U = reso.quadric_proj(U2, 4)
 
-    V2 = reso.quadric_proj_vec(V1, U1, 5);
-    V = reso.quadric_proj_vec(V2, U2, 4);
+    V2 = reso.quadric_proj_vec(V1, U1, 5)
+    V = reso.quadric_proj_vec(V2, U2, 4)
 
     W = (C + D + G + H) - 0.25*V1[5]/U1[5,5] - 0.25*V2[4]/U2[4,4]
 
@@ -439,10 +438,10 @@ def calc_eck(param):
 
     # quadratic part of quadric (matrix U)
     # careful: factor -0.5*... missing in U matrix compared to normal gaussian!
-    res["reso"] = 2. * U;
+    res["reso"] = 2. * U
     # linear (vector V) and constant (scalar W) part of quadric
-    res["reso_v"] = V;
-    res["reso_s"] = W;
+    res["reso_v"] = V
+    res["reso_s"] = W
 
 
     if param["sample_sense"] < 0.:

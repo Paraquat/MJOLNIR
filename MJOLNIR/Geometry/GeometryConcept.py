@@ -6,7 +6,7 @@ import numpy as np
 import pickle as pickle
 from MJOLNIR import _tools
 
-class GeometryConcept(object):
+class GeometryConcept:
     """Abstract geometry concept. Used as base class for Wedge and Instrument."""
 
     @_tools.KwargChecker()
@@ -41,7 +41,7 @@ class GeometryConcept(object):
         
         position  = np.array(position,dtype=float)
         if position.ndim !=1 or len(position)!=3:
-            raise AttributeError('Position is to be a 3 vector, got {}.'.format(position))
+            raise AttributeError(f'Position is to be a 3 vector, got {position}.')
         self._position = position
 
     def __repr__(self):
@@ -70,7 +70,7 @@ class GeometryConcept(object):
         try:                                # Opening the given file with an error catch
             fileObject = open(filename, 'wb')
         except IOError as e:   # pragma: no cover
-            print("Error in opening file:\n{}".format(e))
+            print(f"Error in opening file:\n{e}")
         else:
                 pickle.dump(self, fileObject, -1)
                 fileObject.close()  
@@ -80,7 +80,7 @@ class GeometryConcept(object):
         try:                                # Opening the given file with an error catch
             fileObject = open(filename, 'rb')
         except IOError as e: # pragma: no cover
-            print("Error in opening file:\n{}".format(e))
+            print(f"Error in opening file:\n{e}")
         else:
             tmp_dict = pickle.load(fileObject)
             
@@ -114,7 +114,7 @@ class GeometryObject(GeometryConcept):
         >>> print(GenericObject.position)
         (0.0,1.0,0.0)
         """
-        super(GeometryObject,self).__init__(position)
+        super().__init__(position)
         self.direction = direction
     
 
@@ -140,6 +140,6 @@ class GeometryObject(GeometryConcept):
 
 
     def __str__(self):
-        return "Position = {}\tDirection = {}".format(self._position,self._direction)
+        return f"Position = {self._position}\tDirection = {self._direction}"
 
 

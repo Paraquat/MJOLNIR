@@ -73,14 +73,14 @@ def setupModes(ax):
         if hasattr(ax,'isActive'):
             if not ax.isActive:
                 return
-        if not ax._mode is None: # A previous mode was set, deactivate it
+        if ax._mode is not None: # A previous mode was set, deactivate it
             if ax._mode.upper() == modeName.upper(): # if new mode is the same as old, return
                 return
             getattr(sys.modules[__name__],'deactivate'+ax._mode.upper())(ax)    
             ax.get_figure().canvas.draw_idle()
         
-        if not modeName.upper() in [x.name for x in Modes]:
-            raise AttributeError('Wanted state "{:}" not recognized. Must be one of: '.format(modeName)+','.join([x.name for x in Modes]))
+        if modeName.upper() not in [x.name for x in Modes]:
+            raise AttributeError(f'Wanted state "{modeName}" not recognized. Must be one of: '+','.join([x.name for x in Modes]))
         getattr(sys.modules[__name__],'initialize'+modeName.upper())(ax)
         ax._mode = modeName.upper()
         setCursor(ax,pointerType[modeName.upper()])
@@ -157,12 +157,12 @@ pointerType['RESOLUTION'] = PyQt5.QtCore.Qt.BlankCursor
 
 def resetUsingKey(ax,keys):
     """make onKeyPress function which resets using any of the provided keys, always include escape"""
-    if not 'escape' in keys:
+    if 'escape' not in keys:
         keys.append('escape')
     if hasattr(ax,'_key_press_event'): # if a previous onKeyPres has been defind remove it.
         ax.figure.canvas.mpl_disconnect(ax._key_press_event)
     def onKeyPress(event,ax):
-        if not event.key in keys:
+        if event.key not in keys:
             return
         ax.setMode('inactive')
     ax._key_press_event = ax.figure.canvas.mpl_connect('key_press_event',lambda event: onKeyPress(event, ax) )
@@ -177,7 +177,7 @@ def initializeINACTIVE(ax):
 
     def onKeyPress(event,ax):
         possibleKeys = interactive1DKeysReversed.keys()
-        if not event.key in possibleKeys:
+        if event.key not in possibleKeys:
             return
         wantedState = interactive1DKeysReversed[event.key]
         ax.setMode(wantedState)
@@ -430,7 +430,7 @@ def initializeRESOLUTION(ax):
                 ellipsePoints = eigenVectors[:,0].reshape(2,1)*sigma[0]*np.cos(theta).reshape(1,-1)+eigenVectors[:,1].reshape(2,1)*sigma[1]*np.sin(theta).reshape(1,-1)+np.array([x,y]).reshape(2,1)
                 
 
-                ax._ellipseHolder.append(ax.plot(*ellipsePoints,zorder=21,color=ellipseColor,label=', '.join([l+' = {:.2f}'.format(x) for l,x in zip(ax.labels,[*pos,y])])+'(Ei={:.2f})'.format(Ei))[0])
+                ax._ellipseHolder.append(ax.plot(*ellipsePoints,zorder=21,color=ellipseColor,label=', '.join([l+f' = {x:.2f}' for l,x in zip(ax.labels,[*pos,y])])+f'(Ei={Ei:.2f})')[0])
                 ax.get_figure().canvas.draw()
 
 
@@ -439,8 +439,8 @@ def initializeRESOLUTION(ax):
                     C = np.linalg.inv(np.dot(P,np.dot(np.linalg.inv(Q),P.T)))
                     eigenValues,eigenVectors = np.linalg.eig(C[:2,:2])
                     sigma = np.power(eigenValues,-0.5)
-                printString+='\nReso (Ei={:.2f}):\nM = '.format(Ei)+str(M)+'\nIn projection (In units of 1/AA and meV):\nV1 with sigma={:.4f}, V1 = '.format(sigma[0])+str(eigenVectors[:,0].flatten())+\
-                '\nV2 with sigma={:.4f}, V2 = '.format(sigma[1])+str(eigenVectors[:,1].flatten())
+                printString+=f'\nReso (Ei={Ei:.2f}):\nM = '+str(M)+f'\nIn projection (In units of 1/AA and meV):\nV1 with sigma={sigma[0]:.4f}, V1 = '+str(eigenVectors[:,0].flatten())+\
+                f'\nV2 with sigma={sigma[1]:.4f}, V2 = '+str(eigenVectors[:,1].flatten())
 
         elif ax.type == 'QPlane':
             if ax.rlu:
@@ -469,10 +469,10 @@ def initializeRESOLUTION(ax):
                 ellipseColor = ax.EiColors[Ei]
                 
                 ellipsePoints = eigenVectors[:,0].reshape(2,1)*sigma[0]*np.cos(theta).reshape(1,-1)+eigenVectors[:,1].reshape(2,1)*sigma[1]*np.sin(theta).reshape(1,-1)+np.array([event.xdata,event.ydata]).reshape(2,1)
-                ax._ellipseHolder.append(ax.plot(*ellipsePoints,zorder=21,color=ellipseColor,label=', '.join([l+' = {:.2f}'.format(x) for l,x in zip(ax.labels,[*pos,deltaE])])+'(Ei={:.2f})'.format(Ei))[0])
+                ax._ellipseHolder.append(ax.plot(*ellipsePoints,zorder=21,color=ellipseColor,label=', '.join([l+f' = {x:.2f}' for l,x in zip(ax.labels,[*pos,deltaE])])+f'(Ei={Ei:.2f})')[0])
                 ax.get_figure().canvas.draw()
-                printString+='\nReso (Ei={:.2f}, Ef={:.2f}, deltaE={:.2f}):\nM = '.format(Ei,Ef,deltaE)+str(M)+'\nIn projection (In units of 1/AA and meV):\nV1 with sigma={:.4f}, V1 = '.format(sigma[0])+str(eigenVectors[:,0].flatten())+\
-                '\nV2 with sigma={:.4f}, V2 = '.format(sigma[1])+str(eigenVectors[:,1].flatten())
+                printString+=f'\nReso (Ei={Ei:.2f}, Ef={Ef:.2f}, deltaE={deltaE:.2f}):\nM = '+str(M)+f'\nIn projection (In units of 1/AA and meV):\nV1 with sigma={sigma[0]:.4f}, V1 = '+str(eigenVectors[:,0].flatten())+\
+                f'\nV2 with sigma={sigma[1]:.4f}, V2 = '+str(eigenVectors[:,1].flatten())
         if not ax.suppressPrint:
             ax.outputFunction(printString)
 
@@ -965,7 +965,7 @@ def cancel(self,axes):# pragma: no cover
     self.new = False
     
     # Only when something has been drawn is cid set
-    if not self.cidmove is None:
+    if self.cidmove is not None:
         self.get_figure().canvas.mpl_disconnect(self.cidmove)
         self.cidmove = None
         
@@ -990,7 +990,7 @@ def on_key_press(self,event):# pragma: no cover
         axes = self.ax
     else:
         axes = self
-    if not event.key in cutSettingsAll:
+    if event.key not in cutSettingsAll:
         self.resetFormatCoord()
         self.suppressPrint = False
 
@@ -1019,7 +1019,7 @@ def on_key_press(self,event):# pragma: no cover
         self.resetFormatCoord()
         self.drawState = States.INACTIVE
         dr = self.selectedDr
-        if not dr is None:
+        if dr is not None:
             # if event.key in cutSettings['maskCut']:
             #     dr.Mask1DFunction(dr=dr)
             # else:
@@ -1089,8 +1089,8 @@ def on_press(self,event):# pragma: no cover
         return 
 
 
-    if not self.drawState is None:
-        if not self.cidmove is None: # If exists, disconnect it
+    if self.drawState is not None:
+        if self.cidmove is not None: # If exists, disconnect it
             axes.get_figure().canvas.mpl_disconnect(self.cidmove)
             self.cidmove = None
         stateName = self.drawState.name.lower()
@@ -1099,7 +1099,7 @@ def on_press(self,event):# pragma: no cover
         self.suppressPrint = True
         # connect the returned move function if not None. None is return in the last function 
         
-        if not on_move is None:
+        if on_move is not None:
             self.cidmove = axes.get_figure().canvas.mpl_connect('motion_notify_event',lambda event:on_move(self,event))
         else:
             self.resetFormatCoord()
@@ -1250,7 +1250,7 @@ class DraggableRectangle(DraggableShape):# pragma: no cover
         if self._selected == bool(value):
             return
         if value:
-            if not self.figure.selectedDr is None:
+            if self.figure.selectedDr is not None:
                 self.figure.selectedDr.selected = False
             self.figure.selectedDr = self
             color = selectedColor
@@ -1512,11 +1512,11 @@ def extractCut1DPropertiesRectangle(rect,sample=None, rounding = 4):# pragma: no
     botCenter = np.array(xy)+ortho*0.5*width
     topCenter = np.array(xy)+ortho*0.5*width+dirvec*height
     
-    if not sample is None:
+    if sample is not None:
         botCenter = sample.calculateQxQyToHKL(*botCenter)
         topCenter = sample.calculateQxQyToHKL(*topCenter)
     
-    rlu = not sample is None # RLU only when a sample is provided
+    rlu = sample is not None # RLU only when a sample is provided
     constantBins = False
     ufit = False
     params = {'q1':np.array([np.round(x,rounding) for x in botCenter]),
@@ -1536,7 +1536,7 @@ def extractCut1DPropertiesRectanglePerpendicular(rect,sample=None, rounding = 4)
     height = rect.get_height()
     center = np.asarray(xy)+0.5*np.array([width,height])
     
-    rlu = not sample is None # RLU only when a sample is provided
+    rlu = sample is not None # RLU only when a sample is provided
     constantBins = False
     ufit = False
     params = {'center':np.array([np.round(x,rounding) for x in center]),
@@ -1557,7 +1557,7 @@ def extractCut1DPropertiesRectangleHorizontal(rect,sample=None, rounding = 4):# 
     q2 = np.asarray(xy)+np.array([width,height])
     
     
-    rlu = not sample is None # RLU only when a sample is provided
+    rlu = sample is not None # RLU only when a sample is provided
     constantBins = False
     ufit = False
     params = {'q1':np.array([np.round(x,rounding) for x in q1]),
@@ -1579,7 +1579,7 @@ def extractCut1DPropertiesRectangleVertical(rect,sample=None, rounding = 4):# pr
     Energies = [xy[1],xy[1]+height]
     EMin,EMax = np.min(Energies),np.max(Energies)
     
-    rlu = not sample is None # RLU only when a sample is provided
+    rlu = sample is not None # RLU only when a sample is provided
     constantBins = False
     ufit = False
     params = {'q':np.round(q1[0],rounding),
@@ -1596,10 +1596,10 @@ def extractCut1DPropertiesCircle(circ,sample=None, rounding = 4):# pragma: no co
     center = circ.center
     width = circ.radius*2
     
-    if not sample is None:
+    if sample is not None:
         center = sample.calculateQxQyToHKL(*center)
     
-    rlu = not sample is None # RLU only when a sample is provided
+    rlu = sample is not None # RLU only when a sample is provided
     constantBins = False
     ufit = False
     params = {'q':np.array([np.round(x,rounding) for x in center]),
@@ -1667,7 +1667,7 @@ class DraggableCircle(DraggableShape):# pragma: no cover
         if self._selected == bool(value):
             return
         if value:
-            if not self.figure.selectedDr is None:
+            if self.figure.selectedDr is not None:
                 self.figure.selectedDr.selected = False
             self.figure.selectedDr = self
             color = selectedColor
@@ -1879,7 +1879,7 @@ class DraggableRectanglePerpendicular(DraggableShape):# pragma: no cover
         if self._selected == bool(value):
             return
         if value:
-            if not self.figure.selectedDr is None:
+            if self.figure.selectedDr is not None:
                 self.figure.selectedDr.selected = False
             self.figure.selectedDr = self
             color = selectedColor
@@ -2098,7 +2098,7 @@ class DraggableRectangleHorizontal(DraggableShape):# pragma: no cover
         if self._selected == bool(value):
             return
         if value:
-            if not self.figure.selectedDr is None:
+            if self.figure.selectedDr is not None:
                 self.figure.selectedDr.selected = False
             self.figure.selectedDr = self
             color = selectedColor
@@ -2367,7 +2367,7 @@ class DraggableRectangleVertical(DraggableShape):# pragma: no cover
         if self._selected == bool(value):
             return
         if value:
-            if not self.figure.selectedDr is None:
+            if self.figure.selectedDr is not None:
                 self.figure.selectedDr.selected = False
             self.figure.selectedDr = self
             color = selectedColor

@@ -28,7 +28,7 @@ class Wedge(GeometryConcept.GeometryConcept):
             A wedge does not have a direction. The direction of analysers and detectors are to be set individually.
 
         """
-        super(Wedge,self).__init__(position)
+        super().__init__(position)
         self._analysers = []
         self._detectors = []
 
@@ -129,7 +129,7 @@ class Wedge(GeometryConcept.GeometryConcept):
 
     def __str__(self):
         string = ''
-        string+="{} with settings:\nPosition = {}\n".format(self.__class__,self.position)
+        string+=f"{self.__class__} with settings:\nPosition = {self.position}\n"
         string+='Containing analysers:\n'
         for ana in self.analysers:
             string+='\t'+str(ana)+'\n'
@@ -148,7 +148,7 @@ class Wedge(GeometryConcept.GeometryConcept):
         analyserPixelPositions = []
         if self.settings['concept']=='OneToOne':
             if len(self.detectors)!=len(self.analysers):
-                raise RuntimeError('Concept set to OneToOne but number of detectors does not mach analysers ({}!?{}'.format(len(self.detectors),len(self.analysers)))
+                raise RuntimeError(f'Concept set to OneToOne but number of detectors does not mach analysers ({len(self.detectors)}!?{len(self.analysers)}')
             detectorCounter = 0
             for det in self.detectors:
                 PixelPos = det.getPixelPositions()+self.position

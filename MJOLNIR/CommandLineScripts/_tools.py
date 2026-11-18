@@ -25,7 +25,7 @@ def addInstrumentArgument(parser):
     """Add the -i/--instrument option: the instrument of the data files (default CAMEA)"""
     names = [name.value for name in InstrumentName]
     parser.add_argument("-i", "--instrument", type=str, default=InstrumentName.CAMEA.value, choices=names,
-                        help="Instrument of the data files. Default '{}'".format(InstrumentName.CAMEA.value))
+                        help=f"Instrument of the data files. Default '{InstrumentName.CAMEA.value}'")
 
 def instrumentName(args):
     return InstrumentName(args.instrument)
@@ -58,9 +58,9 @@ def Exists(file = settingsFile):# pragma: no cover
     return os.path.isfile(settingsFile)
 
 def extractDataFiles(args,settingsName,oneFile = False):# pragma: no cover
-    if not 'DataFile' in args:
+    if 'DataFile' not in args:
         startingPath = loadSetting(settingsName)
-        if not startingPath is None:
+        if startingPath is not None:
             if isinstance(startingPath,tuple):
                 startingDir = '/'.join([x for x in list(startingPath)[0].split('/')[:-1]])
             else:
@@ -87,7 +87,7 @@ def extractDataFiles(args,settingsName,oneFile = False):# pragma: no cover
     else:
         pattern = re.compile(r'^(\d+[-,]?){1,}\d') # Generate pattern to recognize format: Start with digits, and then - or . or nothing repeated at least once, and ending in digit.
         res = pattern.match(args.DataFile[0])
-        if not res is None:
+        if res is not None:
             if res.start()==0 and res.end() == len(args.DataFile[0]): # Correct expression is given
                 if len(args.DataFile) == 3: # Provided is string, directory and year
                     fileNumbers, directory, year = args.DataFile

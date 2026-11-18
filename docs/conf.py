@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -26,14 +25,14 @@ sys.path.append(os.path.abspath('../MJOLNIR/Data'))
 
 # -- Project information -----------------------------------------------------
 
-project = u'MJOLNIR'
-copyright = u'2020, Jakob Lass'
-author = u'Jakob Lass'
+project = 'MJOLNIR'
+copyright = '2020, Jakob Lass'
+author = 'Jakob Lass'
 
 # The short X.Y version
-version = u'2.0.0'
+version = '2.0.0'
 # The full version, including alpha/beta/rc tags
-release = u'2.0.0'
+release = '2.0.0'
 
 
 
@@ -157,8 +156,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'MJOLNIR.tex', u'MJOLNIR Documentation',
-     u'Jakob Lass', 'manual'),
+    (master_doc, 'MJOLNIR.tex', 'MJOLNIR Documentation',
+     'Jakob Lass', 'manual'),
 ]
 
 
@@ -167,7 +166,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'mjolnir', u'MJOLNIR Documentation',
+    (master_doc, 'mjolnir', 'MJOLNIR Documentation',
      [author], 1)
 ]
 
@@ -178,7 +177,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'MJOLNIR', u'MJOLNIR Documentation',
+    (master_doc, 'MJOLNIR', 'MJOLNIR Documentation',
      author, 'MJOLNIR', 'Neutron scattering software developed for multiplexing instruments.',
      'Miscellaneous'),
 ]
