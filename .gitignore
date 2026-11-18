@@ -1,48 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
 build/
-*.xmind
-*.pyc
-.vscode/settings.json
-.vscode/launch.json
-*/__pycache__/
-*/.cache/
-*/*/__pycache__/
-*/*/.cache/
-lastfailed
-MJOLNIR.xmind
-tester.py
-*.aux
-*.bbl
-*.blg
+dist/
+
+# Environments
+.venv/
+
+# Test and tool output
+.pytest_cache/
+.ruff_cache/
+.smellcheck-cache/
+.coverage
+.coverage.*
+htmlcov/
 *.log
-*.out
-*.gz
+.ipynb_checkpoints/
 
-Normalization/*_pixels
-Normalization/Raw
-TestData/*_pixels
-TestData/Raw
-TestData/1024/1_pixels
-TestData/1024/3_pixels
-TestData/1024/8_pixels
-TestData/1024/Raw
-TestData/1024/Inspection/
-TestData/1024/
-TestData/ManuallyChangedData
-CommandLineScripts/.settings
+# Editors
+.idea/
+.vscode/
 
+# Claude Code: personal settings and worktrees (a shared .claude/settings.json is tracked)
+.claude/settings.local.json
+.claude/worktrees/
 
-.*/
-dist/*
-MJOLNIR.egg-info/*
-TestData/A4/*
-
-Tutorials/*.nxs
-Report/
-
-.coverage*
-*/.coverage*
-
-coverage_html_report
-sampledata/*
-docs/Commissioning/*
-MJOLNIR/MJOLNIR.egg-info/*
+# Input data of the tests, not in the repository (see conftest.py)
+sampledata/
