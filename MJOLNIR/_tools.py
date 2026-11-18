@@ -196,9 +196,11 @@ def my_timer_N(N=0): # pragma: no cover
         return newFunc
     return my_timer
 
-def beautifyArgs(args=(),kwargs={}): # pragma: no cover
+def beautifyArgs(args=(),kwargs=None): # pragma: no cover
     """Beautify arguments and keyword arguments. Returns formated string with arguments and 
     keyword argumenets seperated with commas as called in a function"""
+    if kwargs is None:
+        kwargs = {}
     returnStr = ''
     if not args == ():
         args = list(args)
@@ -255,22 +257,18 @@ def logClass(parent=None,log=__name__,stream=sys.stdout,level=logging.CRITICAL):
                 instance of the decorated class). If it manages to fetch the attribute from self.oInstance, and 
                 the attribute is an instance method then `time_this` is applied.
                 """
-                try:    
+                try:
                     x = super(NewCls,self).__getattribute__(s)
                     skip = True
-                except AttributeError:      
+                except AttributeError:
+                    # A missing attribute on the wrapped instance propagates as AttributeError
                     x = self._Instance.__getattribute__(s)
                     skip = False
-                else:
-                    pass
-                finally:
-                    if skip and s[0]!='_':
-                        if type(x) == type(self.__init__):# and x != self.__init__: # it is an instance method
-                            return logMethod(self,x)                 # this is equivalent of just decorating the method with logMethod
-                            pass
-                        else:
-                            logAttribute(self,s)
-                    return x
+                if skip and s[0]!='_':
+                    if type(x) == type(self.__init__):# and x != self.__init__: # it is an instance method
+                        return logMethod(self,x)                 # this is equivalent of just decorating the method with logMethod
+                    logAttribute(self,s)
+                return x
 
             def _printLog(self):
                 pass
@@ -649,7 +647,7 @@ def Rot(theta,deg=True):
 
 
 
-def clockwiseangle_and_distance(point,origin=[0,0],refvec = [0,1]): # pragma: no cover
+def clockwiseangle_and_distance(point,origin=(0,0),refvec = (0,1)): # pragma: no cover
     """Sort points clockwise. Taken from https://stackoverflow.com/questions/41855695/sorting-list-of-two-dimensional-coordinates-by-clockwise-angle-using-python
     
     Args:
@@ -796,7 +794,7 @@ def writeToSpinWFile(file,position,spinWaveEnergy,spinWaveWidth,spinWaveAmplitud
 
 
 
-def generateLabel(vec,labels=['H','K','L']):
+def generateLabel(vec,labels=('H','K','L')):
     """Format a scattering vector with individual letters.
     
     Args:
@@ -832,7 +830,7 @@ def generateLabel(vec,labels=['H','K','L']):
     return returnLabel
 
 
-def generateLabelDirection(vec,labels=['H','K','L']):
+def generateLabelDirection(vec,labels=('H','K','L')):
     """Format a scattering vector with letters according to the first non-zero direction.
     
     Args:

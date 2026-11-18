@@ -10,7 +10,7 @@ import warnings
 class Wedge(GeometryConcept.GeometryConcept):
     """Wedge object to keep track of analysers and detectors. To be used as a storage object and facilitate easy movement of multiple detectors and analysers as once."""
     @_tools.KwargChecker(include=[])
-    def __init__(self,position=(0.0,0.0,0.0),detectors=[],analysers=[],concept='ManyToMany',**kwargs):
+    def __init__(self,position=(0.0,0.0,0.0),detectors=None,analysers=None,concept='ManyToMany',**kwargs):
         """
         Args:
 
@@ -32,8 +32,8 @@ class Wedge(GeometryConcept.GeometryConcept):
         self._analysers = []
         self._detectors = []
 
-        self.append(analysers)
-        self.append(detectors)
+        self.append(analysers if analysers is not None else [])
+        self.append(detectors if detectors is not None else [])
         self._settings = {}
         
         for key in kwargs:

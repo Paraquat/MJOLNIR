@@ -308,7 +308,7 @@ class Instrument(GeometryConcept.GeometryConcept):
 
     @_tools.KwargChecker()
     def generateCalibration(self,Vanadiumdatafile,A4datafile=False,savelocation='calibration/', 
-    tables=['Single','PrismaticLowDefinition','PrismaticHighDefinition'], plot=False, mask=True, adaptiveBinning=False, ignoreTubes=None,
+    tables=('Single','PrismaticLowDefinition','PrismaticHighDefinition'), plot=False, mask=True, adaptiveBinning=False, ignoreTubes=None,
     sample='V',sampleMass=None,sampleDebyeWallerFactor=1.0,formulaUnitsPerUnitCell=1.0,sampleIncoherent=5.08):
         """Method to generate look-up tables for normalization. Saves calibration file(s) as 'Calibration_Np.calib', where Np is the number of pixels.
         

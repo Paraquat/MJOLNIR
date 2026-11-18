@@ -61,7 +61,7 @@ class Detector(GeometryConcept.GeometryObject):
 class TubeDetector1D(Detector):
     """1D Tube detector used at PSI. The detector is assumed to be a perfect cylinder consisting of pixels."""
     @_tools.KwargChecker()
-    def __init__(self, position, direction,length=0.25, pixels=1024,diameter=0.02,split=[]):
+    def __init__(self, position, direction,length=0.25, pixels=1024,diameter=0.02,split=None):
         """
         Args:
 
@@ -92,7 +92,7 @@ class TubeDetector1D(Detector):
         self.pixels = pixels
         self.length = length
         self.diameter = diameter
-        if split == []:
+        if split is None or len(split) == 0:
             split = [0,pixels]
         self.split = split
 
